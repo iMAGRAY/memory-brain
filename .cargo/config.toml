@@ -1,0 +1,31 @@
+# Cargo configuration for PyO3 integration and Windows
+# This ensures consistent Python environment across builds
+
+[env]
+# Force PyO3 to use specific Python installation
+PYO3_PYTHON = { value = "C:\\Users\\1\\AppData\\Local\\Programs\\Python\\Python313\\python.exe", force = true }
+PYTHONHOME = { value = "C:\\Users\\1\\AppData\\Local\\Programs\\Python\\Python313", force = true }
+
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-L", "native=C:/Windows/System32",
+    "-l", "dylib=advapi32",
+    "-l", "dylib=user32", 
+    "-l", "dylib=ole32",
+    "-l", "dylib=oleaut32",
+    # PyO3 Python linking
+    "-L", "C:\\Users\\1\\AppData\\Local\\Programs\\Python\\Python313\\libs",
+    "-l", "python313",
+]
+
+# Development profile optimizations
+[profile.dev]
+opt-level = 1
+debug = true
+
+# Release profile with full optimizations  
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1

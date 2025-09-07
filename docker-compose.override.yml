@@ -1,0 +1,74 @@
+# Docker Compose Override for Development
+# This file is automatically loaded and provides development-specific overrides
+# For production, rename this file or use: docker-compose -f docker-compose.yml up
+
+version: '3.8'
+
+services:
+  neo4j:
+    # Development-specific Neo4j settings
+    environment:
+      # Enable development plugins (remove in production)
+      - NEO4J_PLUGINS=["apoc"]
+      
+      # Less restrictive security for development only
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+      
+      # Debug logging
+      - NEO4J_server_logs_debug_level=DEBUG
+      - NEO4J_server_logs_debug_rotation_keep__number=3
+      - NEO4J_server_logs_debug_rotation_size=10M
+    
+    # Mount local data for development
+    volumes:
+      - ./data/neo4j-dev:/data
+      - ./data/neo4j-logs:/logs
+      - ./import:/var/lib/neo4j/import
+    
+    # Development port mapping
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+
+  ai-memory-service:
+    # Development build configuration
+    build:
+      target: final
+      args:
+        - BUILD_TYPE=debug
+    
+    environment:
+      # Development logging
+      - RUST_LOG=debug,ai_memory_service=trace
+      - RUST_BACKTRACE=full
+      
+      # Development security (relaxed)
+      - API_KEY_REQUIRED=false
+      - CORS_ORIGINS=*
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=10000
+    
+    # Mount source for development
+    volumes:
+      - ./src:/app/src:ro
+      - ./config:/app/config:ro
+      - ./data/memory-dev:/app/data
+      - ./logs:/app/logs
+    
+    # Development port mapping
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+
+  # Development-specific services
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: ai-memory-mailhog
+    ports:
+      - "8025:8025"  # Web interface
+      - "1025:1025"  # SMTP
+    networks:
+      - ai-memory-network
+    profiles:
+      - development

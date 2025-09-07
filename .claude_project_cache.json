@@ -1,0 +1,1833 @@
+{
+  "structure": {
+    "root_path": ".",
+    "files": [
+      {
+        "path": ".\\CLAUDE.md",
+        "relative_path": "CLAUDE.md",
+        "file_type": "md",
+        "size_bytes": 5507,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\Cargo.lock",
+        "relative_path": "Cargo.lock",
+        "file_type": "lock",
+        "size_bytes": 99816,
+        "is_code_file": false
+      },
+      {
+        "path": ".\\Cargo.toml",
+        "relative_path": "Cargo.toml",
+        "file_type": "toml",
+        "size_bytes": 2133,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\DEPLOYMENT.md",
+        "relative_path": "DEPLOYMENT.md",
+        "file_type": "md",
+        "size_bytes": 10197,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\Dockerfile",
+        "relative_path": "Dockerfile",
+        "file_type": "none",
+        "size_bytes": 9077,
+        "is_code_file": false
+      },
+      {
+        "path": ".\\FINAL_STATUS_REPORT.md",
+        "relative_path": "FINAL_STATUS_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 7015,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\FINAL_STATUS_REPORT_UPDATED.md",
+        "relative_path": "FINAL_STATUS_REPORT_UPDATED.md",
+        "file_type": "md",
+        "size_bytes": 7673,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\LEGACY_CLEANUP_REPORT.md",
+        "relative_path": "LEGACY_CLEANUP_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 4526,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\MIGRATION_REPORT.md",
+        "relative_path": "MIGRATION_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 6433,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\ONNX_RUNTIME_SETUP.md",
+        "relative_path": "ONNX_RUNTIME_SETUP.md",
+        "file_type": "md",
+        "size_bytes": 1334,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\PROJECT_STATUS_FINAL.md",
+        "relative_path": "PROJECT_STATUS_FINAL.md",
+        "file_type": "md",
+        "size_bytes": 7478,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\PROJECT_STATUS_UPDATED.md",
+        "relative_path": "PROJECT_STATUS_UPDATED.md",
+        "file_type": "md",
+        "size_bytes": 6108,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\QUALITY_PROGRESS_REPORT.md",
+        "relative_path": "QUALITY_PROGRESS_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 7241,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\QUALITY_REPORT_FINAL.md",
+        "relative_path": "QUALITY_REPORT_FINAL.md",
+        "file_type": "md",
+        "size_bytes": 7404,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\README-Docker.md",
+        "relative_path": "README-Docker.md",
+        "file_type": "md",
+        "size_bytes": 5387,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\README.md",
+        "relative_path": "README.md",
+        "file_type": "md",
+        "size_bytes": 12969,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\benches\\dummy.rs",
+        "relative_path": "benches/dummy.rs",
+        "file_type": "rs",
+        "size_bytes": 32,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\benches\\memory_benchmarks.rs",
+        "relative_path": "benches/memory_benchmarks.rs",
+        "file_type": "rs",
+        "size_bytes": 14614,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\benches\\simd_benchmark.rs",
+        "relative_path": "benches/simd_benchmark.rs",
+        "file_type": "rs",
+        "size_bytes": 391,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\check_ort_version.rs",
+        "relative_path": "check_ort_version.rs",
+        "file_type": "rs",
+        "size_bytes": 951,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\check_path.ps1",
+        "relative_path": "check_path.ps1",
+        "file_type": "ps1",
+        "size_bytes": 914,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\clean_path_duplicates.ps1",
+        "relative_path": "clean_path_duplicates.ps1",
+        "file_type": "ps1",
+        "size_bytes": 3403,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\config.toml",
+        "relative_path": "config.toml",
+        "file_type": "toml",
+        "size_bytes": 971,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\config\\embeddinggemma.toml",
+        "relative_path": "config/embeddinggemma.toml",
+        "file_type": "toml",
+        "size_bytes": 2143,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\docker-compose.override.yml",
+        "relative_path": "docker-compose.override.yml",
+        "file_type": "yml",
+        "size_bytes": 1937,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\docker-compose.yml",
+        "relative_path": "docker-compose.yml",
+        "file_type": "yml",
+        "size_bytes": 10977,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\docker\\README.md",
+        "relative_path": "docker/README.md",
+        "file_type": "md",
+        "size_bytes": 7529,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\docs\\efficient-memory-service-architecture.md",
+        "relative_path": "docs/efficient-memory-service-architecture.md",
+        "file_type": "md",
+        "size_bytes": 42086,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\download_onnxruntime.ps1",
+        "relative_path": "download_onnxruntime.ps1",
+        "file_type": "ps1",
+        "size_bytes": 1155,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\download_onnxruntime_v122.ps1",
+        "relative_path": "download_onnxruntime_v122.ps1",
+        "file_type": "ps1",
+        "size_bytes": 6037,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\download_ort_nuget.ps1",
+        "relative_path": "download_ort_nuget.ps1",
+        "file_type": "ps1",
+        "size_bytes": 1974,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\embedding_service.py",
+        "relative_path": "embedding_service.py",
+        "file_type": "py",
+        "size_bytes": 7471,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\install.ps1",
+        "relative_path": "install.ps1",
+        "file_type": "ps1",
+        "size_bytes": 16380,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\1_Pooling\\config.json",
+        "relative_path": "models/embeddinggemma-300m/1_Pooling/config.json",
+        "file_type": "json",
+        "size_bytes": 312,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\2_Dense\\config.json",
+        "relative_path": "models/embeddinggemma-300m/2_Dense/config.json",
+        "file_type": "json",
+        "size_bytes": 134,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\3_Dense\\config.json",
+        "relative_path": "models/embeddinggemma-300m/3_Dense/config.json",
+        "file_type": "json",
+        "size_bytes": 134,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\README.md",
+        "relative_path": "models/embeddinggemma-300m/README.md",
+        "file_type": "md",
+        "size_bytes": 16656,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\added_tokens.json",
+        "relative_path": "models/embeddinggemma-300m/added_tokens.json",
+        "file_type": "json",
+        "size_bytes": 35,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\config.json",
+        "relative_path": "models/embeddinggemma-300m/config.json",
+        "file_type": "json",
+        "size_bytes": 1488,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\config_sentence_transformers.json",
+        "relative_path": "models/embeddinggemma-300m/config_sentence_transformers.json",
+        "file_type": "json",
+        "size_bytes": 997,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\generation_config.json",
+        "relative_path": "models/embeddinggemma-300m/generation_config.json",
+        "file_type": "json",
+        "size_bytes": 133,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\modules.json",
+        "relative_path": "models/embeddinggemma-300m/modules.json",
+        "file_type": "json",
+        "size_bytes": 573,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\sentence_bert_config.json",
+        "relative_path": "models/embeddinggemma-300m/sentence_bert_config.json",
+        "file_type": "json",
+        "size_bytes": 58,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\special_tokens_map.json",
+        "relative_path": "models/embeddinggemma-300m/special_tokens_map.json",
+        "file_type": "json",
+        "size_bytes": 662,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\tokenizer.json",
+        "relative_path": "models/embeddinggemma-300m/tokenizer.json",
+        "file_type": "json",
+        "size_bytes": 33385008,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\models\\embeddinggemma-300m\\tokenizer_config.json",
+        "relative_path": "models/embeddinggemma-300m/tokenizer_config.json",
+        "file_type": "json",
+        "size_bytes": 1155346,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\quick-start.ps1",
+        "relative_path": "quick-start.ps1",
+        "file_type": "ps1",
+        "size_bytes": 12863,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\FINAL_IMPLEMENTATION_STATUS.md",
+        "relative_path": "reports/FINAL_IMPLEMENTATION_STATUS.md",
+        "file_type": "md",
+        "size_bytes": 7571,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\IMPLEMENTATION_REPORT.md",
+        "relative_path": "reports/IMPLEMENTATION_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 8384,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\REAL_STATUS_HONEST_REPORT.md",
+        "relative_path": "reports/REAL_STATUS_HONEST_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 7182,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\embedding_service_implementation_report.md",
+        "relative_path": "reports/embedding_service_implementation_report.md",
+        "file_type": "md",
+        "size_bytes": 5566,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\implementation_summary.md",
+        "relative_path": "reports/implementation_summary.md",
+        "file_type": "md",
+        "size_bytes": 2961,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\progress-report-session2.md",
+        "relative_path": "reports/progress-report-session2.md",
+        "file_type": "md",
+        "size_bytes": 7308,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\reports\\project-status-report.md",
+        "relative_path": "reports/project-status-report.md",
+        "file_type": "md",
+        "size_bytes": 7994,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\requirements.txt",
+        "relative_path": "requirements.txt",
+        "file_type": "txt",
+        "size_bytes": 734,
+        "is_code_file": false
+      },
+      {
+        "path": ".\\run.bat",
+        "relative_path": "run.bat",
+        "file_type": "bat",
+        "size_bytes": 294,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\run_simple_test.bat",
+        "relative_path": "run_simple_test.bat",
+        "file_type": "bat",
+        "size_bytes": 61,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\run_tests.bat",
+        "relative_path": "run_tests.bat",
+        "file_type": "bat",
+        "size_bytes": 324,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\scripts\\download_models.ps1",
+        "relative_path": "scripts/download_models.ps1",
+        "file_type": "ps1",
+        "size_bytes": 5327,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\scripts\\download_models.sh",
+        "relative_path": "scripts/download_models.sh",
+        "file_type": "sh",
+        "size_bytes": 7874,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\scripts\\download_onnx_runtime.ps1",
+        "relative_path": "scripts/download_onnx_runtime.ps1",
+        "file_type": "ps1",
+        "size_bytes": 1849,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\scripts\\quick-start.sh",
+        "relative_path": "scripts/quick-start.sh",
+        "file_type": "sh",
+        "size_bytes": 9360,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\scripts\\run_tests.ps1",
+        "relative_path": "scripts/run_tests.ps1",
+        "file_type": "ps1",
+        "size_bytes": 8622,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\scripts\\setup-docker.sh",
+        "relative_path": "scripts/setup-docker.sh",
+        "file_type": "sh",
+        "size_bytes": 8666,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\setup_neo4j_native.ps1",
+        "relative_path": "setup_neo4j_native.ps1",
+        "file_type": "ps1",
+        "size_bytes": 9108,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\setup_python_dll.ps1",
+        "relative_path": "setup_python_dll.ps1",
+        "file_type": "ps1",
+        "size_bytes": 10608,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\api.rs",
+        "relative_path": "src/api.rs",
+        "file_type": "rs",
+        "size_bytes": 5022,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\brain.rs",
+        "relative_path": "src/brain.rs",
+        "file_type": "rs",
+        "size_bytes": 14766,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\cache.rs",
+        "relative_path": "src/cache.rs",
+        "file_type": "rs",
+        "size_bytes": 14369,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\config.rs",
+        "relative_path": "src/config.rs",
+        "file_type": "rs",
+        "size_bytes": 7327,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\embedding.rs",
+        "relative_path": "src/embedding.rs",
+        "file_type": "rs",
+        "size_bytes": 47521,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\embedding\\tests.rs",
+        "relative_path": "src/embedding/tests.rs",
+        "file_type": "rs",
+        "size_bytes": 25451,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\embedding_config.rs",
+        "relative_path": "src/embedding_config.rs",
+        "file_type": "rs",
+        "size_bytes": 18135,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\lib.rs",
+        "relative_path": "src/lib.rs",
+        "file_type": "rs",
+        "size_bytes": 434,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\main.rs",
+        "relative_path": "src/main.rs",
+        "file_type": "rs",
+        "size_bytes": 12755,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\memory.rs",
+        "relative_path": "src/memory.rs",
+        "file_type": "rs",
+        "size_bytes": 16653,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\memory_optimizer.rs",
+        "relative_path": "src/memory_optimizer.rs",
+        "file_type": "rs",
+        "size_bytes": 21005,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\metrics.rs",
+        "relative_path": "src/metrics.rs",
+        "file_type": "rs",
+        "size_bytes": 4602,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\monitoring.rs",
+        "relative_path": "src/monitoring.rs",
+        "file_type": "rs",
+        "size_bytes": 20076,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\security.rs",
+        "relative_path": "src/security.rs",
+        "file_type": "rs",
+        "size_bytes": 7519,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\shutdown.rs",
+        "relative_path": "src/shutdown.rs",
+        "file_type": "rs",
+        "size_bytes": 16137,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\simd_search.rs",
+        "relative_path": "src/simd_search.rs",
+        "file_type": "rs",
+        "size_bytes": 10026,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\simd_utils.rs",
+        "relative_path": "src/simd_utils.rs",
+        "file_type": "rs",
+        "size_bytes": 5823,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\storage.rs",
+        "relative_path": "src/storage.rs",
+        "file_type": "rs",
+        "size_bytes": 49039,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\storage\\embedded_db.rs",
+        "relative_path": "src/storage/embedded_db.rs",
+        "file_type": "rs",
+        "size_bytes": 19088,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\types.rs",
+        "relative_path": "src/types.rs",
+        "file_type": "rs",
+        "size_bytes": 16723,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test.bat",
+        "relative_path": "test.bat",
+        "file_type": "bat",
+        "size_bytes": 1111,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test_embedding_service.py",
+        "relative_path": "test_embedding_service.py",
+        "file_type": "py",
+        "size_bytes": 14094,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test_embeddings.py",
+        "relative_path": "test_embeddings.py",
+        "file_type": "py",
+        "size_bytes": 9408,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test_python_direct.py",
+        "relative_path": "test_python_direct.py",
+        "file_type": "py",
+        "size_bytes": 2208,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\api_integration_test.rs",
+        "relative_path": "tests/api_integration_test.rs",
+        "file_type": "rs",
+        "size_bytes": 6278,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\embedding_integration_test.rs",
+        "relative_path": "tests/embedding_integration_test.rs",
+        "file_type": "rs",
+        "size_bytes": 9947,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\embedding_unit_test.rs",
+        "relative_path": "tests/embedding_unit_test.rs",
+        "file_type": "rs",
+        "size_bytes": 8055,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\integration_test.rs",
+        "relative_path": "tests/integration_test.rs",
+        "file_type": "rs",
+        "size_bytes": 13355,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\simple_integration_test.rs",
+        "relative_path": "tests/simple_integration_test.rs",
+        "file_type": "rs",
+        "size_bytes": 2191,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\simple_unit_test.rs",
+        "relative_path": "tests/simple_unit_test.rs",
+        "file_type": "rs",
+        "size_bytes": 580,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\validate_packages.py",
+        "relative_path": "validate_packages.py",
+        "file_type": "py",
+        "size_bytes": 2562,
+        "is_code_file": true
+      }
+    ],
+    "directories": [
+      "benches",
+      "config",
+      "data",
+      "data/neo4j-dev",
+      "data/neo4j-logs",
+      "docker",
+      "docs",
+      "import",
+      "models",
+      "models/embeddinggemma-300m",
+      "models/embeddinggemma-300m/1_Pooling",
+      "models/embeddinggemma-300m/2_Dense",
+      "models/embeddinggemma-300m/3_Dense",
+      "reports",
+      "scripts",
+      "src",
+      "src/embedding",
+      "src/storage",
+      "tests"
+    ],
+    "total_files": 97,
+    "scan_timestamp": "2025-09-07 17:53:38"
+  },
+  "metrics": {
+    "total_lines_of_code": 2447641,
+    "code_by_language": {
+      "sh": {
+        "file_count": 3,
+        "lines_of_code": 758,
+        "lines_of_comments": 0,
+        "blank_lines": 144,
+        "average_file_size": 252,
+        "complexity_estimate": 7.58,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "ps1": {
+        "file_count": 12,
+        "lines_of_code": 1919,
+        "lines_of_comments": 0,
+        "blank_lines": 381,
+        "average_file_size": 159,
+        "complexity_estimate": 19.19,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "bat": {
+        "file_count": 4,
+        "lines_of_code": 50,
+        "lines_of_comments": 0,
+        "blank_lines": 10,
+        "average_file_size": 12,
+        "complexity_estimate": 0.5,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "yml": {
+        "file_count": 2,
+        "lines_of_code": 407,
+        "lines_of_comments": 0,
+        "blank_lines": 87,
+        "average_file_size": 203,
+        "complexity_estimate": 4.07,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "rs": {
+        "file_count": 30,
+        "lines_of_code": 8085,
+        "lines_of_comments": 1269,
+        "blank_lines": 1635,
+        "average_file_size": 269,
+        "complexity_estimate": 22.077137,
+        "average_cyclomatic": 23.266666,
+        "average_cognitive": 28.966667,
+        "max_cyclomatic": 94,
+        "max_cognitive": 132,
+        "total_functions": 147,
+        "average_nesting_depth": 1.9333333
+      },
+      "py": {
+        "file_count": 5,
+        "lines_of_code": 666,
+        "lines_of_comments": 105,
+        "blank_lines": 172,
+        "average_file_size": 133,
+        "complexity_estimate": 5.611574,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "md": {
+        "file_count": 23,
+        "lines_of_code": 4401,
+        "lines_of_comments": 0,
+        "blank_lines": 1159,
+        "average_file_size": 191,
+        "complexity_estimate": 44.01,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "toml": {
+        "file_count": 3,
+        "lines_of_code": 185,
+        "lines_of_comments": 0,
+        "blank_lines": 43,
+        "average_file_size": 61,
+        "complexity_estimate": 1.85,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "json": {
+        "file_count": 12,
+        "lines_of_code": 2431170,
+        "lines_of_comments": 0,
+        "blank_lines": 0,
+        "average_file_size": 202597,
+        "complexity_estimate": 24311.7,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      }
+    },
+    "file_importance_scores": {
+      "requirements.txt": 0.3,
+      "src/shutdown.rs": 1.0,
+      "src/embedding.rs": 1.0,
+      "Dockerfile": 0.3,
+      "setup_neo4j_native.ps1": 0.3,
+      "src/memory.rs": 1.0,
+      "reports/FINAL_IMPLEMENTATION_STATUS.md": 0.5,
+      "benches/simd_benchmark.rs": 1.0,
+      "models/embeddinggemma-300m/added_tokens.json": 0.3,
+      "models/embeddinggemma-300m/modules.json": 0.3,
+      "LEGACY_CLEANUP_REPORT.md": 0.5,
+      "README-Docker.md": 0.5,
+      "models/embeddinggemma-300m/config.json": 0.8,
+      "reports/embedding_service_implementation_report.md": 0.5,
+      "docker-compose.yml": 0.3,
+      "models/embeddinggemma-300m/3_Dense/config.json": 0.8,
+      "config/embeddinggemma.toml": 0.8,
+      "download_onnxruntime_v122.ps1": 0.3,
+      "embedding_service.py": 0.9,
+      "models/embeddinggemma-300m/special_tokens_map.json": 0.7,
+      "QUALITY_PROGRESS_REPORT.md": 0.5,
+      "reports/project-status-report.md": 0.5,
+      "FINAL_STATUS_REPORT.md": 0.5,
+      "run.bat": 0.3,
+      "scripts/quick-start.sh": 0.3,
+      "src/config.rs": 1.0,
+      "src/metrics.rs": 1.0,
+      "src/security.rs": 1.0,
+      "validate_packages.py": 0.9,
+      "tests/simple_integration_test.rs": 0.7,
+      "tests/integration_test.rs": 0.7,
+      "src/simd_search.rs": 1.0,
+      "reports/REAL_STATUS_HONEST_REPORT.md": 0.5,
+      "scripts/download_models.sh": 0.3,
+      "src/embedding_config.rs": 1.0,
+      "src/lib.rs": 1.0,
+      "benches/memory_benchmarks.rs": 1.0,
+      "check_ort_version.rs": 1.0,
+      "DEPLOYMENT.md": 0.5,
+      "benches/dummy.rs": 1.0,
+      "scripts/download_models.ps1": 0.3,
+      "docker-compose.override.yml": 0.3,
+      "src/storage.rs": 1.0,
+      "src/types.rs": 1.0,
+      "install.ps1": 0.3,
+      "models/embeddinggemma-300m/README.md": 0.5,
+      "models/embeddinggemma-300m/config_sentence_transformers.json": 0.8,
+      "docker/README.md": 0.5,
+      "CLAUDE.md": 0.5,
+      "config.toml": 0.8,
+      "download_onnxruntime.ps1": 0.3,
+      "setup_python_dll.ps1": 0.3,
+      "download_ort_nuget.ps1": 0.3,
+      "src/brain.rs": 1.0,
+      "src/api.rs": 1.0,
+      "models/embeddinggemma-300m/2_Dense/config.json": 0.8,
+      "models/embeddinggemma-300m/generation_config.json": 0.8,
+      "Cargo.lock": 0.3,
+      "clean_path_duplicates.ps1": 0.3,
+      "scripts/download_onnx_runtime.ps1": 0.3,
+      "src/embedding/tests.rs": 0.9,
+      "test_embedding_service.py": 0.7,
+      "docs/efficient-memory-service-architecture.md": 0.5,
+      "reports/progress-report-session2.md": 0.5,
+      "scripts/setup-docker.sh": 0.3,
+      "quick-start.ps1": 0.3,
+      "test.bat": 0.7,
+      "PROJECT_STATUS_FINAL.md": 0.5,
+      "tests/embedding_integration_test.rs": 0.7,
+      "PROJECT_STATUS_UPDATED.md": 0.5,
+      "ONNX_RUNTIME_SETUP.md": 0.5,
+      "tests/api_integration_test.rs": 0.7,
+      "Cargo.toml": 1.0,
+      "src/storage/embedded_db.rs": 1.0,
+      "README.md": 0.8,
+      "QUALITY_REPORT_FINAL.md": 0.5,
+      "src/main.rs": 1.0,
+      "src/memory_optimizer.rs": 1.0,
+      "FINAL_STATUS_REPORT_UPDATED.md": 0.5,
+      "run_simple_test.bat": 0.7,
+      "src/cache.rs": 1.0,
+      "models/embeddinggemma-300m/tokenizer_config.json": 0.8,
+      "src/simd_utils.rs": 1.0,
+      "test_embeddings.py": 0.7,
+      "tests/embedding_unit_test.rs": 0.7,
+      "models/embeddinggemma-300m/1_Pooling/config.json": 0.8,
+      "src/monitoring.rs": 1.0,
+      "MIGRATION_REPORT.md": 0.5,
+      "scripts/run_tests.ps1": 0.7,
+      "reports/implementation_summary.md": 0.5,
+      "reports/IMPLEMENTATION_REPORT.md": 0.5,
+      "models/embeddinggemma-300m/sentence_bert_config.json": 0.8,
+      "models/embeddinggemma-300m/tokenizer.json": 0.3,
+      "check_path.ps1": 0.3,
+      "run_tests.bat": 0.7,
+      "test_python_direct.py": 0.7,
+      "tests/simple_unit_test.rs": 0.7
+    },
+    "project_complexity_score": 1.5573214,
+    "test_coverage_estimate": 0.15463917,
+    "documentation_ratio": 0.2371134,
+    "average_cyclomatic_complexity": 24.928572,
+    "average_cognitive_complexity": 31.035715,
+    "max_cyclomatic_complexity": 94,
+    "max_cognitive_complexity": 132,
+    "high_complexity_files": 0,
+    "complexity_distribution": {
+      "low_complexity": 25,
+      "medium_complexity": 3,
+      "high_complexity": 0,
+      "extreme_complexity": 0
+    }
+  },
+  "file_hashes": {
+    "scripts/setup-docker.sh": {
+      "path": "scripts/setup-docker.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757239735,
+        "nanos_since_epoch": 217452100
+      },
+      "size": 8666,
+      "hash": null
+    },
+    "src/memory_optimizer.rs": {
+      "path": "src/memory_optimizer.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757176549,
+        "nanos_since_epoch": 809472500
+      },
+      "size": 21005,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/README.md": {
+      "path": "models/embeddinggemma-300m/README.md",
+      "modified_time": {
+        "secs_since_epoch": 1757127666,
+        "nanos_since_epoch": 720775200
+      },
+      "size": 16656,
+      "hash": null
+    },
+    "CLAUDE.md": {
+      "path": "CLAUDE.md",
+      "modified_time": {
+        "secs_since_epoch": 1757179323,
+        "nanos_since_epoch": 219339400
+      },
+      "size": 5507,
+      "hash": null
+    },
+    "PROJECT_STATUS_UPDATED.md": {
+      "path": "PROJECT_STATUS_UPDATED.md",
+      "modified_time": {
+        "secs_since_epoch": 1757186322,
+        "nanos_since_epoch": 860372400
+      },
+      "size": 6108,
+      "hash": null
+    },
+    "download_ort_nuget.ps1": {
+      "path": "download_ort_nuget.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757178164,
+        "nanos_since_epoch": 805661500
+      },
+      "size": 1974,
+      "hash": null
+    },
+    "check_path.ps1": {
+      "path": "check_path.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757233836,
+        "nanos_since_epoch": 231954800
+      },
+      "size": 914,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/2_Dense/config.json": {
+      "path": "models/embeddinggemma-300m/2_Dense/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 716220300
+      },
+      "size": 134,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/generation_config.json": {
+      "path": "models/embeddinggemma-300m/generation_config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 84327400
+      },
+      "size": 133,
+      "hash": null
+    },
+    "src/config.rs": {
+      "path": "src/config.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757155279,
+        "nanos_since_epoch": 557754400
+      },
+      "size": 7327,
+      "hash": null
+    },
+    "QUALITY_REPORT_FINAL.md": {
+      "path": "QUALITY_REPORT_FINAL.md",
+      "modified_time": {
+        "secs_since_epoch": 1757232686,
+        "nanos_since_epoch": 10444300
+      },
+      "size": 7404,
+      "hash": null
+    },
+    "src/memory.rs": {
+      "path": "src/memory.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757176514,
+        "nanos_since_epoch": 518694100
+      },
+      "size": 16653,
+      "hash": null
+    },
+    "reports/REAL_STATUS_HONEST_REPORT.md": {
+      "path": "reports/REAL_STATUS_HONEST_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757217732,
+        "nanos_since_epoch": 671422500
+      },
+      "size": 7182,
+      "hash": null
+    },
+    "scripts/quick-start.sh": {
+      "path": "scripts/quick-start.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757240544,
+        "nanos_since_epoch": 695059800
+      },
+      "size": 9360,
+      "hash": null
+    },
+    "README-Docker.md": {
+      "path": "README-Docker.md",
+      "modified_time": {
+        "secs_since_epoch": 1757240628,
+        "nanos_since_epoch": 227748300
+      },
+      "size": 5387,
+      "hash": null
+    },
+    "tests/embedding_unit_test.rs": {
+      "path": "tests/embedding_unit_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757177413,
+        "nanos_since_epoch": 599311600
+      },
+      "size": 8055,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/config_sentence_transformers.json": {
+      "path": "models/embeddinggemma-300m/config_sentence_transformers.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 103339300
+      },
+      "size": 997,
+      "hash": null
+    },
+    "QUALITY_PROGRESS_REPORT.md": {
+      "path": "QUALITY_PROGRESS_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757230686,
+        "nanos_since_epoch": 534893700
+      },
+      "size": 7241,
+      "hash": null
+    },
+    "LEGACY_CLEANUP_REPORT.md": {
+      "path": "LEGACY_CLEANUP_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757233441,
+        "nanos_since_epoch": 353234800
+      },
+      "size": 4526,
+      "hash": null
+    },
+    "DEPLOYMENT.md": {
+      "path": "DEPLOYMENT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757239838,
+        "nanos_since_epoch": 68652900
+      },
+      "size": 10197,
+      "hash": null
+    },
+    "docker/README.md": {
+      "path": "docker/README.md",
+      "modified_time": {
+        "secs_since_epoch": 1757239220,
+        "nanos_since_epoch": 810819100
+      },
+      "size": 7529,
+      "hash": null
+    },
+    "run.bat": {
+      "path": "run.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757158251,
+        "nanos_since_epoch": 283951000
+      },
+      "size": 294,
+      "hash": null
+    },
+    "requirements.txt": {
+      "path": "requirements.txt",
+      "modified_time": {
+        "secs_since_epoch": 1757190530,
+        "nanos_since_epoch": 833372300
+      },
+      "size": 734,
+      "hash": null
+    },
+    "src/storage.rs": {
+      "path": "src/storage.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757233195,
+        "nanos_since_epoch": 77790600
+      },
+      "size": 49039,
+      "hash": null
+    },
+    "README.md": {
+      "path": "README.md",
+      "modified_time": {
+        "secs_since_epoch": 1757158506,
+        "nanos_since_epoch": 869020900
+      },
+      "size": 12969,
+      "hash": null
+    },
+    "embedding_service.py": {
+      "path": "embedding_service.py",
+      "modified_time": {
+        "secs_since_epoch": 1757256817,
+        "nanos_since_epoch": 732630600
+      },
+      "size": 7471,
+      "hash": null
+    },
+    "FINAL_STATUS_REPORT_UPDATED.md": {
+      "path": "FINAL_STATUS_REPORT_UPDATED.md",
+      "modified_time": {
+        "secs_since_epoch": 1757224716,
+        "nanos_since_epoch": 163852800
+      },
+      "size": 7673,
+      "hash": null
+    },
+    "reports/IMPLEMENTATION_REPORT.md": {
+      "path": "reports/IMPLEMENTATION_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757192665,
+        "nanos_since_epoch": 21658300
+      },
+      "size": 8384,
+      "hash": null
+    },
+    "reports/FINAL_IMPLEMENTATION_STATUS.md": {
+      "path": "reports/FINAL_IMPLEMENTATION_STATUS.md",
+      "modified_time": {
+        "secs_since_epoch": 1757216968,
+        "nanos_since_epoch": 154428200
+      },
+      "size": 7571,
+      "hash": null
+    },
+    "scripts/download_models.ps1": {
+      "path": "scripts/download_models.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757154201,
+        "nanos_since_epoch": 34288500
+      },
+      "size": 5327,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/tokenizer_config.json": {
+      "path": "models/embeddinggemma-300m/tokenizer_config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127935,
+        "nanos_since_epoch": 886005000
+      },
+      "size": 1155346,
+      "hash": null
+    },
+    "scripts/run_tests.ps1": {
+      "path": "scripts/run_tests.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757159375,
+        "nanos_since_epoch": 248349700
+      },
+      "size": 8622,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/sentence_bert_config.json": {
+      "path": "models/embeddinggemma-300m/sentence_bert_config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 83327500
+      },
+      "size": 58,
+      "hash": null
+    },
+    "Cargo.lock": {
+      "path": "Cargo.lock",
+      "modified_time": {
+        "secs_since_epoch": 1757225919,
+        "nanos_since_epoch": 890815400
+      },
+      "size": 99816,
+      "hash": null
+    },
+    "src/embedding_config.rs": {
+      "path": "src/embedding_config.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757215524,
+        "nanos_since_epoch": 129244600
+      },
+      "size": 18135,
+      "hash": null
+    },
+    "src/embedding/tests.rs": {
+      "path": "src/embedding/tests.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757192309,
+        "nanos_since_epoch": 268187600
+      },
+      "size": 25451,
+      "hash": null
+    },
+    "src/types.rs": {
+      "path": "src/types.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757232937,
+        "nanos_since_epoch": 710626800
+      },
+      "size": 16723,
+      "hash": null
+    },
+    "test.bat": {
+      "path": "test.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757159442,
+        "nanos_since_epoch": 879264700
+      },
+      "size": 1111,
+      "hash": null
+    },
+    "test_python_direct.py": {
+      "path": "test_python_direct.py",
+      "modified_time": {
+        "secs_since_epoch": 1757221362,
+        "nanos_since_epoch": 152158500
+      },
+      "size": 2208,
+      "hash": null
+    },
+    "scripts/download_onnx_runtime.ps1": {
+      "path": "scripts/download_onnx_runtime.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757158101,
+        "nanos_since_epoch": 34933600
+      },
+      "size": 1849,
+      "hash": null
+    },
+    "src/security.rs": {
+      "path": "src/security.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757143805,
+        "nanos_since_epoch": 183641400
+      },
+      "size": 7519,
+      "hash": null
+    },
+    "validate_packages.py": {
+      "path": "validate_packages.py",
+      "modified_time": {
+        "secs_since_epoch": 1757242161,
+        "nanos_since_epoch": 338482000
+      },
+      "size": 2562,
+      "hash": null
+    },
+    "scripts/download_models.sh": {
+      "path": "scripts/download_models.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757152577,
+        "nanos_since_epoch": 617417400
+      },
+      "size": 7874,
+      "hash": null
+    },
+    "test_embeddings.py": {
+      "path": "test_embeddings.py",
+      "modified_time": {
+        "secs_since_epoch": 1757255927,
+        "nanos_since_epoch": 577428600
+      },
+      "size": 9408,
+      "hash": null
+    },
+    "src/main.rs": {
+      "path": "src/main.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757217403,
+        "nanos_since_epoch": 503976800
+      },
+      "size": 12755,
+      "hash": "d15165a277073a7aa30faa439e9051cdbced8ea4134a69ddff28346becb64ed5"
+    },
+    "src/monitoring.rs": {
+      "path": "src/monitoring.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757176490,
+        "nanos_since_epoch": 656132500
+      },
+      "size": 20076,
+      "hash": null
+    },
+    "tests/simple_unit_test.rs": {
+      "path": "tests/simple_unit_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757232433,
+        "nanos_since_epoch": 987561200
+      },
+      "size": 580,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/3_Dense/config.json": {
+      "path": "models/embeddinggemma-300m/3_Dense/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 704669800
+      },
+      "size": 134,
+      "hash": null
+    },
+    "benches/dummy.rs": {
+      "path": "benches/dummy.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757241503,
+        "nanos_since_epoch": 446264100
+      },
+      "size": 32,
+      "hash": null
+    },
+    "src/lib.rs": {
+      "path": "src/lib.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757232966,
+        "nanos_since_epoch": 871317400
+      },
+      "size": 434,
+      "hash": "b72ce303d2b59ab642ac9c1086dc2b284a192350c88afd67dbae66ab16a70636"
+    },
+    "src/shutdown.rs": {
+      "path": "src/shutdown.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757171068,
+        "nanos_since_epoch": 903997900
+      },
+      "size": 16137,
+      "hash": null
+    },
+    "docker-compose.override.yml": {
+      "path": "docker-compose.override.yml",
+      "modified_time": {
+        "secs_since_epoch": 1757241142,
+        "nanos_since_epoch": 700997200
+      },
+      "size": 1937,
+      "hash": null
+    },
+    "tests/integration_test.rs": {
+      "path": "tests/integration_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757230831,
+        "nanos_since_epoch": 717366600
+      },
+      "size": 13355,
+      "hash": null
+    },
+    "FINAL_STATUS_REPORT.md": {
+      "path": "FINAL_STATUS_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757220535,
+        "nanos_since_epoch": 324342800
+      },
+      "size": 7015,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/1_Pooling/config.json": {
+      "path": "models/embeddinggemma-300m/1_Pooling/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 714219800
+      },
+      "size": 312,
+      "hash": null
+    },
+    "test_embedding_service.py": {
+      "path": "test_embedding_service.py",
+      "modified_time": {
+        "secs_since_epoch": 1757219227,
+        "nanos_since_epoch": 989674000
+      },
+      "size": 14094,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/special_tokens_map.json": {
+      "path": "models/embeddinggemma-300m/special_tokens_map.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 99339500
+      },
+      "size": 662,
+      "hash": null
+    },
+    "tests/embedding_integration_test.rs": {
+      "path": "tests/embedding_integration_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757224531,
+        "nanos_since_epoch": 983514900
+      },
+      "size": 9947,
+      "hash": null
+    },
+    "src/simd_search.rs": {
+      "path": "src/simd_search.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757234582,
+        "nanos_since_epoch": 127332200
+      },
+      "size": 10026,
+      "hash": null
+    },
+    "src/embedding.rs": {
+      "path": "src/embedding.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757234513,
+        "nanos_since_epoch": 172104200
+      },
+      "size": 47521,
+      "hash": null
+    },
+    "Cargo.toml": {
+      "path": "Cargo.toml",
+      "modified_time": {
+        "secs_since_epoch": 1757250129,
+        "nanos_since_epoch": 902925400
+      },
+      "size": 2133,
+      "hash": "7ecea9e48f01ffa725277a76e0d73d6596448e3ab8f3a6d0bf775c8ff58a2fe2"
+    },
+    "benches/memory_benchmarks.rs": {
+      "path": "benches/memory_benchmarks.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757164935,
+        "nanos_since_epoch": 729791100
+      },
+      "size": 14614,
+      "hash": null
+    },
+    "run_tests.bat": {
+      "path": "run_tests.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757234279,
+        "nanos_since_epoch": 993467100
+      },
+      "size": 324,
+      "hash": null
+    },
+    "PROJECT_STATUS_FINAL.md": {
+      "path": "PROJECT_STATUS_FINAL.md",
+      "modified_time": {
+        "secs_since_epoch": 1757178314,
+        "nanos_since_epoch": 563568800
+      },
+      "size": 7478,
+      "hash": null
+    },
+    "download_onnxruntime.ps1": {
+      "path": "download_onnxruntime.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757177238,
+        "nanos_since_epoch": 768038800
+      },
+      "size": 1155,
+      "hash": null
+    },
+    "benches/simd_benchmark.rs": {
+      "path": "benches/simd_benchmark.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757242467,
+        "nanos_since_epoch": 993241800
+      },
+      "size": 391,
+      "hash": null
+    },
+    "src/brain.rs": {
+      "path": "src/brain.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757231597,
+        "nanos_since_epoch": 38191100
+      },
+      "size": 14766,
+      "hash": null
+    },
+    "check_ort_version.rs": {
+      "path": "check_ort_version.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757177308,
+        "nanos_since_epoch": 632286000
+      },
+      "size": 951,
+      "hash": null
+    },
+    "install.ps1": {
+      "path": "install.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757239334,
+        "nanos_since_epoch": 577396100
+      },
+      "size": 16380,
+      "hash": null
+    },
+    "src/cache.rs": {
+      "path": "src/cache.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757233269,
+        "nanos_since_epoch": 391878100
+      },
+      "size": 14369,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/tokenizer.json": {
+      "path": "models/embeddinggemma-300m/tokenizer.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127939,
+        "nanos_since_epoch": 38311900
+      },
+      "size": 33385008,
+      "hash": null
+    },
+    "Dockerfile": {
+      "path": "Dockerfile",
+      "modified_time": {
+        "secs_since_epoch": 1757254631,
+        "nanos_since_epoch": 27482000
+      },
+      "size": 9077,
+      "hash": null
+    },
+    "setup_neo4j_native.ps1": {
+      "path": "setup_neo4j_native.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757238863,
+        "nanos_since_epoch": 460685400
+      },
+      "size": 9108,
+      "hash": null
+    },
+    "tests/simple_integration_test.rs": {
+      "path": "tests/simple_integration_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757173337,
+        "nanos_since_epoch": 546312300
+      },
+      "size": 2191,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/added_tokens.json": {
+      "path": "models/embeddinggemma-300m/added_tokens.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 705661700
+      },
+      "size": 35,
+      "hash": null
+    },
+    "MIGRATION_REPORT.md": {
+      "path": "MIGRATION_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757220475,
+        "nanos_since_epoch": 923979500
+      },
+      "size": 6433,
+      "hash": null
+    },
+    "src/storage/embedded_db.rs": {
+      "path": "src/storage/embedded_db.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757238998,
+        "nanos_since_epoch": 409200800
+      },
+      "size": 19088,
+      "hash": null
+    },
+    "config.toml": {
+      "path": "config.toml",
+      "modified_time": {
+        "secs_since_epoch": 1757155099,
+        "nanos_since_epoch": 184793200
+      },
+      "size": 971,
+      "hash": null
+    },
+    "quick-start.ps1": {
+      "path": "quick-start.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757240701,
+        "nanos_since_epoch": 124785400
+      },
+      "size": 12863,
+      "hash": null
+    },
+    "config/embeddinggemma.toml": {
+      "path": "config/embeddinggemma.toml",
+      "modified_time": {
+        "secs_since_epoch": 1757215294,
+        "nanos_since_epoch": 82254300
+      },
+      "size": 2143,
+      "hash": null
+    },
+    "clean_path_duplicates.ps1": {
+      "path": "clean_path_duplicates.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757234002,
+        "nanos_since_epoch": 376746500
+      },
+      "size": 3403,
+      "hash": null
+    },
+    "reports/progress-report-session2.md": {
+      "path": "reports/progress-report-session2.md",
+      "modified_time": {
+        "secs_since_epoch": 1757146679,
+        "nanos_since_epoch": 445355000
+      },
+      "size": 7308,
+      "hash": null
+    },
+    "reports/project-status-report.md": {
+      "path": "reports/project-status-report.md",
+      "modified_time": {
+        "secs_since_epoch": 1757145351,
+        "nanos_since_epoch": 771384000
+      },
+      "size": 7994,
+      "hash": null
+    },
+    "setup_python_dll.ps1": {
+      "path": "setup_python_dll.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757236593,
+        "nanos_since_epoch": 110690600
+      },
+      "size": 10608,
+      "hash": null
+    },
+    "reports/implementation_summary.md": {
+      "path": "reports/implementation_summary.md",
+      "modified_time": {
+        "secs_since_epoch": 1757143976,
+        "nanos_since_epoch": 588840100
+      },
+      "size": 2961,
+      "hash": null
+    },
+    "src/api.rs": {
+      "path": "src/api.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757231872,
+        "nanos_since_epoch": 833305300
+      },
+      "size": 5022,
+      "hash": null
+    },
+    "src/simd_utils.rs": {
+      "path": "src/simd_utils.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757172125,
+        "nanos_since_epoch": 48981400
+      },
+      "size": 5823,
+      "hash": null
+    },
+    "docs/efficient-memory-service-architecture.md": {
+      "path": "docs/efficient-memory-service-architecture.md",
+      "modified_time": {
+        "secs_since_epoch": 1757136876,
+        "nanos_since_epoch": 220501700
+      },
+      "size": 42086,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/config.json": {
+      "path": "models/embeddinggemma-300m/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 711826900
+      },
+      "size": 1488,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/modules.json": {
+      "path": "models/embeddinggemma-300m/modules.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 88327400
+      },
+      "size": 573,
+      "hash": null
+    },
+    "ONNX_RUNTIME_SETUP.md": {
+      "path": "ONNX_RUNTIME_SETUP.md",
+      "modified_time": {
+        "secs_since_epoch": 1757176876,
+        "nanos_since_epoch": 733826500
+      },
+      "size": 1334,
+      "hash": null
+    },
+    "run_simple_test.bat": {
+      "path": "run_simple_test.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757235434,
+        "nanos_since_epoch": 862535900
+      },
+      "size": 61,
+      "hash": null
+    },
+    "docker-compose.yml": {
+      "path": "docker-compose.yml",
+      "modified_time": {
+        "secs_since_epoch": 1757246831,
+        "nanos_since_epoch": 948878200
+      },
+      "size": 10977,
+      "hash": null
+    },
+    "download_onnxruntime_v122.ps1": {
+      "path": "download_onnxruntime_v122.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757177892,
+        "nanos_since_epoch": 869229200
+      },
+      "size": 6037,
+      "hash": null
+    },
+    "src/metrics.rs": {
+      "path": "src/metrics.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757140695,
+        "nanos_since_epoch": 300080300
+      },
+      "size": 4602,
+      "hash": null
+    },
+    "reports/embedding_service_implementation_report.md": {
+      "path": "reports/embedding_service_implementation_report.md",
+      "modified_time": {
+        "secs_since_epoch": 1757177495,
+        "nanos_since_epoch": 698376300
+      },
+      "size": 5566,
+      "hash": null
+    },
+    "tests/api_integration_test.rs": {
+      "path": "tests/api_integration_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757229357,
+        "nanos_since_epoch": 804798200
+      },
+      "size": 6278,
+      "hash": null
+    }
+  },
+  "cache_timestamp": 1757256818,
+  "last_modified": {
+    "secs_since_epoch": 1757256818,
+    "nanos_since_epoch": 903138400
+  }
+}

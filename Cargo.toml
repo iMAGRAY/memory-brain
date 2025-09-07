@@ -1,0 +1,107 @@
+[package]
+name = "ai-memory-service"
+version = "0.1.0"
+edition = "2021"
+
+# Benchmarks removed for Docker build simplification
+
+[dependencies]
+tokio = { version = "1.34", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Web framework
+axum = { version = "0.7", features = ["json", "ws"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Async utilities
+futures = "0.3"
+tokio-stream = "0.1"
+
+# Database
+neo4rs = "0.7"
+
+# AI/ML - Using Python Sentence Transformers via PyO3 (Production configuration)
+# Updated to PyO3 0.21 with EmbeddingGemma-300M support
+pyo3 = { version = "0.25.1", features = ["auto-initialize", "abi3-py311"] }
+numpy = "0.25"
+
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Caching
+moka = { version = "0.12", features = ["future"] }
+
+# Configuration
+toml = "0.8"
+config = "0.13"
+
+# Compression
+lz4_flex = "0.11"
+zstd = "0.13"
+
+# Metrics and monitoring
+prometheus = "0.13"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Utilities
+dashmap = "5.5"
+parking_lot = "0.12"
+rayon = "1.8"
+lazy_static = "1.4"
+num_cpus = "1.16"
+dirs = "5.0"
+
+# Cryptography
+sha2 = "0.10"
+
+# Windows API
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["psapi", "processthreadsapi", "winnt"] }
+
+# Serialization
+bincode = "1.3"
+base64 = "0.22"
+
+# WebSocket for MCP
+tokio-tungstenite = "0.20"
+
+[features]
+default = []
+gpu = []
+
+# Production optimization profile
+[profile.release]
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true
+opt-level = 3
+
+# Fast compilation for development
+[profile.dev]
+opt-level = 0
+debug = true
+
+[[bin]]
+name = "memory-server"
+path = "src/main.rs"
+
+# Test binaries removed for Docker build simplification
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+rand = "0.8"
+tempfile = "3.12"
+axum-test = "15.0"
+tokio-test = "0.4"
+once_cell = "1.19"
+
+[build-dependencies]

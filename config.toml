@@ -1,0 +1,36 @@
+# AI Memory Service Configuration
+# Human-inspired memory system for AI agents
+
+[server]
+host = "127.0.0.1"
+port = 8080
+workers = 4
+environment = "development"
+cors_origins = ["http://localhost:3000", "http://localhost:8080"]
+
+[storage]
+# Neo4j graph database settings
+neo4j_uri = "bolt://localhost:7687"
+neo4j_user = "neo4j" 
+neo4j_password = ""  # Set via NEO4J_PASSWORD environment variable
+connection_pool_size = 10
+
+[embedding]
+# EmbeddingGemma-300m ONNX model settings
+model_path = "./models/embeddinggemma-300m-ONNX/model.onnx"
+tokenizer_path = "./models/embeddinggemma-300m-ONNX/tokenizer.json"
+batch_size = 32
+max_sequence_length = 2048
+
+[cache]
+# Multi-level caching configuration
+l1_size = 1000        # Hot memories in memory
+l2_size = 10000       # Warm memories with TTL
+ttl_seconds = 3600    # 1 hour cache expiration
+compression_enabled = true
+
+[brain]
+# AI brain for content analysis
+model_name = "gemma-300m"
+min_importance = 0.1
+enable_sentiment = true

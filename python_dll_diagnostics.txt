@@ -1,0 +1,21 @@
+﻿Python DLL Configuration Diagnostics
+Generated: 09/07/2025 12:16:49
+=====================================
+
+Python Installation:
+  Path: C:\Users\1\AppData\Local\Programs\Python\Python313
+  Version: Python 3.13.7
+  Executable: C:\Users\1\AppData\Local\Programs\Python\Python313\python.exe
+
+Environment Variables:
+  PYTHONHOME: C:\Users\1\AppData\Local\Programs\Python\Python313
+  PYO3_PYTHON: System.Collections.DictionaryEntry
+  PATH (Python entries):
+C:\Users\1\AppData\Local\Programs\Python\Python313
+    C:\Users\1\AppData\Local\Programs\Python\Python313\Scripts
+
+DLL Locations:
+  python313.dll: C:\Users\1\AppData\Local\Programs\Python\Python313
+  python3.dll: C:\Users\1\AppData\Local\Programs\Python\Python313
+  vcruntime140.dll: C:\Users\1\AppData\Local\Programs\Python\Python313, C:\Windows\System32
+  vcruntime140_1.dll: C:\Users\1\AppData\Local\Programs\Python\Python313, C:\Windows\System32

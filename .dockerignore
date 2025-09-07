@@ -1,0 +1,62 @@
+# Git files
+.git
+.gitignore
+
+# Build artifacts
+target/
+Dockerfile
+.dockerignore
+
+# Development files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+tests/
+benches/
+test.bat
+*.test
+
+# Scripts (except necessary ones)
+scripts/*.ps1
+scripts/*.bat
+
+# Environment files
+.env
+.env.*
+
+# Neo4j data
+neo4j_data/
+neo4j_logs/
+
+# ONNX Runtime (will be downloaded in container)
+onnxruntime/
+
+# Models (will be downloaded in container)
+models/
+
+# Logs
+*.log
+logs/
+
+# Coverage reports
+coverage/
+*.profraw
+*.profdata
+
+# Temporary files
+tmp/
+temp/
+*.tmp

@@ -1,0 +1,20 @@
+pub mod api;
+pub mod brain;
+pub mod cache;
+pub mod config;
+pub mod embedding;
+pub mod embedding_config;
+pub mod memory;
+pub mod metrics;
+pub mod simd_search;
+pub mod simd_utils;
+pub mod storage;
+pub mod types;
+pub mod monitoring;
+pub mod shutdown;
+pub mod memory_optimizer;
+
+pub use memory::MemoryService;
+pub use config::Config as MemoryConfig;
+pub use types::*;
+pub use simd_search::{cosine_similarity_simd, parallel_vector_search};
