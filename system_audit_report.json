@@ -1,0 +1,38 @@
+{
+  "timestamp": 1757339266.766617,
+  "overall_score": 0.675,
+  "execution_time": 5.628960500005633,
+  "components": {
+    "Configuration": {
+      "score": 0.7000000000000001,
+      "details": {
+        "missing_configs": [],
+        "config_files_found": 3,
+        "missing_env_vars": [
+          "EMBEDDING_MODEL_PATH",
+          "NEO4J_URI",
+          "NEO4J_USER"
+        ],
+        "env_vars_set": 0,
+        "model_path": "C:/Models/ai-memory-service/models/embeddinggemma-300m",
+        "model_available": true
+      },
+      "errors": [],
+      "warnings": [
+        "Environment variable EMBEDDING_MODEL_PATH not set",
+        "Environment variable NEO4J_URI not set",
+        "Environment variable NEO4J_USER not set"
+      ],
+      "execution_time": 0.00013819988816976547
+    },
+    "EmbeddingService": {
+      "score": 1.0,
+      "details": {
+        "initialization_time": 1.1766589999897406,
+        "query_encoding_time": 0.1361756999976933,
+        "query_avg_time": 0.0453918999992311,
+        "batch_encoding_time": 0.12332399992737919,
+        "doc_avg_time": 0.041107999975793064,
+        "embedding_dimension": 512,
+        "embeddings_count": 3,
+        "average_norm": 

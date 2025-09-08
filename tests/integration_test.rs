@@ -374,6 +374,10 @@ fn create_test_config() -> Config {
                 .unwrap_or_else(|_| "models/tokenizer.json".to_string()),
             batch_size: 32,
             max_sequence_length: 512,
+            embedding_dimension: Some(512),
+            normalize_embeddings: true,
+            precision: "float32".to_string(),
+            use_specialized_prompts: true,
         },
         cache: ai_memory_service::config::CacheConfig {
             l1_size: 100,
@@ -382,9 +386,10 @@ fn create_test_config() -> Config {
             compression_enabled: true,
         },
         brain: ai_memory_service::config::BrainConfig {
-            model_name: "test_model".to_string(),
-            min_importance: 0.5,
-            enable_sentiment: true,
+            max_memories: 100000,
+            importance_threshold: 0.5,
+            consolidation_interval: 300,
+            decay_rate: 0.01,
         },
     }
 }

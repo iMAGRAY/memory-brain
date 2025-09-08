@@ -2,7 +2,7 @@
 //! 
 //! Comprehensive testing using axum-test framework for HTTP API validation
 
-use ai_memory_service::{api::{self, ApiState}, memory::MemoryService, config::Config};
+use ai_memory_service::{api::{self, ApiConfig}, memory::MemoryService, config::Config};
 use axum::http::{StatusCode};
 use axum_test::TestServer;
 use serde_json::json;
@@ -154,10 +154,15 @@ async fn create_test_server() -> TestServer {
     let service = MemoryService::new(config).await
         .expect("Failed to create memory service");
     
-    let api_state = ApiState {
-        memory_service: Arc::new(service),
+    let config = ApiConfig {
+        host: "127.0.0.1".to_string(),
+        port: 8080,
+        max_body_size: 10 * 1024 * 1024,
+        enable_cors: true,
+        enable_compression: true,
+        enable_tracing: false,
     };
-    let app = api::create_router(api_state);
+    let app = api::create_router(Arc::new(service), None, config);
     TestServer::new(app).expect("Failed to create test server")
 }
 
@@ -188,6 +193,10 @@ fn create_test_config() -> Config {
                 .unwrap_or_else(|_| "./models/embeddinggemma-300m-ONNX/tokenizer.json".to_string()),
             batch_size: 16,
             max_sequence_length: 512,
+            embedding_dimension: Some(768),
+            normalize_embeddings: true,
+            precision: "float32".to_string(),
+            use_specialized_prompts: true,
         },
         cache: ai_memory_service::config::CacheConfig {
             l1_size: 100,
@@ -196,9 +205,10 @@ fn create_test_config() -> Config {
             compression_enabled: true,
         },
         brain: ai_memory_service::config::BrainConfig {
-            model_name: "test_model".to_string(),
-            min_importance: 0.5,
-            enable_sentiment: true,
+            max_memories: 100000,
+            importance_threshold: 0.5,
+            consolidation_interval: 300,
+            decay_rate: 0.01,
         },
     }
 }

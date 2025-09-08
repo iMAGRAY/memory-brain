@@ -12,15 +12,20 @@ cors_origins = ["http://localhost:3000", "http://localhost:8080"]
 # Neo4j graph database settings
 neo4j_uri = "bolt://localhost:7687"
 neo4j_user = "neo4j" 
-neo4j_password = ""  # Set via NEO4J_PASSWORD environment variable
+neo4j_password = "password"  # Temporary for testing
 connection_pool_size = 10
 
 [embedding]
-# EmbeddingGemma-300m ONNX model settings
-model_path = "./models/embeddinggemma-300m-ONNX/model.onnx"
-tokenizer_path = "./models/embeddinggemma-300m-ONNX/tokenizer.json"
+# EmbeddingGemma-300m SafeTensors model settings
+model_path = "./models/embeddinggemma-300m"
+tokenizer_path = "./models/embeddinggemma-300m/tokenizer.json"
 batch_size = 32
 max_sequence_length = 2048
+# Оптимальные настройки согласно документации
+embedding_dimension = 512  # Optimal balance (768 для максимального качества, 256 для скорости)
+normalize_embeddings = true  # Критически важно для Matryoshka truncation
+precision = "float32"  # НЕ ИСПОЛЬЗУЙТЕ float16 - не поддерживается!
+use_specialized_prompts = true  # Критически важно для качества
 
 [cache]
 # Multi-level caching configuration
@@ -31,6 +36,7 @@ compression_enabled = true
 
 [brain]
 # AI brain for content analysis
-model_name = "gemma-300m"
-min_importance = 0.1
-enable_sentiment = true
+max_memories = 100000
+importance_threshold = 0.3
+consolidation_interval = 300
+decay_rate = 0.01

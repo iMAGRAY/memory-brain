@@ -1,16 +1,16 @@
-# AI Memory Service - Self-Contained Multi-Stage Build
-# Everything included: Rust compiler, dependencies, Python, models, transformers runtime
-# User needs only Docker - no external installations required
+# AI Memory Service - Production-Ready Self-Contained Build
+# Secure, optimized Rust service with integrated PyO3 Python embeddings
+# Zero hardcoded credentials, environment-driven configuration
 
 ARG RUST_VERSION=1.83
 ARG PYTHON_VERSION=3.11
 
 # ============================================================================
-# Stage 1: Rust Build Environment
+# Stage 1: Rust Build Environment with PyO3 Integration
 # ============================================================================
 FROM rust:${RUST_VERSION}-slim-bookworm AS rust-builder
 
-# Install build dependencies including Python for PyO3
+# Install system build dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
@@ -20,157 +20,64 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python runtime and development dependencies for PyO3
+RUN apt-get update && apt-get install -y \
     python3 \
     python3-dev \
     python3-venv \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Install Python dependencies for PyO3 integration
+RUN pip3 install --no-cache-dir --break-system-packages \
+    torch==2.8.0 \
+    transformers==4.56.0 \
+    sentence-transformers==5.1.0 \
+    numpy==1.26.4 \
+    && rm -rf ~/.cache/pip
 
-# Set Python configuration for PyO3
+# Set up PyO3 build environment
 ENV PYO3_PYTHON=python3
 ENV PYO3_NO_PYTHON=0
 ENV PYO3_CROSS_LIB_DIR=/usr/lib/python3.11
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
 
-# Copy dependency manifests first (for better Docker layer caching)
+WORKDIR /app
+
+# Copy dependency manifests for Docker layer caching optimization
 COPY Cargo.toml Cargo.lock ./
 COPY .cargo/ ./.cargo/
 
-# Create dummy source files to build dependencies (for Docker layer caching optimization)
-RUN mkdir -p src benches && \
+# Create dummy source files to pre-build dependencies (caching optimization)
+RUN mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
-    echo "pub fn add(a: i32, b: i32) -> i32 { a + b }" > src/lib.rs && \
-    echo 'use criterion::*; fn main() {}' > benches/dummy.rs
+    echo "// Dummy lib for dependency caching" > src/lib.rs
 
-# Create simd benchmark file with heredoc
-RUN cat > benches/simd_benchmark.rs << 'EOF'
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+# Pre-build dependencies with dummy sources for better caching
+RUN cargo build --release
+RUN rm -rf src
 
-fn simd_benchmark(c: &mut Criterion) {
-    c.bench_function("simd_operations", |b| {
-        b.iter(|| {
-            let data: Vec<f32> = (0..1000).map(|x| x as f32).collect();
-            black_box(data.iter().sum::<f32>())
-        })
-    });
-}
-
-criterion_group\\!(benches, simd_benchmark);
-criterion_main\\!(benches);
-EOF
-
-# Validate dummy files were created successfully
-RUN test -f src/main.rs && test -f src/lib.rs && test -f benches/dummy.rs && test -f benches/simd_benchmark.rs && \
-    echo "✅ Dummy source files created and validated"
-
-# Clear any cached PyO3 build configuration and build dependencies
-RUN rm -rf ~/.cargo/registry/cache && \
-    cargo clean && \
-    cargo build --release && \
-    rm -rf src benches
-
-# Copy actual source code and validate critical files exist
+# Copy actual source code
 COPY src/ ./src/
-COPY build.rs ./
+COPY build.rs ./build.rs
 
-# Validate critical files and prepare optional directories
-RUN set -e && \
-    echo "🔍 Validating critical source files..." && \
-    test -f src/main.rs && test -s src/main.rs && \
-    test -f build.rs && test -s build.rs && \
-    mkdir -p benches && \
-    ls -lh src/main.rs build.rs && \
-    echo "✅ All critical source files validated successfully"
+# Validate critical files exist before building
+RUN test -f src/main.rs && test -s src/main.rs || (echo "❌ src/main.rs missing or empty" && exit 1)
+RUN test -f build.rs && test -s build.rs || (echo "❌ build.rs missing or empty" && exit 1)
 
-# Build all binaries
+# Build final Rust binaries with PyO3 integration
 RUN touch src/main.rs && \
-    cargo build --release --bins
+    PYTHONPATH=/usr/local/lib/python3.11/site-packages cargo build --release --bins
 
-# Verify critical binaries exist
+# Verify critical binaries were built successfully
 RUN ls -la target/release/ && \
-    test -f target/release/memory-server && \
-    echo "✅ Rust build completed successfully"
+    test -f target/release/memory-server || (echo "❌ memory-server binary not found" && exit 1) && \
+    echo "✅ Rust build with PyO3 embedding integration completed successfully"
 
 # ============================================================================
-# Stage 2: Python Environment with Models
-# ============================================================================
-FROM python:${PYTHON_VERSION}-slim-bookworm AS python-builder
-
-# Install Python build dependencies and curl for healthcheck
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create Python environment
-WORKDIR /python-env
-
-# Install core Python packages with updated secure versions
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir \
-        torch==2.8.0 -f https://download.pytorch.org/whl/torch_stable.html \
-        transformers==4.56.0 \
-        sentence-transformers==5.1.0 \
-        numpy==1.26.4 \
-        flask==3.0.0 \
-        requests==2.32.3 \
-        gunicorn==21.2.0 && \
-    rm -rf /root/.cache/pip /tmp/pip-* ~/.cache
-
-# Copy and run comprehensive package validation script
-COPY validate_packages.py /tmp/validate_packages.py
-RUN python /tmp/validate_packages.py 2>&1 | tee /tmp/validation.log && \
-    echo "✅ Package validation successful" && \
-    rm /tmp/validate_packages.py /tmp/validation.log || \
-    (echo "❌ Package validation failed" && cat /tmp/validation.log && exit 1)
-
-# Create model download directory
-RUN mkdir -p /models
-
-# Skip ONNX model download - use transformers directly
-RUN echo "✅ Using transformers direct model loading (no ONNX files needed)"
-
-# ONNX Runtime stage removed - using pure transformers approach
-
-# ============================================================================
-# Stage 4: Python Embedding Service
-# ============================================================================
-FROM python:${PYTHON_VERSION}-slim-bookworm AS python-service
-
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-# Copy Python environment
-COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=python-builder /usr/local/bin /usr/local/bin
-
-# Models downloaded by transformers at runtime - no static files needed
-
-# Create embedding service
-WORKDIR /app
-
-# Copy Python embedding service
-COPY embedding_service.py ./
-
-# Create non-root user
-RUN useradd -r -u 1001 embeddings
-
-# Set permissions
-RUN chown -R embeddings:embeddings /app
-
-USER embeddings
-
-EXPOSE 8001
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8001/health || exit 1
-
-CMD ["python", "embedding_service.py"]
-
-# ============================================================================
-# Stage 5: Final Runtime Image
+# Stage 2: Final Runtime Image
 # ============================================================================
 FROM debian:bookworm-slim AS final
 
@@ -181,109 +88,165 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
     libgomp1 \
     curl \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create non-root user
+# Install Python runtime dependencies
+RUN pip3 install --no-cache-dir --break-system-packages \
+    torch==2.8.0 \
+    transformers==4.56.0 \
+    sentence-transformers==5.1.0 \
+    numpy==1.26.4 \
+    && rm -rf ~/.cache/pip
+
+# Create non-root user for security
 RUN groupadd -r aiservice && useradd -r -g aiservice -u 1000 aiservice
 
-# ONNX Runtime removed - using pure transformers approach
-
-# Copy Rust binaries
+# Copy Rust binary from build stage
 COPY --from=rust-builder /app/target/release/memory-server /usr/local/bin/
 
-# Models downloaded by transformers at runtime - no static files needed
-
-# Create app structure
+# Create app structure and set permissions
 WORKDIR /app
-RUN mkdir -p config data logs backup temp && \
+RUN mkdir -p config data logs models cache && \
     chown -R aiservice:aiservice /app
 
-# Copy configuration files
+# Copy configuration template (no secrets)
 COPY --chown=aiservice:aiservice config/ ./config/
 
-# Create default configuration if none exists
-RUN if [ ! -f config/default.toml ]; then \
-    { \
-    echo "[server]"; \
-    echo "host = \"0.0.0.0\""; \
-    echo "port = 8080"; \
-    echo "admin_port = 8081"; \
-    echo "websocket_port = 8082"; \
-    echo ""; \
-    echo "[database]"; \
-    echo "fallback_to_sqlite = true"; \
-    echo "sqlite_path = \"/app/data/memory.db\""; \
-    echo ""; \
-    echo "[embedding]"; \
-    echo "service_url = \"http://python-embeddings:8001\""; \
-    echo "timeout_seconds = 30"; \
-    echo "batch_size = 32"; \
-    echo ""; \
-    echo "[memory]"; \
-    echo "cache_size_mb = 512"; \
-    echo "max_connections = 100"; \
-    echo ""; \
-    echo "[logging]"; \
-    echo "level = \"info\""; \
-    echo "file = \"/app/logs/service.log\""; \
-    } > config/default.toml; \
-    fi
-
-# Set environment variables
+# Set up environment variables (no secrets)
 ENV RUST_LOG=info,ai_memory_service=debug \
     RUST_BACKTRACE=1 \
     DATA_DIR=/app/data \
     LOG_DIR=/app/logs \
-    CONFIG_DIR=/app/config
+    CONFIG_DIR=/app/config \
+    MODEL_DIR=/app/models \
+    CACHE_DIR=/app/cache \
+    PYTHONPATH=/usr/local/lib/python3.11/site-packages
 
 # Switch to non-root user
 USER aiservice
 
-# Create startup script
-COPY --chown=aiservice:aiservice <<'EOF' /usr/local/bin/start-service.sh
+# Create secure startup script with environment-based configuration
+RUN cat > /app/start-service.sh << 'EOF'
 #!/bin/bash
 set -euo pipefail
 
-echo "🚀 Starting AI Memory Service..."
-echo "================================="
+echo "🚀 Starting AI Memory Service with Security Best Practices..."
+echo "=============================================================="
 
 # Validate environment
 echo "📋 Environment Check:"
-echo "  - Runtime: Pure transformers approach"
-echo "  - Models: Downloaded at runtime"
+echo "  - Runtime: Integrated PyO3 Python embeddings"
+echo "  - Models: ${MODEL_DIR}"
 echo "  - Data: ${DATA_DIR}"
 echo "  - Config: ${CONFIG_DIR}"
+echo "  - Cache: ${CACHE_DIR}"
 
-# Test SIMD capabilities first
-echo "🔧 Testing system capabilities..."
-if test_working_components; then
-    echo "✅ System validation passed"
+# Security validation - ensure no hardcoded credentials
+if [ -z "${NEO4J_PASSWORD:-}" ]; then
+    echo "❌ NEO4J_PASSWORD environment variable is required"
+    exit 1
+fi
+
+if [ -z "${NEO4J_URI:-}" ]; then
+    export NEO4J_URI="bolt://neo4j:7687"
+    echo "⚠️  Using default NEO4J_URI: ${NEO4J_URI}"
+fi
+
+# Validate critical binaries
+echo "🔧 Validating system components..."
+if command -v memory-server >/dev/null 2>&1; then
+    echo "✅ Memory server binary found"
 else
-    echo "⚠️  System validation warnings (continuing anyway)"
+    echo "❌ Memory server binary not found"
+    exit 1
+fi
+
+if python3 -c "import torch, transformers, sentence_transformers, numpy" 2>/dev/null; then
+    echo "✅ Python dependencies validated"
+else
+    echo "❌ Python dependencies validation failed"
+    exit 1
+fi
+
+# Create secure configuration from environment variables
+if [ ! -f "${CONFIG_DIR}/config.toml" ]; then
+    echo "📝 Creating secure configuration from environment..."
+    cat > "${CONFIG_DIR}/config.toml" << CONFIG_EOF
+[server]
+host = "${SERVICE_HOST:-0.0.0.0}"
+port = ${SERVICE_PORT:-8080}
+workers = ${WORKERS:-4}
+environment = "${ENVIRONMENT:-production}"
+cors_origins = ["${CORS_ORIGINS:-*}"]
+
+[storage]
+neo4j_uri = "${NEO4J_URI}"
+neo4j_user = "${NEO4J_USER:-neo4j}"
+neo4j_password = "${NEO4J_PASSWORD}"
+connection_pool_size = ${NEO4J_POOL_SIZE:-10}
+
+[embedding]
+model_path = "${EMBEDDING_MODEL_PATH:-${MODEL_DIR}/embeddinggemma-300m}"
+tokenizer_path = "${TOKENIZER_PATH:-${MODEL_DIR}/embeddinggemma-300m/tokenizer.json}"
+batch_size = ${EMBEDDING_BATCH_SIZE:-32}
+max_sequence_length = ${MAX_SEQUENCE_LENGTH:-2048}
+embedding_dimension = ${EMBEDDING_DIMENSION:-512}
+normalize_embeddings = ${NORMALIZE_EMBEDDINGS:-true}
+precision = "${EMBEDDING_PRECISION:-float32}"
+use_specialized_prompts = ${USE_SPECIALIZED_PROMPTS:-true}
+
+[cache]
+l1_size = ${L1_CACHE_SIZE:-1000}
+l2_size = ${L2_CACHE_SIZE:-10000}
+ttl_seconds = ${CACHE_TTL:-3600}
+compression_enabled = ${CACHE_COMPRESSION:-true}
+
+[brain]
+max_memories = ${MAX_MEMORIES:-100000}
+importance_threshold = ${IMPORTANCE_THRESHOLD:-0.3}
+consolidation_interval = ${CONSOLIDATION_INTERVAL:-300}
+decay_rate = ${MEMORY_DECAY_RATE:-0.01}
+CONFIG_EOF
+    echo "✅ Secure configuration created"
+fi
+
+# Validate model directory exists if specified
+if [ ! -z "${EMBEDDING_MODEL_PATH:-}" ] && [ ! -d "${EMBEDDING_MODEL_PATH}" ]; then
+    echo "❌ Model directory not found: ${EMBEDDING_MODEL_PATH}"
+    echo "💡 Please mount your model directory to ${MODEL_DIR} or set EMBEDDING_MODEL_PATH"
+    exit 1
 fi
 
 # Start the main service
 echo "🎯 Starting memory service..."
-exec memory-server --config "${CONFIG_DIR}/default.toml"
+exec memory-server --config "${CONFIG_DIR}/config.toml"
 EOF
 
-RUN chmod +x /usr/local/bin/start-service.sh
+RUN chmod +x /app/start-service.sh
 
 # Expose ports
-EXPOSE 8080 8081 8082
+EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f -s http://localhost:8080/health || exit 1
+# Health check with proper timeout
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+    CMD curl -f -s --max-time 10 http://localhost:8080/health || exit 1
+
+# Volume mounts for user data (no sensitive config in image)
+VOLUME ["/app/data", "/app/logs", "/app/models", "/app/cache"]
 
 # Start the service
-CMD ["/usr/local/bin/start-service.sh"]
+CMD ["/app/start-service.sh"]
 
-# Labels for container metadata
+# Security-focused container metadata
 LABEL org.opencontainers.image.title="AI Memory Service" \
-      org.opencontainers.image.description="Complete AI Memory Service with embedded models and runtime" \
+      org.opencontainers.image.description="Secure AI Memory Service with integrated PyO3 embeddings and environment-driven configuration" \
       org.opencontainers.image.version="0.1.0" \
       org.opencontainers.image.vendor="AI Memory Project" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/ai-memory/service"
+      org.opencontainers.image.source="https://github.com/ai-memory/service" \
+      security.credentials="environment-only" \
+      security.user="non-root" \
+      security.scanning="required"

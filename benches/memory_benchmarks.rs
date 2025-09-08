@@ -392,20 +392,16 @@ fn create_test_config() -> MemoryConfig {
             cache_embeddings: true,
         },
         cache: ai_memory_service::config::CacheConfig {
-            enable_cache: true,
-            l1_capacity: 100,
-            l2_capacity: 500,
-            l2_time_to_live_secs: 300,
-            l2_time_to_idle_secs: 60,
-            l3_capacity: 1000,
-            compression_threshold: 1024,
-            enable_compression: true,
+            l1_size: 100,
+            l2_size: 500,
+            ttl_seconds: 300,
+            compression_enabled: true,
         },
         brain: ai_memory_service::config::BrainConfig {
-            model_name: "benchmark_model".to_string(),
-            enable_reasoning: false, // Disable for faster benchmarks
-            min_confidence: 0.5,
-            max_reasoning_steps: 3,
+            max_memories: 100000,
+            importance_threshold: 0.5,
+            consolidation_interval: 300,
+            decay_rate: 0.01,
         },
     }
 }

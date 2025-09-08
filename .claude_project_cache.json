@@ -10,17 +10,24 @@
         "is_code_file": true
       },
       {
+        "path": ".\\COMPREHENSIVE_TEST_REPORT.md",
+        "relative_path": "COMPREHENSIVE_TEST_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 6913,
+        "is_code_file": true
+      },
+      {
         "path": ".\\Cargo.lock",
         "relative_path": "Cargo.lock",
         "file_type": "lock",
-        "size_bytes": 99816,
+        "size_bytes": 98925,
         "is_code_file": false
       },
       {
         "path": ".\\Cargo.toml",
         "relative_path": "Cargo.toml",
         "file_type": "toml",
-        "size_bytes": 2133,
+        "size_bytes": 2026,
         "is_code_file": true
       },
       {
@@ -34,8 +41,15 @@
         "path": ".\\Dockerfile",
         "relative_path": "Dockerfile",
         "file_type": "none",
-        "size_bytes": 9077,
+        "size_bytes": 8201,
         "is_code_file": false
+      },
+      {
+        "path": ".\\FINAL_CODE_VERIFICATION_REPORT.md",
+        "relative_path": "FINAL_CODE_VERIFICATION_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 5190,
+        "is_code_file": true
       },
       {
         "path": ".\\FINAL_STATUS_REPORT.md",
@@ -111,7 +125,28 @@
         "path": ".\\README.md",
         "relative_path": "README.md",
         "file_type": "md",
-        "size_bytes": 12969,
+        "size_bytes": 8786,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\REAL_MEMORY_ACCURACY_ASSESSMENT.md",
+        "relative_path": "REAL_MEMORY_ACCURACY_ASSESSMENT.md",
+        "file_type": "md",
+        "size_bytes": 8071,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\SECURITY_FIXES_REPORT.md",
+        "relative_path": "SECURITY_FIXES_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 3285,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\SYSTEM_RECONSTRUCTION_REPORT.md",
+        "relative_path": "SYSTEM_RECONSTRUCTION_REPORT.md",
+        "file_type": "md",
+        "size_bytes": 10013,
         "is_code_file": true
       },
       {
@@ -125,7 +160,7 @@
         "path": ".\\benches\\memory_benchmarks.rs",
         "relative_path": "benches/memory_benchmarks.rs",
         "file_type": "rs",
-        "size_bytes": 14614,
+        "size_bytes": 14406,
         "is_code_file": true
       },
       {
@@ -157,31 +192,45 @@
         "is_code_file": true
       },
       {
+        "path": ".\\comprehensive_system_audit.py",
+        "relative_path": "comprehensive_system_audit.py",
+        "file_type": "py",
+        "size_bytes": 28998,
+        "is_code_file": true
+      },
+      {
         "path": ".\\config.toml",
         "relative_path": "config.toml",
         "file_type": "toml",
-        "size_bytes": 971,
+        "size_bytes": 1465,
         "is_code_file": true
       },
       {
         "path": ".\\config\\embeddinggemma.toml",
         "relative_path": "config/embeddinggemma.toml",
         "file_type": "toml",
-        "size_bytes": 2143,
+        "size_bytes": 2197,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\definitive_stress_test.py",
+        "relative_path": "definitive_stress_test.py",
+        "file_type": "py",
+        "size_bytes": 23360,
         "is_code_file": true
       },
       {
         "path": ".\\docker-compose.override.yml",
         "relative_path": "docker-compose.override.yml",
         "file_type": "yml",
-        "size_bytes": 1937,
+        "size_bytes": 2000,
         "is_code_file": true
       },
       {
         "path": ".\\docker-compose.yml",
         "relative_path": "docker-compose.yml",
         "file_type": "yml",
-        "size_bytes": 10977,
+        "size_bytes": 10831,
         "is_code_file": true
       },
       {
@@ -220,10 +269,38 @@
         "is_code_file": true
       },
       {
+        "path": ".\\embedding_fixed_quality_test.py",
+        "relative_path": "embedding_fixed_quality_test.py",
+        "file_type": "py",
+        "size_bytes": 16906,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\embedding_quality_test.py",
+        "relative_path": "embedding_quality_test.py",
+        "file_type": "py",
+        "size_bytes": 25877,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\embedding_server.py",
+        "relative_path": "embedding_server.py",
+        "file_type": "py",
+        "size_bytes": 60908,
+        "is_code_file": true
+      },
+      {
         "path": ".\\embedding_service.py",
         "relative_path": "embedding_service.py",
         "file_type": "py",
         "size_bytes": 7471,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\hook-input-debug.json",
+        "relative_path": "hook-input-debug.json",
+        "file_type": "json",
+        "size_bytes": 8987,
         "is_code_file": true
       },
       {
@@ -332,6 +409,13 @@
         "is_code_file": true
       },
       {
+        "path": ".\\real_memory_accuracy_test.py",
+        "relative_path": "real_memory_accuracy_test.py",
+        "file_type": "py",
+        "size_bytes": 19761,
+        "is_code_file": true
+      },
+      {
         "path": ".\\reports\\FINAL_IMPLEMENTATION_STATUS.md",
         "relative_path": "reports/FINAL_IMPLEMENTATION_STATUS.md",
         "file_type": "md",
@@ -433,7 +517,7 @@
         "path": ".\\scripts\\quick-start.sh",
         "relative_path": "scripts/quick-start.sh",
         "file_type": "sh",
-        "size_bytes": 9360,
+        "size_bytes": 10503,
         "is_code_file": true
       },
       {
@@ -465,10 +549,17 @@
         "is_code_file": true
       },
       {
+        "path": ".\\simple_memory_test.py",
+        "relative_path": "simple_memory_test.py",
+        "file_type": "py",
+        "size_bytes": 6750,
+        "is_code_file": true
+      },
+      {
         "path": ".\\src\\api.rs",
         "relative_path": "src/api.rs",
         "file_type": "rs",
-        "size_bytes": 5022,
+        "size_bytes": 32820,
         "is_code_file": true
       },
       {
@@ -489,21 +580,21 @@
         "path": ".\\src\\config.rs",
         "relative_path": "src/config.rs",
         "file_type": "rs",
-        "size_bytes": 7327,
+        "size_bytes": 9752,
         "is_code_file": true
       },
       {
         "path": ".\\src\\embedding.rs",
         "relative_path": "src/embedding.rs",
         "file_type": "rs",
-        "size_bytes": 47521,
+        "size_bytes": 18236,
         "is_code_file": true
       },
       {
         "path": ".\\src\\embedding\\tests.rs",
         "relative_path": "src/embedding/tests.rs",
         "file_type": "rs",
-        "size_bytes": 25451,
+        "size_bytes": 25445,
         "is_code_file": true
       },
       {
@@ -517,21 +608,28 @@
         "path": ".\\src\\lib.rs",
         "relative_path": "src/lib.rs",
         "file_type": "rs",
-        "size_bytes": 434,
+        "size_bytes": 669,
         "is_code_file": true
       },
       {
         "path": ".\\src\\main.rs",
         "relative_path": "src/main.rs",
         "file_type": "rs",
-        "size_bytes": 12755,
+        "size_bytes": 13970,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\mcp_server.rs",
+        "relative_path": "src/mcp_server.rs",
+        "file_type": "rs",
+        "size_bytes": 40630,
         "is_code_file": true
       },
       {
         "path": ".\\src\\memory.rs",
         "relative_path": "src/memory.rs",
         "file_type": "rs",
-        "size_bytes": 16653,
+        "size_bytes": 21756,
         "is_code_file": true
       },
       {
@@ -553,6 +651,13 @@
         "relative_path": "src/monitoring.rs",
         "file_type": "rs",
         "size_bytes": 20076,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\src\\orchestrator.rs",
+        "relative_path": "src/orchestrator.rs",
+        "file_type": "rs",
+        "size_bytes": 44504,
         "is_code_file": true
       },
       {
@@ -587,7 +692,7 @@
         "path": ".\\src\\storage.rs",
         "relative_path": "src/storage.rs",
         "file_type": "rs",
-        "size_bytes": 49039,
+        "size_bytes": 50592,
         "is_code_file": true
       },
       {
@@ -601,7 +706,35 @@
         "path": ".\\src\\types.rs",
         "relative_path": "src/types.rs",
         "file_type": "rs",
-        "size_bytes": 16723,
+        "size_bytes": 35053,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\start.ps1",
+        "relative_path": "start.ps1",
+        "file_type": "ps1",
+        "size_bytes": 9655,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\start.sh",
+        "relative_path": "start.sh",
+        "file_type": "sh",
+        "size_bytes": 6681,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\system_audit_report.json",
+        "relative_path": "system_audit_report.json",
+        "file_type": "json",
+        "size_bytes": 1232,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\system_quality_report.md",
+        "relative_path": "system_quality_report.md",
+        "file_type": "md",
+        "size_bytes": 8735,
         "is_code_file": true
       },
       {
@@ -609,6 +742,13 @@
         "relative_path": "test.bat",
         "file_type": "bat",
         "size_bytes": 1111,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test_embedding_server.py",
+        "relative_path": "test_embedding_server.py",
+        "file_type": "py",
+        "size_bytes": 8915,
         "is_code_file": true
       },
       {
@@ -626,6 +766,27 @@
         "is_code_file": true
       },
       {
+        "path": ".\\test_improved_server.py",
+        "relative_path": "test_improved_server.py",
+        "file_type": "py",
+        "size_bytes": 8718,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test_parallel.ps1",
+        "relative_path": "test_parallel.ps1",
+        "file_type": "ps1",
+        "size_bytes": 8713,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\test_parallel.py",
+        "relative_path": "test_parallel.py",
+        "file_type": "py",
+        "size_bytes": 15827,
+        "is_code_file": true
+      },
+      {
         "path": ".\\test_python_direct.py",
         "relative_path": "test_python_direct.py",
         "file_type": "py",
@@ -636,14 +797,14 @@
         "path": ".\\tests\\api_integration_test.rs",
         "relative_path": "tests/api_integration_test.rs",
         "file_type": "rs",
-        "size_bytes": 6278,
+        "size_bytes": 6646,
         "is_code_file": true
       },
       {
         "path": ".\\tests\\embedding_integration_test.rs",
         "relative_path": "tests/embedding_integration_test.rs",
         "file_type": "rs",
-        "size_bytes": 9947,
+        "size_bytes": 10144,
         "is_code_file": true
       },
       {
@@ -657,7 +818,7 @@
         "path": ".\\tests\\integration_test.rs",
         "relative_path": "tests/integration_test.rs",
         "file_type": "rs",
-        "size_bytes": 13355,
+        "size_bytes": 13553,
         "is_code_file": true
       },
       {
@@ -672,6 +833,13 @@
         "relative_path": "tests/simple_unit_test.rs",
         "file_type": "rs",
         "size_bytes": 580,
+        "is_code_file": true
+      },
+      {
+        "path": ".\\tests\\test_config.rs",
+        "relative_path": "tests/test_config.rs",
+        "file_type": "rs",
+        "size_bytes": 8572,
         "is_code_file": true
       },
       {
@@ -703,19 +871,33 @@
       "src/storage",
       "tests"
     ],
-    "total_files": 97,
-    "scan_timestamp": "2025-09-07 17:53:38"
+    "total_files": 121,
+    "scan_timestamp": "2025-09-08 17:59:45"
   },
   "metrics": {
-    "total_lines_of_code": 2447641,
+    "total_lines_of_code": 2454959,
     "code_by_language": {
-      "sh": {
-        "file_count": 3,
-        "lines_of_code": 758,
+      "rs": {
+        "file_count": 33,
+        "lines_of_code": 10537,
+        "lines_of_comments": 1660,
+        "blank_lines": 1929,
+        "average_file_size": 319,
+        "complexity_estimate": 28.784504,
+        "average_cyclomatic": 30.757576,
+        "average_cognitive": 33.848484,
+        "max_cyclomatic": 106,
+        "max_cognitive": 139,
+        "total_functions": 150,
+        "average_nesting_depth": 2.1818182
+      },
+      "md": {
+        "file_count": 29,
+        "lines_of_code": 5058,
         "lines_of_comments": 0,
-        "blank_lines": 144,
-        "average_file_size": 252,
-        "complexity_estimate": 7.58,
+        "blank_lines": 1351,
+        "average_file_size": 174,
+        "complexity_estimate": 50.58,
         "average_cyclomatic": 0.0,
         "average_cognitive": 0.0,
         "max_cyclomatic": 0,
@@ -723,13 +905,27 @@
         "total_functions": 0,
         "average_nesting_depth": 0.0
       },
-      "ps1": {
-        "file_count": 12,
-        "lines_of_code": 1919,
+      "toml": {
+        "file_count": 3,
+        "lines_of_code": 190,
         "lines_of_comments": 0,
-        "blank_lines": 381,
-        "average_file_size": 159,
-        "complexity_estimate": 19.19,
+        "blank_lines": 41,
+        "average_file_size": 63,
+        "complexity_estimate": 1.9,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
+      },
+      "json": {
+        "file_count": 14,
+        "lines_of_code": 2431209,
+        "lines_of_comments": 0,
+        "blank_lines": 0,
+        "average_file_size": 173657,
+        "complexity_estimate": 24312.09,
         "average_cyclomatic": 0.0,
         "average_cognitive": 0.0,
         "max_cyclomatic": 0,
@@ -753,11 +949,11 @@
       },
       "yml": {
         "file_count": 2,
-        "lines_of_code": 407,
+        "lines_of_code": 403,
         "lines_of_comments": 0,
-        "blank_lines": 87,
-        "average_file_size": 203,
-        "complexity_estimate": 4.07,
+        "blank_lines": 39,
+        "average_file_size": 201,
+        "complexity_estimate": 4.03,
         "average_cyclomatic": 0.0,
         "average_cognitive": 0.0,
         "max_cyclomatic": 0,
@@ -765,27 +961,27 @@
         "total_functions": 0,
         "average_nesting_depth": 0.0
       },
-      "rs": {
-        "file_count": 30,
-        "lines_of_code": 8085,
-        "lines_of_comments": 1269,
-        "blank_lines": 1635,
-        "average_file_size": 269,
-        "complexity_estimate": 22.077137,
-        "average_cyclomatic": 23.266666,
-        "average_cognitive": 28.966667,
-        "max_cyclomatic": 94,
-        "max_cognitive": 132,
-        "total_functions": 147,
-        "average_nesting_depth": 1.9333333
+      "sh": {
+        "file_count": 4,
+        "lines_of_code": 924,
+        "lines_of_comments": 0,
+        "blank_lines": 186,
+        "average_file_size": 231,
+        "complexity_estimate": 9.24,
+        "average_cyclomatic": 0.0,
+        "average_cognitive": 0.0,
+        "max_cyclomatic": 0,
+        "max_cognitive": 0,
+        "total_functions": 0,
+        "average_nesting_depth": 0.0
       },
       "py": {
-        "file_count": 5,
-        "lines_of_code": 666,
-        "lines_of_comments": 105,
-        "blank_lines": 172,
-        "average_file_size": 133,
-        "complexity_estimate": 5.611574,
+        "file_count": 15,
+        "lines_of_code": 4221,
+        "lines_of_comments": 651,
+        "blank_lines": 1026,
+        "average_file_size": 281,
+        "complexity_estimate": 35.70154,
         "average_cyclomatic": 0.0,
         "average_cognitive": 0.0,
         "max_cyclomatic": 0,
@@ -793,41 +989,13 @@
         "total_functions": 0,
         "average_nesting_depth": 0.0
       },
-      "md": {
-        "file_count": 23,
-        "lines_of_code": 4401,
+      "ps1": {
+        "file_count": 14,
+        "lines_of_code": 2367,
         "lines_of_comments": 0,
-        "blank_lines": 1159,
-        "average_file_size": 191,
-        "complexity_estimate": 44.01,
-        "average_cyclomatic": 0.0,
-        "average_cognitive": 0.0,
-        "max_cyclomatic": 0,
-        "max_cognitive": 0,
-        "total_functions": 0,
-        "average_nesting_depth": 0.0
-      },
-      "toml": {
-        "file_count": 3,
-        "lines_of_code": 185,
-        "lines_of_comments": 0,
-        "blank_lines": 43,
-        "average_file_size": 61,
-        "complexity_estimate": 1.85,
-        "average_cyclomatic": 0.0,
-        "average_cognitive": 0.0,
-        "max_cyclomatic": 0,
-        "max_cognitive": 0,
-        "total_functions": 0,
-        "average_nesting_depth": 0.0
-      },
-      "json": {
-        "file_count": 12,
-        "lines_of_code": 2431170,
-        "lines_of_comments": 0,
-        "blank_lines": 0,
-        "average_file_size": 202597,
-        "complexity_estimate": 24311.7,
+        "blank_lines": 453,
+        "average_file_size": 169,
+        "complexity_estimate": 23.67,
         "average_cyclomatic": 0.0,
         "average_cognitive": 0.0,
         "max_cyclomatic": 0,
@@ -837,343 +1005,187 @@
       }
     },
     "file_importance_scores": {
-      "requirements.txt": 0.3,
-      "src/shutdown.rs": 1.0,
-      "src/embedding.rs": 1.0,
-      "Dockerfile": 0.3,
-      "setup_neo4j_native.ps1": 0.3,
-      "src/memory.rs": 1.0,
-      "reports/FINAL_IMPLEMENTATION_STATUS.md": 0.5,
-      "benches/simd_benchmark.rs": 1.0,
-      "models/embeddinggemma-300m/added_tokens.json": 0.3,
-      "models/embeddinggemma-300m/modules.json": 0.3,
-      "LEGACY_CLEANUP_REPORT.md": 0.5,
-      "README-Docker.md": 0.5,
-      "models/embeddinggemma-300m/config.json": 0.8,
-      "reports/embedding_service_implementation_report.md": 0.5,
-      "docker-compose.yml": 0.3,
-      "models/embeddinggemma-300m/3_Dense/config.json": 0.8,
-      "config/embeddinggemma.toml": 0.8,
-      "download_onnxruntime_v122.ps1": 0.3,
-      "embedding_service.py": 0.9,
-      "models/embeddinggemma-300m/special_tokens_map.json": 0.7,
-      "QUALITY_PROGRESS_REPORT.md": 0.5,
-      "reports/project-status-report.md": 0.5,
-      "FINAL_STATUS_REPORT.md": 0.5,
-      "run.bat": 0.3,
-      "scripts/quick-start.sh": 0.3,
-      "src/config.rs": 1.0,
-      "src/metrics.rs": 1.0,
-      "src/security.rs": 1.0,
-      "validate_packages.py": 0.9,
-      "tests/simple_integration_test.rs": 0.7,
-      "tests/integration_test.rs": 0.7,
-      "src/simd_search.rs": 1.0,
-      "reports/REAL_STATUS_HONEST_REPORT.md": 0.5,
-      "scripts/download_models.sh": 0.3,
+      "reports/IMPLEMENTATION_REPORT.md": 0.5,
+      "models/embeddinggemma-300m/tokenizer_config.json": 0.8,
+      "real_memory_accuracy_test.py": 0.7,
       "src/embedding_config.rs": 1.0,
-      "src/lib.rs": 1.0,
-      "benches/memory_benchmarks.rs": 1.0,
-      "check_ort_version.rs": 1.0,
-      "DEPLOYMENT.md": 0.5,
+      "setup_neo4j_native.ps1": 0.3,
+      "models/embeddinggemma-300m/3_Dense/config.json": 0.8,
+      "benches/simd_benchmark.rs": 1.0,
+      "LEGACY_CLEANUP_REPORT.md": 0.5,
       "benches/dummy.rs": 1.0,
-      "scripts/download_models.ps1": 0.3,
+      "src/simd_utils.rs": 1.0,
+      "docker/README.md": 0.5,
+      "embedding_service.py": 0.9,
+      "hook-input-debug.json": 0.3,
+      "models/embeddinggemma-300m/config.json": 0.8,
+      "ONNX_RUNTIME_SETUP.md": 0.5,
+      "src/shutdown.rs": 1.0,
+      "reports/progress-report-session2.md": 0.5,
+      "src/cache.rs": 1.0,
+      "src/security.rs": 1.0,
+      "docker-compose.yml": 0.3,
+      "reports/implementation_summary.md": 0.5,
+      "src/monitoring.rs": 1.0,
+      "src/main.rs": 1.0,
+      "models/embeddinggemma-300m/special_tokens_map.json": 0.7,
+      "embedding_fixed_quality_test.py": 0.7,
+      "simple_memory_test.py": 0.7,
+      "models/embeddinggemma-300m/generation_config.json": 0.8,
+      "REAL_MEMORY_ACCURACY_ASSESSMENT.md": 0.5,
       "docker-compose.override.yml": 0.3,
       "src/storage.rs": 1.0,
-      "src/types.rs": 1.0,
-      "install.ps1": 0.3,
-      "models/embeddinggemma-300m/README.md": 0.5,
-      "models/embeddinggemma-300m/config_sentence_transformers.json": 0.8,
-      "docker/README.md": 0.5,
-      "CLAUDE.md": 0.5,
+      "download_onnxruntime_v122.ps1": 0.3,
+      "config/embeddinggemma.toml": 0.8,
+      "test_python_direct.py": 0.7,
+      "reports/project-status-report.md": 0.5,
+      "run.bat": 0.3,
+      "FINAL_CODE_VERIFICATION_REPORT.md": 0.5,
+      "models/embeddinggemma-300m/added_tokens.json": 0.3,
+      "README.md": 0.8,
+      "tests/embedding_integration_test.rs": 0.7,
+      "src/api.rs": 1.0,
       "config.toml": 0.8,
       "download_onnxruntime.ps1": 0.3,
-      "setup_python_dll.ps1": 0.3,
-      "download_ort_nuget.ps1": 0.3,
-      "src/brain.rs": 1.0,
-      "src/api.rs": 1.0,
+      "tests/simple_integration_test.rs": 0.7,
+      "QUALITY_PROGRESS_REPORT.md": 0.5,
+      "models/embeddinggemma-300m/config_sentence_transformers.json": 0.8,
+      "scripts/download_models.sh": 0.3,
+      "system_quality_report.md": 0.5,
+      "requirements.txt": 0.3,
+      "src/metrics.rs": 1.0,
+      "start.ps1": 0.3,
       "models/embeddinggemma-300m/2_Dense/config.json": 0.8,
-      "models/embeddinggemma-300m/generation_config.json": 0.8,
-      "Cargo.lock": 0.3,
-      "clean_path_duplicates.ps1": 0.3,
-      "scripts/download_onnx_runtime.ps1": 0.3,
-      "src/embedding/tests.rs": 0.9,
-      "test_embedding_service.py": 0.7,
-      "docs/efficient-memory-service-architecture.md": 0.5,
-      "reports/progress-report-session2.md": 0.5,
-      "scripts/setup-docker.sh": 0.3,
-      "quick-start.ps1": 0.3,
-      "test.bat": 0.7,
-      "PROJECT_STATUS_FINAL.md": 0.5,
-      "tests/embedding_integration_test.rs": 0.7,
-      "PROJECT_STATUS_UPDATED.md": 0.5,
-      "ONNX_RUNTIME_SETUP.md": 0.5,
-      "tests/api_integration_test.rs": 0.7,
-      "Cargo.toml": 1.0,
-      "src/storage/embedded_db.rs": 1.0,
-      "README.md": 0.8,
-      "QUALITY_REPORT_FINAL.md": 0.5,
-      "src/main.rs": 1.0,
-      "src/memory_optimizer.rs": 1.0,
-      "FINAL_STATUS_REPORT_UPDATED.md": 0.5,
-      "run_simple_test.bat": 0.7,
-      "src/cache.rs": 1.0,
-      "models/embeddinggemma-300m/tokenizer_config.json": 0.8,
-      "src/simd_utils.rs": 1.0,
+      "comprehensive_system_audit.py": 0.9,
+      "Dockerfile": 0.3,
       "test_embeddings.py": 0.7,
-      "tests/embedding_unit_test.rs": 0.7,
-      "models/embeddinggemma-300m/1_Pooling/config.json": 0.8,
-      "src/monitoring.rs": 1.0,
-      "MIGRATION_REPORT.md": 0.5,
-      "scripts/run_tests.ps1": 0.7,
-      "reports/implementation_summary.md": 0.5,
-      "reports/IMPLEMENTATION_REPORT.md": 0.5,
+      "SYSTEM_RECONSTRUCTION_REPORT.md": 0.5,
+      "models/embeddinggemma-300m/README.md": 0.5,
+      "src/brain.rs": 1.0,
+      "reports/FINAL_IMPLEMENTATION_STATUS.md": 0.5,
+      "src/config.rs": 1.0,
+      "scripts/quick-start.sh": 0.3,
+      "src/mcp_server.rs": 1.0,
+      "src/memory_optimizer.rs": 1.0,
+      "FINAL_STATUS_REPORT.md": 0.5,
+      "README-Docker.md": 0.5,
+      "test_improved_server.py": 0.7,
+      "Cargo.lock": 0.3,
+      "PROJECT_STATUS_FINAL.md": 0.5,
+      "run_simple_test.bat": 0.7,
       "models/embeddinggemma-300m/sentence_bert_config.json": 0.8,
-      "models/embeddinggemma-300m/tokenizer.json": 0.3,
+      "QUALITY_REPORT_FINAL.md": 0.5,
+      "tests/api_integration_test.rs": 0.7,
+      "tests/test_config.rs": 0.7,
+      "system_audit_report.json": 0.3,
+      "test_embedding_service.py": 0.7,
+      "src/orchestrator.rs": 1.0,
+      "embedding_quality_test.py": 0.7,
+      "test_embedding_server.py": 0.7,
+      "src/memory.rs": 1.0,
+      "check_ort_version.rs": 1.0,
+      "MIGRATION_REPORT.md": 0.5,
+      "test.bat": 0.7,
+      "install.ps1": 0.3,
+      "tests/embedding_unit_test.rs": 0.7,
+      "models/embeddinggemma-300m/modules.json": 0.3,
+      "DEPLOYMENT.md": 0.5,
+      "tests/integration_test.rs": 0.7,
+      "scripts/run_tests.ps1": 0.7,
+      "definitive_stress_test.py": 0.7,
+      "scripts/download_models.ps1": 0.3,
+      "start.sh": 0.3,
+      "quick-start.ps1": 0.3,
+      "scripts/download_onnx_runtime.ps1": 0.3,
+      "src/embedding.rs": 1.0,
+      "reports/REAL_STATUS_HONEST_REPORT.md": 0.5,
+      "src/storage/embedded_db.rs": 1.0,
+      "docs/efficient-memory-service-architecture.md": 0.5,
+      "embedding_server.py": 0.9,
+      "clean_path_duplicates.ps1": 0.3,
+      "FINAL_STATUS_REPORT_UPDATED.md": 0.5,
+      "src/types.rs": 1.0,
+      "benches/memory_benchmarks.rs": 1.0,
+      "COMPREHENSIVE_TEST_REPORT.md": 0.5,
       "check_path.ps1": 0.3,
+      "SECURITY_FIXES_REPORT.md": 0.5,
+      "download_ort_nuget.ps1": 0.3,
+      "setup_python_dll.ps1": 0.3,
       "run_tests.bat": 0.7,
-      "test_python_direct.py": 0.7,
-      "tests/simple_unit_test.rs": 0.7
+      "tests/simple_unit_test.rs": 0.7,
+      "Cargo.toml": 1.0,
+      "src/simd_search.rs": 1.0,
+      "scripts/setup-docker.sh": 0.3,
+      "src/embedding/tests.rs": 0.9,
+      "test_parallel.py": 0.7,
+      "validate_packages.py": 0.9,
+      "models/embeddinggemma-300m/1_Pooling/config.json": 0.8,
+      "models/embeddinggemma-300m/tokenizer.json": 0.3,
+      "reports/embedding_service_implementation_report.md": 0.5,
+      "CLAUDE.md": 0.5,
+      "test_parallel.ps1": 0.7,
+      "PROJECT_STATUS_UPDATED.md": 0.5,
+      "src/lib.rs": 1.0
     },
-    "project_complexity_score": 1.5573214,
-    "test_coverage_estimate": 0.15463917,
-    "documentation_ratio": 0.2371134,
-    "average_cyclomatic_complexity": 24.928572,
-    "average_cognitive_complexity": 31.035715,
-    "max_cyclomatic_complexity": 94,
-    "max_cognitive_complexity": 132,
+    "project_complexity_score": 1.9503227,
+    "test_coverage_estimate": 0.20661157,
+    "documentation_ratio": 0.23966943,
+    "average_cyclomatic_complexity": 32.741936,
+    "average_cognitive_complexity": 36.032257,
+    "max_cyclomatic_complexity": 106,
+    "max_cognitive_complexity": 139,
     "high_complexity_files": 0,
     "complexity_distribution": {
       "low_complexity": 25,
-      "medium_complexity": 3,
+      "medium_complexity": 6,
       "high_complexity": 0,
       "extreme_complexity": 0
     }
   },
   "file_hashes": {
-    "scripts/setup-docker.sh": {
-      "path": "scripts/setup-docker.sh",
+    "test.bat": {
+      "path": "test.bat",
       "modified_time": {
-        "secs_since_epoch": 1757239735,
-        "nanos_since_epoch": 217452100
+        "secs_since_epoch": 1757159442,
+        "nanos_since_epoch": 879264700
       },
-      "size": 8666,
+      "size": 1111,
       "hash": null
     },
-    "src/memory_optimizer.rs": {
-      "path": "src/memory_optimizer.rs",
+    "system_quality_report.md": {
+      "path": "system_quality_report.md",
       "modified_time": {
-        "secs_since_epoch": 1757176549,
-        "nanos_since_epoch": 809472500
+        "secs_since_epoch": 1757337980,
+        "nanos_since_epoch": 884936100
       },
-      "size": 21005,
+      "size": 8735,
       "hash": null
     },
-    "models/embeddinggemma-300m/README.md": {
-      "path": "models/embeddinggemma-300m/README.md",
+    "src/main.rs": {
+      "path": "src/main.rs",
       "modified_time": {
-        "secs_since_epoch": 1757127666,
-        "nanos_since_epoch": 720775200
+        "secs_since_epoch": 1757321147,
+        "nanos_since_epoch": 484103400
       },
-      "size": 16656,
+      "size": 13970,
+      "hash": "2579ef8340ee29e481c6a27bad490b5deb4115f01d7aeae9405abfcea42ba7e9"
+    },
+    "Cargo.lock": {
+      "path": "Cargo.lock",
+      "modified_time": {
+        "secs_since_epoch": 1757320723,
+        "nanos_since_epoch": 692034500
+      },
+      "size": 98925,
       "hash": null
     },
-    "CLAUDE.md": {
-      "path": "CLAUDE.md",
+    "system_audit_report.json": {
+      "path": "system_audit_report.json",
       "modified_time": {
-        "secs_since_epoch": 1757179323,
-        "nanos_since_epoch": 219339400
+        "secs_since_epoch": 1757339266,
+        "nanos_since_epoch": 766588700
       },
-      "size": 5507,
-      "hash": null
-    },
-    "PROJECT_STATUS_UPDATED.md": {
-      "path": "PROJECT_STATUS_UPDATED.md",
-      "modified_time": {
-        "secs_since_epoch": 1757186322,
-        "nanos_since_epoch": 860372400
-      },
-      "size": 6108,
-      "hash": null
-    },
-    "download_ort_nuget.ps1": {
-      "path": "download_ort_nuget.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757178164,
-        "nanos_since_epoch": 805661500
-      },
-      "size": 1974,
-      "hash": null
-    },
-    "check_path.ps1": {
-      "path": "check_path.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757233836,
-        "nanos_since_epoch": 231954800
-      },
-      "size": 914,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/2_Dense/config.json": {
-      "path": "models/embeddinggemma-300m/2_Dense/config.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127933,
-        "nanos_since_epoch": 716220300
-      },
-      "size": 134,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/generation_config.json": {
-      "path": "models/embeddinggemma-300m/generation_config.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127934,
-        "nanos_since_epoch": 84327400
-      },
-      "size": 133,
-      "hash": null
-    },
-    "src/config.rs": {
-      "path": "src/config.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757155279,
-        "nanos_since_epoch": 557754400
-      },
-      "size": 7327,
-      "hash": null
-    },
-    "QUALITY_REPORT_FINAL.md": {
-      "path": "QUALITY_REPORT_FINAL.md",
-      "modified_time": {
-        "secs_since_epoch": 1757232686,
-        "nanos_since_epoch": 10444300
-      },
-      "size": 7404,
-      "hash": null
-    },
-    "src/memory.rs": {
-      "path": "src/memory.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757176514,
-        "nanos_since_epoch": 518694100
-      },
-      "size": 16653,
-      "hash": null
-    },
-    "reports/REAL_STATUS_HONEST_REPORT.md": {
-      "path": "reports/REAL_STATUS_HONEST_REPORT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757217732,
-        "nanos_since_epoch": 671422500
-      },
-      "size": 7182,
-      "hash": null
-    },
-    "scripts/quick-start.sh": {
-      "path": "scripts/quick-start.sh",
-      "modified_time": {
-        "secs_since_epoch": 1757240544,
-        "nanos_since_epoch": 695059800
-      },
-      "size": 9360,
-      "hash": null
-    },
-    "README-Docker.md": {
-      "path": "README-Docker.md",
-      "modified_time": {
-        "secs_since_epoch": 1757240628,
-        "nanos_since_epoch": 227748300
-      },
-      "size": 5387,
-      "hash": null
-    },
-    "tests/embedding_unit_test.rs": {
-      "path": "tests/embedding_unit_test.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757177413,
-        "nanos_since_epoch": 599311600
-      },
-      "size": 8055,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/config_sentence_transformers.json": {
-      "path": "models/embeddinggemma-300m/config_sentence_transformers.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127934,
-        "nanos_since_epoch": 103339300
-      },
-      "size": 997,
-      "hash": null
-    },
-    "QUALITY_PROGRESS_REPORT.md": {
-      "path": "QUALITY_PROGRESS_REPORT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757230686,
-        "nanos_since_epoch": 534893700
-      },
-      "size": 7241,
-      "hash": null
-    },
-    "LEGACY_CLEANUP_REPORT.md": {
-      "path": "LEGACY_CLEANUP_REPORT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757233441,
-        "nanos_since_epoch": 353234800
-      },
-      "size": 4526,
-      "hash": null
-    },
-    "DEPLOYMENT.md": {
-      "path": "DEPLOYMENT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757239838,
-        "nanos_since_epoch": 68652900
-      },
-      "size": 10197,
-      "hash": null
-    },
-    "docker/README.md": {
-      "path": "docker/README.md",
-      "modified_time": {
-        "secs_since_epoch": 1757239220,
-        "nanos_since_epoch": 810819100
-      },
-      "size": 7529,
-      "hash": null
-    },
-    "run.bat": {
-      "path": "run.bat",
-      "modified_time": {
-        "secs_since_epoch": 1757158251,
-        "nanos_since_epoch": 283951000
-      },
-      "size": 294,
-      "hash": null
-    },
-    "requirements.txt": {
-      "path": "requirements.txt",
-      "modified_time": {
-        "secs_since_epoch": 1757190530,
-        "nanos_since_epoch": 833372300
-      },
-      "size": 734,
-      "hash": null
-    },
-    "src/storage.rs": {
-      "path": "src/storage.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757233195,
-        "nanos_since_epoch": 77790600
-      },
-      "size": 49039,
-      "hash": null
-    },
-    "README.md": {
-      "path": "README.md",
-      "modified_time": {
-        "secs_since_epoch": 1757158506,
-        "nanos_since_epoch": 869020900
-      },
-      "size": 12969,
+      "size": 1232,
       "hash": null
     },
     "embedding_service.py": {
@@ -1185,391 +1197,58 @@
       "size": 7471,
       "hash": null
     },
-    "FINAL_STATUS_REPORT_UPDATED.md": {
-      "path": "FINAL_STATUS_REPORT_UPDATED.md",
-      "modified_time": {
-        "secs_since_epoch": 1757224716,
-        "nanos_since_epoch": 163852800
-      },
-      "size": 7673,
-      "hash": null
-    },
-    "reports/IMPLEMENTATION_REPORT.md": {
-      "path": "reports/IMPLEMENTATION_REPORT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757192665,
-        "nanos_since_epoch": 21658300
-      },
-      "size": 8384,
-      "hash": null
-    },
-    "reports/FINAL_IMPLEMENTATION_STATUS.md": {
-      "path": "reports/FINAL_IMPLEMENTATION_STATUS.md",
-      "modified_time": {
-        "secs_since_epoch": 1757216968,
-        "nanos_since_epoch": 154428200
-      },
-      "size": 7571,
-      "hash": null
-    },
-    "scripts/download_models.ps1": {
-      "path": "scripts/download_models.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757154201,
-        "nanos_since_epoch": 34288500
-      },
-      "size": 5327,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/tokenizer_config.json": {
-      "path": "models/embeddinggemma-300m/tokenizer_config.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127935,
-        "nanos_since_epoch": 886005000
-      },
-      "size": 1155346,
-      "hash": null
-    },
-    "scripts/run_tests.ps1": {
-      "path": "scripts/run_tests.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757159375,
-        "nanos_since_epoch": 248349700
-      },
-      "size": 8622,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/sentence_bert_config.json": {
-      "path": "models/embeddinggemma-300m/sentence_bert_config.json",
+    "models/embeddinggemma-300m/generation_config.json": {
+      "path": "models/embeddinggemma-300m/generation_config.json",
       "modified_time": {
         "secs_since_epoch": 1757127934,
-        "nanos_since_epoch": 83327500
+        "nanos_since_epoch": 84327400
       },
-      "size": 58,
+      "size": 133,
       "hash": null
     },
-    "Cargo.lock": {
-      "path": "Cargo.lock",
+    "PROJECT_STATUS_UPDATED.md": {
+      "path": "PROJECT_STATUS_UPDATED.md",
       "modified_time": {
-        "secs_since_epoch": 1757225919,
-        "nanos_since_epoch": 890815400
+        "secs_since_epoch": 1757186322,
+        "nanos_since_epoch": 860372400
       },
-      "size": 99816,
+      "size": 6108,
       "hash": null
     },
-    "src/embedding_config.rs": {
-      "path": "src/embedding_config.rs",
+    "CLAUDE.md": {
+      "path": "CLAUDE.md",
       "modified_time": {
-        "secs_since_epoch": 1757215524,
-        "nanos_since_epoch": 129244600
+        "secs_since_epoch": 1757179323,
+        "nanos_since_epoch": 219339400
       },
-      "size": 18135,
+      "size": 5507,
       "hash": null
     },
-    "src/embedding/tests.rs": {
-      "path": "src/embedding/tests.rs",
+    "simple_memory_test.py": {
+      "path": "simple_memory_test.py",
       "modified_time": {
-        "secs_since_epoch": 1757192309,
-        "nanos_since_epoch": 268187600
+        "secs_since_epoch": 1757343585,
+        "nanos_since_epoch": 322794100
       },
-      "size": 25451,
+      "size": 6750,
       "hash": null
     },
-    "src/types.rs": {
-      "path": "src/types.rs",
+    "QUALITY_REPORT_FINAL.md": {
+      "path": "QUALITY_REPORT_FINAL.md",
       "modified_time": {
-        "secs_since_epoch": 1757232937,
-        "nanos_since_epoch": 710626800
+        "secs_since_epoch": 1757232686,
+        "nanos_since_epoch": 10444300
       },
-      "size": 16723,
+      "size": 7404,
       "hash": null
-    },
-    "test.bat": {
-      "path": "test.bat",
-      "modified_time": {
-        "secs_since_epoch": 1757159442,
-        "nanos_since_epoch": 879264700
-      },
-      "size": 1111,
-      "hash": null
-    },
-    "test_python_direct.py": {
-      "path": "test_python_direct.py",
-      "modified_time": {
-        "secs_since_epoch": 1757221362,
-        "nanos_since_epoch": 152158500
-      },
-      "size": 2208,
-      "hash": null
-    },
-    "scripts/download_onnx_runtime.ps1": {
-      "path": "scripts/download_onnx_runtime.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757158101,
-        "nanos_since_epoch": 34933600
-      },
-      "size": 1849,
-      "hash": null
-    },
-    "src/security.rs": {
-      "path": "src/security.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757143805,
-        "nanos_since_epoch": 183641400
-      },
-      "size": 7519,
-      "hash": null
-    },
-    "validate_packages.py": {
-      "path": "validate_packages.py",
-      "modified_time": {
-        "secs_since_epoch": 1757242161,
-        "nanos_since_epoch": 338482000
-      },
-      "size": 2562,
-      "hash": null
-    },
-    "scripts/download_models.sh": {
-      "path": "scripts/download_models.sh",
-      "modified_time": {
-        "secs_since_epoch": 1757152577,
-        "nanos_since_epoch": 617417400
-      },
-      "size": 7874,
-      "hash": null
-    },
-    "test_embeddings.py": {
-      "path": "test_embeddings.py",
-      "modified_time": {
-        "secs_since_epoch": 1757255927,
-        "nanos_since_epoch": 577428600
-      },
-      "size": 9408,
-      "hash": null
-    },
-    "src/main.rs": {
-      "path": "src/main.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757217403,
-        "nanos_since_epoch": 503976800
-      },
-      "size": 12755,
-      "hash": "d15165a277073a7aa30faa439e9051cdbced8ea4134a69ddff28346becb64ed5"
-    },
-    "src/monitoring.rs": {
-      "path": "src/monitoring.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757176490,
-        "nanos_since_epoch": 656132500
-      },
-      "size": 20076,
-      "hash": null
-    },
-    "tests/simple_unit_test.rs": {
-      "path": "tests/simple_unit_test.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757232433,
-        "nanos_since_epoch": 987561200
-      },
-      "size": 580,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/3_Dense/config.json": {
-      "path": "models/embeddinggemma-300m/3_Dense/config.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127933,
-        "nanos_since_epoch": 704669800
-      },
-      "size": 134,
-      "hash": null
-    },
-    "benches/dummy.rs": {
-      "path": "benches/dummy.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757241503,
-        "nanos_since_epoch": 446264100
-      },
-      "size": 32,
-      "hash": null
-    },
-    "src/lib.rs": {
-      "path": "src/lib.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757232966,
-        "nanos_since_epoch": 871317400
-      },
-      "size": 434,
-      "hash": "b72ce303d2b59ab642ac9c1086dc2b284a192350c88afd67dbae66ab16a70636"
-    },
-    "src/shutdown.rs": {
-      "path": "src/shutdown.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757171068,
-        "nanos_since_epoch": 903997900
-      },
-      "size": 16137,
-      "hash": null
-    },
-    "docker-compose.override.yml": {
-      "path": "docker-compose.override.yml",
-      "modified_time": {
-        "secs_since_epoch": 1757241142,
-        "nanos_since_epoch": 700997200
-      },
-      "size": 1937,
-      "hash": null
-    },
-    "tests/integration_test.rs": {
-      "path": "tests/integration_test.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757230831,
-        "nanos_since_epoch": 717366600
-      },
-      "size": 13355,
-      "hash": null
-    },
-    "FINAL_STATUS_REPORT.md": {
-      "path": "FINAL_STATUS_REPORT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757220535,
-        "nanos_since_epoch": 324342800
-      },
-      "size": 7015,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/1_Pooling/config.json": {
-      "path": "models/embeddinggemma-300m/1_Pooling/config.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127933,
-        "nanos_since_epoch": 714219800
-      },
-      "size": 312,
-      "hash": null
-    },
-    "test_embedding_service.py": {
-      "path": "test_embedding_service.py",
-      "modified_time": {
-        "secs_since_epoch": 1757219227,
-        "nanos_since_epoch": 989674000
-      },
-      "size": 14094,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/special_tokens_map.json": {
-      "path": "models/embeddinggemma-300m/special_tokens_map.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127934,
-        "nanos_since_epoch": 99339500
-      },
-      "size": 662,
-      "hash": null
-    },
-    "tests/embedding_integration_test.rs": {
-      "path": "tests/embedding_integration_test.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757224531,
-        "nanos_since_epoch": 983514900
-      },
-      "size": 9947,
-      "hash": null
-    },
-    "src/simd_search.rs": {
-      "path": "src/simd_search.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757234582,
-        "nanos_since_epoch": 127332200
-      },
-      "size": 10026,
-      "hash": null
-    },
-    "src/embedding.rs": {
-      "path": "src/embedding.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757234513,
-        "nanos_since_epoch": 172104200
-      },
-      "size": 47521,
-      "hash": null
-    },
-    "Cargo.toml": {
-      "path": "Cargo.toml",
-      "modified_time": {
-        "secs_since_epoch": 1757250129,
-        "nanos_since_epoch": 902925400
-      },
-      "size": 2133,
-      "hash": "7ecea9e48f01ffa725277a76e0d73d6596448e3ab8f3a6d0bf775c8ff58a2fe2"
     },
     "benches/memory_benchmarks.rs": {
       "path": "benches/memory_benchmarks.rs",
       "modified_time": {
-        "secs_since_epoch": 1757164935,
-        "nanos_since_epoch": 729791100
+        "secs_since_epoch": 1757341318,
+        "nanos_since_epoch": 836399500
       },
-      "size": 14614,
-      "hash": null
-    },
-    "run_tests.bat": {
-      "path": "run_tests.bat",
-      "modified_time": {
-        "secs_since_epoch": 1757234279,
-        "nanos_since_epoch": 993467100
-      },
-      "size": 324,
-      "hash": null
-    },
-    "PROJECT_STATUS_FINAL.md": {
-      "path": "PROJECT_STATUS_FINAL.md",
-      "modified_time": {
-        "secs_since_epoch": 1757178314,
-        "nanos_since_epoch": 563568800
-      },
-      "size": 7478,
-      "hash": null
-    },
-    "download_onnxruntime.ps1": {
-      "path": "download_onnxruntime.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757177238,
-        "nanos_since_epoch": 768038800
-      },
-      "size": 1155,
-      "hash": null
-    },
-    "benches/simd_benchmark.rs": {
-      "path": "benches/simd_benchmark.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757242467,
-        "nanos_since_epoch": 993241800
-      },
-      "size": 391,
-      "hash": null
-    },
-    "src/brain.rs": {
-      "path": "src/brain.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757231597,
-        "nanos_since_epoch": 38191100
-      },
-      "size": 14766,
-      "hash": null
-    },
-    "check_ort_version.rs": {
-      "path": "check_ort_version.rs",
-      "modified_time": {
-        "secs_since_epoch": 1757177308,
-        "nanos_since_epoch": 632286000
-      },
-      "size": 951,
-      "hash": null
-    },
-    "install.ps1": {
-      "path": "install.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757239334,
-        "nanos_since_epoch": 577396100
-      },
-      "size": 16380,
+      "size": 14406,
       "hash": null
     },
     "src/cache.rs": {
@@ -1581,58 +1260,40 @@
       "size": 14369,
       "hash": null
     },
-    "models/embeddinggemma-300m/tokenizer.json": {
-      "path": "models/embeddinggemma-300m/tokenizer.json",
+    "README-Docker.md": {
+      "path": "README-Docker.md",
       "modified_time": {
-        "secs_since_epoch": 1757127939,
-        "nanos_since_epoch": 38311900
+        "secs_since_epoch": 1757240628,
+        "nanos_since_epoch": 227748300
       },
-      "size": 33385008,
+      "size": 5387,
       "hash": null
     },
-    "Dockerfile": {
-      "path": "Dockerfile",
+    "docker/README.md": {
+      "path": "docker/README.md",
       "modified_time": {
-        "secs_since_epoch": 1757254631,
-        "nanos_since_epoch": 27482000
+        "secs_since_epoch": 1757239220,
+        "nanos_since_epoch": 810819100
       },
-      "size": 9077,
+      "size": 7529,
       "hash": null
     },
-    "setup_neo4j_native.ps1": {
-      "path": "setup_neo4j_native.ps1",
+    "benches/simd_benchmark.rs": {
+      "path": "benches/simd_benchmark.rs",
       "modified_time": {
-        "secs_since_epoch": 1757238863,
-        "nanos_since_epoch": 460685400
+        "secs_since_epoch": 1757242467,
+        "nanos_since_epoch": 993241800
       },
-      "size": 9108,
+      "size": 391,
       "hash": null
     },
-    "tests/simple_integration_test.rs": {
-      "path": "tests/simple_integration_test.rs",
+    "hook-input-debug.json": {
+      "path": "hook-input-debug.json",
       "modified_time": {
-        "secs_since_epoch": 1757173337,
-        "nanos_since_epoch": 546312300
+        "secs_since_epoch": 1757343585,
+        "nanos_since_epoch": 415308400
       },
-      "size": 2191,
-      "hash": null
-    },
-    "models/embeddinggemma-300m/added_tokens.json": {
-      "path": "models/embeddinggemma-300m/added_tokens.json",
-      "modified_time": {
-        "secs_since_epoch": 1757127933,
-        "nanos_since_epoch": 705661700
-      },
-      "size": 35,
-      "hash": null
-    },
-    "MIGRATION_REPORT.md": {
-      "path": "MIGRATION_REPORT.md",
-      "modified_time": {
-        "secs_since_epoch": 1757220475,
-        "nanos_since_epoch": 923979500
-      },
-      "size": 6433,
+      "size": 8987,
       "hash": null
     },
     "src/storage/embedded_db.rs": {
@@ -1644,13 +1305,76 @@
       "size": 19088,
       "hash": null
     },
-    "config.toml": {
-      "path": "config.toml",
+    "clean_path_duplicates.ps1": {
+      "path": "clean_path_duplicates.ps1",
       "modified_time": {
-        "secs_since_epoch": 1757155099,
-        "nanos_since_epoch": 184793200
+        "secs_since_epoch": 1757234002,
+        "nanos_since_epoch": 376746500
       },
-      "size": 971,
+      "size": 3403,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/tokenizer_config.json": {
+      "path": "models/embeddinggemma-300m/tokenizer_config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127935,
+        "nanos_since_epoch": 886005000
+      },
+      "size": 1155346,
+      "hash": null
+    },
+    "test_parallel.py": {
+      "path": "test_parallel.py",
+      "modified_time": {
+        "secs_since_epoch": 1757322863,
+        "nanos_since_epoch": 103764100
+      },
+      "size": 15827,
+      "hash": null
+    },
+    "setup_neo4j_native.ps1": {
+      "path": "setup_neo4j_native.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757238863,
+        "nanos_since_epoch": 460685400
+      },
+      "size": 9108,
+      "hash": null
+    },
+    "src/brain.rs": {
+      "path": "src/brain.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757231597,
+        "nanos_since_epoch": 38191100
+      },
+      "size": 14766,
+      "hash": null
+    },
+    "FINAL_CODE_VERIFICATION_REPORT.md": {
+      "path": "FINAL_CODE_VERIFICATION_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757334585,
+        "nanos_since_epoch": 223953300
+      },
+      "size": 5190,
+      "hash": null
+    },
+    "scripts/setup-docker.sh": {
+      "path": "scripts/setup-docker.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757239735,
+        "nanos_since_epoch": 217452100
+      },
+      "size": 8666,
+      "hash": null
+    },
+    "src/monitoring.rs": {
+      "path": "src/monitoring.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757176490,
+        "nanos_since_epoch": 656132500
+      },
+      "size": 20076,
       "hash": null
     },
     "quick-start.ps1": {
@@ -1662,33 +1386,6 @@
       "size": 12863,
       "hash": null
     },
-    "config/embeddinggemma.toml": {
-      "path": "config/embeddinggemma.toml",
-      "modified_time": {
-        "secs_since_epoch": 1757215294,
-        "nanos_since_epoch": 82254300
-      },
-      "size": 2143,
-      "hash": null
-    },
-    "clean_path_duplicates.ps1": {
-      "path": "clean_path_duplicates.ps1",
-      "modified_time": {
-        "secs_since_epoch": 1757234002,
-        "nanos_since_epoch": 376746500
-      },
-      "size": 3403,
-      "hash": null
-    },
-    "reports/progress-report-session2.md": {
-      "path": "reports/progress-report-session2.md",
-      "modified_time": {
-        "secs_since_epoch": 1757146679,
-        "nanos_since_epoch": 445355000
-      },
-      "size": 7308,
-      "hash": null
-    },
     "reports/project-status-report.md": {
       "path": "reports/project-status-report.md",
       "modified_time": {
@@ -1698,103 +1395,157 @@
       "size": 7994,
       "hash": null
     },
-    "setup_python_dll.ps1": {
-      "path": "setup_python_dll.ps1",
+    "download_ort_nuget.ps1": {
+      "path": "download_ort_nuget.ps1",
       "modified_time": {
-        "secs_since_epoch": 1757236593,
-        "nanos_since_epoch": 110690600
+        "secs_since_epoch": 1757178164,
+        "nanos_since_epoch": 805661500
       },
-      "size": 10608,
+      "size": 1974,
       "hash": null
     },
-    "reports/implementation_summary.md": {
-      "path": "reports/implementation_summary.md",
+    "start.ps1": {
+      "path": "start.ps1",
       "modified_time": {
-        "secs_since_epoch": 1757143976,
-        "nanos_since_epoch": 588840100
+        "secs_since_epoch": 1757300583,
+        "nanos_since_epoch": 858433600
       },
-      "size": 2961,
+      "size": 9655,
       "hash": null
     },
-    "src/api.rs": {
-      "path": "src/api.rs",
+    "FINAL_STATUS_REPORT.md": {
+      "path": "FINAL_STATUS_REPORT.md",
       "modified_time": {
-        "secs_since_epoch": 1757231872,
-        "nanos_since_epoch": 833305300
+        "secs_since_epoch": 1757220535,
+        "nanos_since_epoch": 324342800
       },
-      "size": 5022,
+      "size": 7015,
       "hash": null
     },
-    "src/simd_utils.rs": {
-      "path": "src/simd_utils.rs",
+    "test_python_direct.py": {
+      "path": "test_python_direct.py",
       "modified_time": {
-        "secs_since_epoch": 1757172125,
-        "nanos_since_epoch": 48981400
+        "secs_since_epoch": 1757221362,
+        "nanos_since_epoch": 152158500
       },
-      "size": 5823,
+      "size": 2208,
       "hash": null
     },
-    "docs/efficient-memory-service-architecture.md": {
-      "path": "docs/efficient-memory-service-architecture.md",
+    "tests/simple_integration_test.rs": {
+      "path": "tests/simple_integration_test.rs",
       "modified_time": {
-        "secs_since_epoch": 1757136876,
-        "nanos_since_epoch": 220501700
+        "secs_since_epoch": 1757173337,
+        "nanos_since_epoch": 546312300
       },
-      "size": 42086,
+      "size": 2191,
       "hash": null
     },
-    "models/embeddinggemma-300m/config.json": {
-      "path": "models/embeddinggemma-300m/config.json",
+    "reports/FINAL_IMPLEMENTATION_STATUS.md": {
+      "path": "reports/FINAL_IMPLEMENTATION_STATUS.md",
       "modified_time": {
-        "secs_since_epoch": 1757127933,
-        "nanos_since_epoch": 711826900
+        "secs_since_epoch": 1757216968,
+        "nanos_since_epoch": 154428200
       },
-      "size": 1488,
+      "size": 7571,
       "hash": null
     },
-    "models/embeddinggemma-300m/modules.json": {
-      "path": "models/embeddinggemma-300m/modules.json",
+    "LEGACY_CLEANUP_REPORT.md": {
+      "path": "LEGACY_CLEANUP_REPORT.md",
       "modified_time": {
-        "secs_since_epoch": 1757127934,
-        "nanos_since_epoch": 88327400
+        "secs_since_epoch": 1757233441,
+        "nanos_since_epoch": 353234800
       },
-      "size": 573,
+      "size": 4526,
       "hash": null
     },
-    "ONNX_RUNTIME_SETUP.md": {
-      "path": "ONNX_RUNTIME_SETUP.md",
+    "check_path.ps1": {
+      "path": "check_path.ps1",
       "modified_time": {
-        "secs_since_epoch": 1757176876,
-        "nanos_since_epoch": 733826500
+        "secs_since_epoch": 1757233836,
+        "nanos_since_epoch": 231954800
       },
-      "size": 1334,
+      "size": 914,
       "hash": null
     },
-    "run_simple_test.bat": {
-      "path": "run_simple_test.bat",
+    "DEPLOYMENT.md": {
+      "path": "DEPLOYMENT.md",
       "modified_time": {
-        "secs_since_epoch": 1757235434,
-        "nanos_since_epoch": 862535900
+        "secs_since_epoch": 1757239838,
+        "nanos_since_epoch": 68652900
       },
-      "size": 61,
+      "size": 10197,
       "hash": null
     },
-    "docker-compose.yml": {
-      "path": "docker-compose.yml",
+    "src/storage.rs": {
+      "path": "src/storage.rs",
       "modified_time": {
-        "secs_since_epoch": 1757246831,
-        "nanos_since_epoch": 948878200
+        "secs_since_epoch": 1757327267,
+        "nanos_since_epoch": 833224900
       },
-      "size": 10977,
+      "size": 50592,
       "hash": null
     },
-    "download_onnxruntime_v122.ps1": {
-      "path": "download_onnxruntime_v122.ps1",
+    "install.ps1": {
+      "path": "install.ps1",
       "modified_time": {
-        "secs_since_epoch": 1757177892,
-        "nanos_since_epoch": 869229200
+        "secs_since_epoch": 1757239334,
+        "nanos_since_epoch": 577396100
       },
-      "size": 6037,
+      "size": 16380,
+      "hash": null
+    },
+    "scripts/quick-start.sh": {
+      "path": "scripts/quick-start.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757309917,
+        "nanos_since_epoch": 753284100
+      },
+      "size": 10503,
+      "hash": null
+    },
+    "src/embedding.rs": {
+      "path": "src/embedding.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757339130,
+        "nanos_since_epoch": 847883700
+      },
+      "size": 18236,
+      "hash": null
+    },
+    "src/shutdown.rs": {
+      "path": "src/shutdown.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757171068,
+        "nanos_since_epoch": 903997900
+      },
+      "size": 16137,
+      "hash": null
+    },
+    "src/types.rs": {
+      "path": "src/types.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757316098,
+        "nanos_since_epoch": 502879400
+      },
+      "size": 35053,
+      "hash": null
+    },
+    "start.sh": {
+      "path": "start.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757300492,
+        "nanos_since_epoch": 652805300
+      },
+      "size": 6681,
+      "hash": null
+    },
+    "SYSTEM_RECONSTRUCTION_REPORT.md": {
+      "path": "SYSTEM_RECONSTRUCTION_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757339338,
+        "nanos_since_epoch": 181634500
+      },
+      "size": 10013,
       "hash": null
     },
     "src/metrics.rs": {
@@ -1806,6 +1557,429 @@
       "size": 4602,
       "hash": null
     },
+    "Cargo.toml": {
+      "path": "Cargo.toml",
+      "modified_time": {
+        "secs_since_epoch": 1757320706,
+        "nanos_since_epoch": 806507500
+      },
+      "size": 2026,
+      "hash": "18ac99262359aa4460ad37f579417195d5fd60783051a54d40db3a45fde2a0fe"
+    },
+    "src/security.rs": {
+      "path": "src/security.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757143805,
+        "nanos_since_epoch": 183641400
+      },
+      "size": 7519,
+      "hash": null
+    },
+    "comprehensive_system_audit.py": {
+      "path": "comprehensive_system_audit.py",
+      "modified_time": {
+        "secs_since_epoch": 1757337671,
+        "nanos_since_epoch": 666199200
+      },
+      "size": 28998,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/README.md": {
+      "path": "models/embeddinggemma-300m/README.md",
+      "modified_time": {
+        "secs_since_epoch": 1757127666,
+        "nanos_since_epoch": 720775200
+      },
+      "size": 16656,
+      "hash": null
+    },
+    "src/lib.rs": {
+      "path": "src/lib.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757321206,
+        "nanos_since_epoch": 415086000
+      },
+      "size": 669,
+      "hash": "aef9e5929acd63d81ea06437be95ef7b2c1b13ce3bea4dd93178244c6a39e688"
+    },
+    "test_embedding_service.py": {
+      "path": "test_embedding_service.py",
+      "modified_time": {
+        "secs_since_epoch": 1757219227,
+        "nanos_since_epoch": 989674000
+      },
+      "size": 14094,
+      "hash": null
+    },
+    "run.bat": {
+      "path": "run.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757158251,
+        "nanos_since_epoch": 283951000
+      },
+      "size": 294,
+      "hash": null
+    },
+    "src/config.rs": {
+      "path": "src/config.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757304143,
+        "nanos_since_epoch": 503560500
+      },
+      "size": 9752,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/2_Dense/config.json": {
+      "path": "models/embeddinggemma-300m/2_Dense/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 716220300
+      },
+      "size": 134,
+      "hash": null
+    },
+    "docs/efficient-memory-service-architecture.md": {
+      "path": "docs/efficient-memory-service-architecture.md",
+      "modified_time": {
+        "secs_since_epoch": 1757136876,
+        "nanos_since_epoch": 220501700
+      },
+      "size": 42086,
+      "hash": null
+    },
+    "FINAL_STATUS_REPORT_UPDATED.md": {
+      "path": "FINAL_STATUS_REPORT_UPDATED.md",
+      "modified_time": {
+        "secs_since_epoch": 1757224716,
+        "nanos_since_epoch": 163852800
+      },
+      "size": 7673,
+      "hash": null
+    },
+    "reports/progress-report-session2.md": {
+      "path": "reports/progress-report-session2.md",
+      "modified_time": {
+        "secs_since_epoch": 1757146679,
+        "nanos_since_epoch": 445355000
+      },
+      "size": 7308,
+      "hash": null
+    },
+    "scripts/download_models.sh": {
+      "path": "scripts/download_models.sh",
+      "modified_time": {
+        "secs_since_epoch": 1757152577,
+        "nanos_since_epoch": 617417400
+      },
+      "size": 7874,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/added_tokens.json": {
+      "path": "models/embeddinggemma-300m/added_tokens.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 705661700
+      },
+      "size": 35,
+      "hash": null
+    },
+    "tests/integration_test.rs": {
+      "path": "tests/integration_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757340653,
+        "nanos_since_epoch": 832491400
+      },
+      "size": 13553,
+      "hash": null
+    },
+    "REAL_MEMORY_ACCURACY_ASSESSMENT.md": {
+      "path": "REAL_MEMORY_ACCURACY_ASSESSMENT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757342170,
+        "nanos_since_epoch": 280602200
+      },
+      "size": 8071,
+      "hash": null
+    },
+    "src/memory.rs": {
+      "path": "src/memory.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757316042,
+        "nanos_since_epoch": 588544100
+      },
+      "size": 21756,
+      "hash": null
+    },
+    "docker-compose.yml": {
+      "path": "docker-compose.yml",
+      "modified_time": {
+        "secs_since_epoch": 1757317358,
+        "nanos_since_epoch": 827375200
+      },
+      "size": 10831,
+      "hash": null
+    },
+    "src/embedding/tests.rs": {
+      "path": "src/embedding/tests.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757311485,
+        "nanos_since_epoch": 810449800
+      },
+      "size": 25445,
+      "hash": null
+    },
+    "QUALITY_PROGRESS_REPORT.md": {
+      "path": "QUALITY_PROGRESS_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757230686,
+        "nanos_since_epoch": 534893700
+      },
+      "size": 7241,
+      "hash": null
+    },
+    "config/embeddinggemma.toml": {
+      "path": "config/embeddinggemma.toml",
+      "modified_time": {
+        "secs_since_epoch": 1757304933,
+        "nanos_since_epoch": 589293200
+      },
+      "size": 2197,
+      "hash": null
+    },
+    "embedding_fixed_quality_test.py": {
+      "path": "embedding_fixed_quality_test.py",
+      "modified_time": {
+        "secs_since_epoch": 1757336496,
+        "nanos_since_epoch": 198284500
+      },
+      "size": 16906,
+      "hash": null
+    },
+    "reports/REAL_STATUS_HONEST_REPORT.md": {
+      "path": "reports/REAL_STATUS_HONEST_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757217732,
+        "nanos_since_epoch": 671422500
+      },
+      "size": 7182,
+      "hash": null
+    },
+    "reports/implementation_summary.md": {
+      "path": "reports/implementation_summary.md",
+      "modified_time": {
+        "secs_since_epoch": 1757143976,
+        "nanos_since_epoch": 588840100
+      },
+      "size": 2961,
+      "hash": null
+    },
+    "src/mcp_server.rs": {
+      "path": "src/mcp_server.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757297330,
+        "nanos_since_epoch": 146658300
+      },
+      "size": 40630,
+      "hash": null
+    },
+    "tests/embedding_integration_test.rs": {
+      "path": "tests/embedding_integration_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757340858,
+        "nanos_since_epoch": 221282400
+      },
+      "size": 10144,
+      "hash": null
+    },
+    "src/api.rs": {
+      "path": "src/api.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757342897,
+        "nanos_since_epoch": 424194900
+      },
+      "size": 32820,
+      "hash": null
+    },
+    "requirements.txt": {
+      "path": "requirements.txt",
+      "modified_time": {
+        "secs_since_epoch": 1757190530,
+        "nanos_since_epoch": 833372300
+      },
+      "size": 734,
+      "hash": null
+    },
+    "reports/IMPLEMENTATION_REPORT.md": {
+      "path": "reports/IMPLEMENTATION_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757192665,
+        "nanos_since_epoch": 21658300
+      },
+      "size": 8384,
+      "hash": null
+    },
+    "scripts/run_tests.ps1": {
+      "path": "scripts/run_tests.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757159375,
+        "nanos_since_epoch": 248349700
+      },
+      "size": 8622,
+      "hash": null
+    },
+    "embedding_server.py": {
+      "path": "embedding_server.py",
+      "modified_time": {
+        "secs_since_epoch": 1757338778,
+        "nanos_since_epoch": 782004100
+      },
+      "size": 60908,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/1_Pooling/config.json": {
+      "path": "models/embeddinggemma-300m/1_Pooling/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 714219800
+      },
+      "size": 312,
+      "hash": null
+    },
+    "tests/test_config.rs": {
+      "path": "tests/test_config.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757340332,
+        "nanos_since_epoch": 438520200
+      },
+      "size": 8572,
+      "hash": null
+    },
+    "README.md": {
+      "path": "README.md",
+      "modified_time": {
+        "secs_since_epoch": 1757299803,
+        "nanos_since_epoch": 265060700
+      },
+      "size": 8786,
+      "hash": null
+    },
+    "SECURITY_FIXES_REPORT.md": {
+      "path": "SECURITY_FIXES_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757334177,
+        "nanos_since_epoch": 321465200
+      },
+      "size": 3285,
+      "hash": null
+    },
+    "download_onnxruntime_v122.ps1": {
+      "path": "download_onnxruntime_v122.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757177892,
+        "nanos_since_epoch": 869229200
+      },
+      "size": 6037,
+      "hash": null
+    },
+    "PROJECT_STATUS_FINAL.md": {
+      "path": "PROJECT_STATUS_FINAL.md",
+      "modified_time": {
+        "secs_since_epoch": 1757178314,
+        "nanos_since_epoch": 563568800
+      },
+      "size": 7478,
+      "hash": null
+    },
+    "scripts/download_onnx_runtime.ps1": {
+      "path": "scripts/download_onnx_runtime.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757158101,
+        "nanos_since_epoch": 34933600
+      },
+      "size": 1849,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/modules.json": {
+      "path": "models/embeddinggemma-300m/modules.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 88327400
+      },
+      "size": 573,
+      "hash": null
+    },
+    "src/simd_search.rs": {
+      "path": "src/simd_search.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757234582,
+        "nanos_since_epoch": 127332200
+      },
+      "size": 10026,
+      "hash": null
+    },
+    "tests/embedding_unit_test.rs": {
+      "path": "tests/embedding_unit_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757177413,
+        "nanos_since_epoch": 599311600
+      },
+      "size": 8055,
+      "hash": null
+    },
+    "ONNX_RUNTIME_SETUP.md": {
+      "path": "ONNX_RUNTIME_SETUP.md",
+      "modified_time": {
+        "secs_since_epoch": 1757176876,
+        "nanos_since_epoch": 733826500
+      },
+      "size": 1334,
+      "hash": null
+    },
+    "real_memory_accuracy_test.py": {
+      "path": "real_memory_accuracy_test.py",
+      "modified_time": {
+        "secs_since_epoch": 1757341855,
+        "nanos_since_epoch": 898755700
+      },
+      "size": 19761,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/config_sentence_transformers.json": {
+      "path": "models/embeddinggemma-300m/config_sentence_transformers.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 103339300
+      },
+      "size": 997,
+      "hash": null
+    },
+    "docker-compose.override.yml": {
+      "path": "docker-compose.override.yml",
+      "modified_time": {
+        "secs_since_epoch": 1757310522,
+        "nanos_since_epoch": 182002200
+      },
+      "size": 2000,
+      "hash": null
+    },
+    "run_tests.bat": {
+      "path": "run_tests.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757234279,
+        "nanos_since_epoch": 993467100
+      },
+      "size": 324,
+      "hash": null
+    },
+    "COMPREHENSIVE_TEST_REPORT.md": {
+      "path": "COMPREHENSIVE_TEST_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757341678,
+        "nanos_since_epoch": 554783900
+      },
+      "size": 6913,
+      "hash": null
+    },
     "reports/embedding_service_implementation_report.md": {
       "path": "reports/embedding_service_implementation_report.md",
       "modified_time": {
@@ -1815,19 +1989,253 @@
       "size": 5566,
       "hash": null
     },
+    "models/embeddinggemma-300m/tokenizer.json": {
+      "path": "models/embeddinggemma-300m/tokenizer.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127939,
+        "nanos_since_epoch": 38311900
+      },
+      "size": 33385008,
+      "hash": null
+    },
+    "src/orchestrator.rs": {
+      "path": "src/orchestrator.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757297733,
+        "nanos_since_epoch": 527821100
+      },
+      "size": 44504,
+      "hash": null
+    },
+    "test_embeddings.py": {
+      "path": "test_embeddings.py",
+      "modified_time": {
+        "secs_since_epoch": 1757255927,
+        "nanos_since_epoch": 577428600
+      },
+      "size": 9408,
+      "hash": null
+    },
+    "definitive_stress_test.py": {
+      "path": "definitive_stress_test.py",
+      "modified_time": {
+        "secs_since_epoch": 1757335316,
+        "nanos_since_epoch": 741566500
+      },
+      "size": 23360,
+      "hash": null
+    },
+    "download_onnxruntime.ps1": {
+      "path": "download_onnxruntime.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757177238,
+        "nanos_since_epoch": 768038800
+      },
+      "size": 1155,
+      "hash": null
+    },
+    "MIGRATION_REPORT.md": {
+      "path": "MIGRATION_REPORT.md",
+      "modified_time": {
+        "secs_since_epoch": 1757220475,
+        "nanos_since_epoch": 923979500
+      },
+      "size": 6433,
+      "hash": null
+    },
+    "config.toml": {
+      "path": "config.toml",
+      "modified_time": {
+        "secs_since_epoch": 1757305312,
+        "nanos_since_epoch": 457965600
+      },
+      "size": 1465,
+      "hash": null
+    },
+    "src/memory_optimizer.rs": {
+      "path": "src/memory_optimizer.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757176549,
+        "nanos_since_epoch": 809472500
+      },
+      "size": 21005,
+      "hash": null
+    },
+    "test_embedding_server.py": {
+      "path": "test_embedding_server.py",
+      "modified_time": {
+        "secs_since_epoch": 1757329803,
+        "nanos_since_epoch": 467724100
+      },
+      "size": 8915,
+      "hash": null
+    },
+    "src/simd_utils.rs": {
+      "path": "src/simd_utils.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757172125,
+        "nanos_since_epoch": 48981400
+      },
+      "size": 5823,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/3_Dense/config.json": {
+      "path": "models/embeddinggemma-300m/3_Dense/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 704669800
+      },
+      "size": 134,
+      "hash": null
+    },
+    "tests/simple_unit_test.rs": {
+      "path": "tests/simple_unit_test.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757232433,
+        "nanos_since_epoch": 987561200
+      },
+      "size": 580,
+      "hash": null
+    },
+    "Dockerfile": {
+      "path": "Dockerfile",
+      "modified_time": {
+        "secs_since_epoch": 1757312266,
+        "nanos_since_epoch": 885377900
+      },
+      "size": 8201,
+      "hash": null
+    },
     "tests/api_integration_test.rs": {
       "path": "tests/api_integration_test.rs",
       "modified_time": {
-        "secs_since_epoch": 1757229357,
-        "nanos_since_epoch": 804798200
+        "secs_since_epoch": 1757340701,
+        "nanos_since_epoch": 793567800
       },
-      "size": 6278,
+      "size": 6646,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/config.json": {
+      "path": "models/embeddinggemma-300m/config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127933,
+        "nanos_since_epoch": 711826900
+      },
+      "size": 1488,
+      "hash": null
+    },
+    "embedding_quality_test.py": {
+      "path": "embedding_quality_test.py",
+      "modified_time": {
+        "secs_since_epoch": 1757335918,
+        "nanos_since_epoch": 271877500
+      },
+      "size": 25877,
+      "hash": null
+    },
+    "validate_packages.py": {
+      "path": "validate_packages.py",
+      "modified_time": {
+        "secs_since_epoch": 1757242161,
+        "nanos_since_epoch": 338482000
+      },
+      "size": 2562,
+      "hash": null
+    },
+    "test_improved_server.py": {
+      "path": "test_improved_server.py",
+      "modified_time": {
+        "secs_since_epoch": 1757332044,
+        "nanos_since_epoch": 110446900
+      },
+      "size": 8718,
+      "hash": null
+    },
+    "check_ort_version.rs": {
+      "path": "check_ort_version.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757177308,
+        "nanos_since_epoch": 632286000
+      },
+      "size": 951,
+      "hash": null
+    },
+    "scripts/download_models.ps1": {
+      "path": "scripts/download_models.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757154201,
+        "nanos_since_epoch": 34288500
+      },
+      "size": 5327,
+      "hash": null
+    },
+    "src/embedding_config.rs": {
+      "path": "src/embedding_config.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757215524,
+        "nanos_since_epoch": 129244600
+      },
+      "size": 18135,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/sentence_bert_config.json": {
+      "path": "models/embeddinggemma-300m/sentence_bert_config.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 83327500
+      },
+      "size": 58,
+      "hash": null
+    },
+    "benches/dummy.rs": {
+      "path": "benches/dummy.rs",
+      "modified_time": {
+        "secs_since_epoch": 1757241503,
+        "nanos_since_epoch": 446264100
+      },
+      "size": 32,
+      "hash": null
+    },
+    "run_simple_test.bat": {
+      "path": "run_simple_test.bat",
+      "modified_time": {
+        "secs_since_epoch": 1757235434,
+        "nanos_since_epoch": 862535900
+      },
+      "size": 61,
+      "hash": null
+    },
+    "setup_python_dll.ps1": {
+      "path": "setup_python_dll.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757236593,
+        "nanos_since_epoch": 110690600
+      },
+      "size": 10608,
+      "hash": null
+    },
+    "models/embeddinggemma-300m/special_tokens_map.json": {
+      "path": "models/embeddinggemma-300m/special_tokens_map.json",
+      "modified_time": {
+        "secs_since_epoch": 1757127934,
+        "nanos_since_epoch": 99339500
+      },
+      "size": 662,
+      "hash": null
+    },
+    "test_parallel.ps1": {
+      "path": "test_parallel.ps1",
+      "modified_time": {
+        "secs_since_epoch": 1757313330,
+        "nanos_since_epoch": 790879100
+      },
+      "size": 8713,
       "hash": null
     }
   },
-  "cache_timestamp": 1757256818,
+  "cache_timestamp": 1757343585,
   "last_modified": {
-    "secs_since_epoch": 1757256818,
-    "nanos_since_epoch": 903138400
+    "secs_since_epoch": 1757343585,
+    "nanos_since_epoch": 485528500
   }
 }

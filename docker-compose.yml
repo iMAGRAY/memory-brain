@@ -1,417 +1,365 @@
-# AI Memory Service - Self-Contained Docker Compose
-# Everything included: Rust service, Python embeddings, Neo4j, models
-# Users need only Docker - no external installations required
-
-version: '3.8'
+# AI Memory Service with HTTP-based Embedding Architecture
+# Production-ready secure configuration with environment-driven secrets
 
 services:
-  # ==============================================
-  # Neo4j Graph Database
-  # ==============================================
+  # Neo4j Graph Database for memory relationships  
   neo4j:
-    image: neo4j:5.15-community
+    image: neo4j:5.19-community
     container_name: ai-memory-neo4j
-    hostname: neo4j
     restart: unless-stopped
-    
-    environment:
-      # Authentication from environment variables (REQUIRED)
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD?NEO4J_PASSWORD must be set in .env file}
-      
-      # Memory optimization
-      - NEO4J_server_memory_heap_initial__size=${NEO4J_HEAP:-1G}
-      - NEO4J_server_memory_heap_max__size=${NEO4J_HEAP:-2G}
-      - NEO4J_server_memory_pagecache_size=${NEO4J_PAGECACHE:-2G}
-      
-      # Performance tuning
-      - NEO4J_server_bolt_thread__pool__max__size=400
-      - NEO4J_server_bolt_thread__pool__min__size=5
-      - NEO4J_server_http_max__request__header__size=8192
-      
-      # Security hardening
-      - NEO4J_server_bolt_tls__level=DISABLED
-      - NEO4J_server_http_enabled=true
-      - NEO4J_server_https_enabled=false
-    
     ports:
-      - "${NEO4J_HTTP_PORT:-7474}:7474"  # HTTP browser interface
-      - "${NEO4J_BOLT_PORT:-7687}:7687"  # Bolt protocol
-    
+      # Only expose ports in development profile
+      - target: 7474
+        published: 7474
+        mode: host
+        protocol: tcp
+      - target: 7687
+        published: 7687
+        mode: host
+        protocol: tcp
+    environment:
+      # SECURITY: Strong password required via environment variable
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:?Error - NEO4J_PASSWORD environment variable is required}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_memory_pagecache_size=1G
+      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_dbms_memory_heap_initial__size=512M
+      
+      # SECURITY: Limited APOC procedures only for memory operations
+      - NEO4J_dbms_security_procedures_allowlist=apoc.create.*,apoc.load.*,apoc.meta.*,apoc.cypher.*
+      - NEO4J_dbms_security_procedures_unrestricted=
+      
+      # SECURITY: Network and transaction limits
+      - NEO4J_dbms_connector_bolt_listen__address=0.0.0.0:7687
+      - NEO4J_dbms_connector_http_listen__address=0.0.0.0:7474
+      - NEO4J_dbms_tx_timeout=60s
+      - NEO4J_dbms_max_query_execution_time=120s
+      
+      # SECURITY: Enable security logging
+      - NEO4J_dbms_logs_security_level=INFO
+      - NEO4J_dbms_security_auth_enabled=true
+      
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
-    
+      - neo4j_plugins:/plugins
     networks:
-      ai-memory-network:
-        ipv4_address: 172.28.0.10
-    
+      - ai-memory-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD}", "RETURN 1 AS health"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-    
     deploy:
       resources:
         limits:
-          memory: 4G
-          cpus: '2.0'
-        reservations:
           memory: 2G
           cpus: '1.0'
-
-  # ==============================================
-  # Python Embedding Service (Self-Contained)
-  # ==============================================
-  python-embeddings:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: python-service
-    
-    container_name: ai-memory-embeddings
-    hostname: python-embeddings
-    restart: unless-stopped
-    
-    environment:
-      - PORT=8001
-      - WORKERS=${PYTHON_THREADS:-4}
-      - RUST_LOG=info
-      - MODEL_CACHE_DIR=/app/models
-      - SENTENCE_TRANSFORMERS_HOME=/app/models/cache
-      - EMBEDDING_MODEL=/app/models/embeddinggemma-300m
-      - TRUST_REMOTE_CODE=false
-    
-    volumes:
-      - model_cache:/app/models
-      - ./models/embeddinggemma-300m:/app/models/embeddinggemma-300m:ro
-    
-    ports:
-      - "8001:8001"
-    
-    networks:
-      ai-memory-network:
-        ipv4_address: 172.28.0.20
-    
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s  # Models need time to load
-    
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '2.0'
         reservations:
           memory: 1G
           cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Neo4j needs write access to /data
+    tmpfs:
+      - /tmp
+      - /var/tmp
 
-  # ==============================================
-  # AI Memory Service (Main Rust Service)
-  # ==============================================
-  ai-memory-service:
+  # Python Embedding Server (Handles ML processing)
+  embedding-server:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: final
-    
-    container_name: ai-memory-service
-    hostname: ai-memory-service
+      dockerfile: Dockerfile.embedding
+    container_name: ai-memory-embedding
     restart: unless-stopped
-    
+    expose:
+      - "8090"  # Internal network only - no host exposure
     environment:
-      # Database configuration
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=${NEO4J_USER:-neo4j}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-      - DATABASE_FALLBACK_TO_SQLITE=true
-      - SQLITE_PATH=/app/data/memory.db
+      # Model Configuration - REQUIRED
+      - MODEL_PATH=${MODEL_PATH:?Error - MODEL_PATH environment variable is required}
+      - EMBEDDING_SERVER_HOST=0.0.0.0
+      - EMBEDDING_SERVER_PORT=8090
+      - MAX_WORKERS=${EMBEDDING_MAX_WORKERS:-4}
       
-      # Embedding service configuration
-      - EMBEDDING_SERVICE_URL=http://python-embeddings:8001
-      - EMBEDDING_TIMEOUT_SECONDS=30
-      - EMBEDDING_BATCH_SIZE=${BATCH_SIZE:-32}
+      # Performance Settings
+      - BATCH_SIZE=${EMBEDDING_BATCH_SIZE:-8}
+      - MAX_SEQUENCE_LENGTH=${MAX_SEQUENCE_LENGTH:-2048}
+      - EMBEDDING_TIMEOUT=${EMBEDDING_TIMEOUT:-30}
       
-      # Performance settings
-      - MEMORY_CACHE_MB=${MEMORY_CACHE_MB:-512}
-      - MEMORY_MAX_CONNECTIONS=${MEMORY_MAX_CONNECTIONS:-100}
-      - TOKIO_THREADS=${TOKIO_THREADS:-4}
-      - RAYON_THREADS=${RAYON_THREADS:-4}
+      # SECURITY: Logging configuration
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${EMBEDDING_LOG_LEVEL:-INFO}
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONHASHSEED=random
       
-      # Security settings
-      - API_KEY_REQUIRED=${API_KEY_REQUIRED:-true}
-      - ADMIN_API_KEY=${ADMIN_API_KEY?ADMIN_API_KEY must be set in .env file}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
-      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE:-100}
+      # SECURITY: Python security settings
+      - PYTHONFAULTHANDLER=1
+      - PYTHONMALLOC=malloc
       
-      # Logging
+    volumes:
+      # SECURITY: Read-only model access
+      - ${MODELS_PATH:?Error - MODELS_PATH environment variable is required}:/app/models:ro
+      - embedding_cache:/app/cache
+      - embedding_logs:/app/logs
+    networks:
+      - ai-memory-network
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:8090/health', timeout=10).raise_for_status()"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 180s  # Allow time for model loading
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+          cpus: '2.0'
+        reservations:
+          memory: 3G
+          cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /app/cache
+
+  # Rust Memory Service (HTTP client to embedding server)
+  memory-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.memory
+    container_name: ai-memory-service
+    restart: unless-stopped
+    ports:
+      - target: 8080
+        published: 8080
+        mode: host
+        protocol: tcp
+    environment:
+      # SECURITY: Required credentials
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:?Error - NEO4J_PASSWORD environment variable is required}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?Error - OPENAI_API_KEY environment variable is required}
+      
+      # Service Configuration
       - RUST_LOG=${RUST_LOG:-info,ai_memory_service=debug}
       - RUST_BACKTRACE=${RUST_BACKTRACE:-1}
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_PORT=8080
+      - WORKERS=${WORKERS:-4}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
       
-      # Paths
-      - DATA_DIR=/app/data
-      - LOG_DIR=/app/logs
-      - CONFIG_DIR=/app/config
-      # Pure transformers approach - models loaded at runtime
-    
-    ports:
-      - "${API_PORT:-8080}:8080"      # Main API
-      - "${ADMIN_PORT:-8081}:8081"    # Admin interface
-      - "${WEBSOCKET_PORT:-8082}:8082" # WebSocket
-    
+      # SECURITY: Specific CORS origins (no wildcards)
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080,https://yourdomain.com}
+      
+      # Neo4j Configuration
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_POOL_SIZE=${NEO4J_POOL_SIZE:-10}
+      
+      # Embedding HTTP Configuration - Internal network only
+      - EMBEDDING_SERVER_URL=http://embedding-server:8090
+      - EMBEDDING_TIMEOUT=${EMBEDDING_TIMEOUT:-30}
+      - EMBEDDING_MAX_CONCURRENT=${EMBEDDING_MAX_CONCURRENT:-4}
+      
+      # Cache Configuration
+      - L1_CACHE_SIZE=${L1_CACHE_SIZE:-1000}
+      - L2_CACHE_SIZE=${L2_CACHE_SIZE:-10000}
+      - CACHE_TTL=${CACHE_TTL:-3600}
+      - CACHE_COMPRESSION=${CACHE_COMPRESSION:-true}
+      
+      # AI Brain Configuration
+      - MAX_MEMORIES=${MAX_MEMORIES:-100000}
+      - IMPORTANCE_THRESHOLD=${IMPORTANCE_THRESHOLD:-0.3}
+      - CONSOLIDATION_INTERVAL=${CONSOLIDATION_INTERVAL:-300}
+      - MEMORY_DECAY_RATE=${MEMORY_DECAY_RATE:-0.01}
+      
+      # GPT Orchestrator Configuration  
+      - ORCHESTRATOR_MODEL=${ORCHESTRATOR_MODEL:-gpt-5-nano}
+      - MAX_INPUT_TOKENS=${MAX_INPUT_TOKENS:-400000}
+      - MAX_OUTPUT_TOKENS=${MAX_OUTPUT_TOKENS:-12000}
+      - ORCHESTRATOR_TEMPERATURE=${ORCHESTRATOR_TEMPERATURE:-1.0}
+      - ORCHESTRATOR_TIMEOUT=${ORCHESTRATOR_TIMEOUT:-120}
+
     volumes:
+      # Configuration and data persistence
       - memory_data:/app/data
       - memory_logs:/app/logs
-      - model_cache:/app/models:ro
-    
+      - memory_cache:/app/cache
+      - ./config:/app/config:ro
     networks:
-      ai-memory-network:
-        ipv4_address: 172.28.0.30
-    
+      - ai-memory-network
     depends_on:
       neo4j:
         condition: service_healthy
-      python-embeddings:
+      embedding-server:
         condition: service_healthy
-    
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD", "curl", "-f", "-s", "--max-time", "10", "http://localhost:8080/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
       start_period: 90s
-    
     deploy:
       resources:
         limits:
           memory: 4G
-          cpus: '4.0'
+          cpus: '1.5'
         reservations:
           memory: 2G
-          cpus: '1.0'
-    
-    user: "1000:1000"
+          cpus: '0.8'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+      - /app/cache
 
-
-
-  # ==============================================
-  # Redis Cache (Optional)
-  # ==============================================
+  # Optional: Redis for additional caching (disabled by default)
   redis:
     image: redis:7-alpine
     container_name: ai-memory-redis
-    hostname: redis
     restart: unless-stopped
-    
-    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-    
+    expose:
+      - "6379"  # Internal network only
+    environment:
+      # SECURITY: Redis authentication required in production
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
-    
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    
     networks:
-      ai-memory-network:
-        ipv4_address: 172.28.0.40
-    
-    profiles:
-      - redis
-      - monitoring
-    
+      - ai-memory-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 3s
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 3
-    
+    profiles:
+      - caching
     deploy:
       resources:
         limits:
           memory: 1G
-          cpus: '1.0'
-        reservations:
-          memory: 256M
-          cpus: '0.1'
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
 
-  # ==============================================
-  # Monitoring Services (Optional)
-  # ==============================================
+  # Optional: Monitoring with Prometheus
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:latest
     container_name: ai-memory-prometheus
-    hostname: prometheus
     restart: unless-stopped
-    
+    expose:
+      - "9090"  # Internal network only
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ai-memory-network
+    profiles:
+      - monitoring
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--web.enable-admin-api'
-    
-    ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
-    
-    volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    
-    networks:
-      ai-memory-network:
-        ipv4_address: 172.28.0.50
-    
-    profiles:
-      - monitoring
-    
-    depends_on:
-      - ai-memory-service
-    
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 512M
-          cpus: '0.2'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      # SECURITY: Disable admin API
+      - '--web.enable-admin-api=false'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
 
+  # Optional: Grafana for visualization
   grafana:
-    image: grafana/grafana:10.2.2
+    image: grafana/grafana:latest
     container_name: ai-memory-grafana
-    hostname: grafana
     restart: unless-stopped
-    
+    expose:
+      - "3000"  # Internal network only
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      # SECURITY: Strong admin password required
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?Error - GRAFANA_PASSWORD required for monitoring profile}
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=redis-datasource
+      - GF_SECURITY_ALLOW_EMBEDDING=false  # Security: Disable embedding
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:${GRAFANA_PORT:-3000}
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
-    
-    ports:
-      - "${GRAFANA_PORT:-3000}:3000"
-    
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     networks:
-      ai-memory-network:
-        ipv4_address: 172.28.0.60
-    
-    profiles:
-      - monitoring
-    
+      - ai-memory-network
     depends_on:
       - prometheus
-    
+    profiles:
+      - monitoring
     deploy:
       resources:
         limits:
           memory: 1G
-          cpus: '1.0'
-        reservations:
-          memory: 256M
-          cpus: '0.1'
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
 
-  # ==============================================
-  # Health Monitoring Service (Optional)
-  # ==============================================
-  healthcheck:
-    image: curlimages/curl:8.5.0
-    container_name: ai-memory-healthcheck
-    restart: unless-stopped
-    
-    command: |
-      sh -c '
-        echo "🏥 Starting health monitoring..."
-        while true; do
-          echo "=== Health Check Report $(date) ==="
-          
-          # Check Neo4j
-          if curl -s http://neo4j:7474/browser/ >/dev/null; then
-            echo "✅ Neo4j: Healthy"
-          else
-            echo "❌ Neo4j: Unhealthy"
-          fi
-          
-          # Check Python Embeddings
-          if curl -s http://python-embeddings:8001/health >/dev/null; then
-            echo "✅ Python Embeddings: Healthy"
-          else
-            echo "❌ Python Embeddings: Unhealthy"
-          fi
-          
-          # Check AI Memory Service
-          if curl -s http://ai-memory-service:8080/health >/dev/null; then
-            echo "✅ AI Memory Service: Healthy"
-          else
-            echo "❌ AI Memory Service: Unhealthy"
-          fi
-          
-          echo "================================="
-          sleep 300  # Check every 5 minutes
-        done
-      '
-    
-    networks:
-      - ai-memory-network
-    
-    depends_on:
-      - neo4j
-      - python-embeddings
-      - ai-memory-service
-    
-    profiles:
-      - monitoring
-    
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-          cpus: '0.1'
-
-# ==============================================
-# Network Configuration
-# ==============================================
+# Network configuration with security
 networks:
   ai-memory-network:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.28.0.0/16
+        - subnet: 172.25.0.0/24
+          gateway: 172.25.0.1
     driver_opts:
-      com.docker.network.bridge.name: ai-memory-br
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: "1500"
 
-# ==============================================
-# Persistent Data Volumes
-# ==============================================
+# Persistent volumes with proper drivers
 volumes:
-  # Neo4j data
+  # Neo4j data persistence
   neo4j_data:
     driver: local
+    driver_opts:
+      type: none
+      device: ${DATA_PATH:-./data}/neo4j
+      o: bind
   neo4j_logs:
     driver: local
+  neo4j_plugins:
+    driver: local
   
-  # Application data
+  # Embedding Server data persistence
+  embedding_cache:
+    driver: local
+  embedding_logs:
+    driver: local
+  
+  # Memory Server data persistence
   memory_data:
     driver: local
+    driver_opts:
+      type: none
+      device: ${DATA_PATH:-./data}/memory
+      o: bind
   memory_logs:
     driver: local
-  
-  # Model cache (shared between services)
-  model_cache:
+  memory_cache:
     driver: local
   
-  # Cache and monitoring
+  # Optional services data persistence
   redis_data:
     driver: local
   prometheus_data:

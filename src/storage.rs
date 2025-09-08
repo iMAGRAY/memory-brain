@@ -5,7 +5,7 @@
 
 use crate::types::*;
 use crate::simd_search::cosine_similarity_simd;
-use base64;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use bincode;
 use chrono::{DateTime, Utc};
 use neo4rs::{Graph, Node, query};
@@ -14,6 +14,7 @@ use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+use tracing::{info, warn, error};
 use uuid::Uuid;
 
 /// Graph storage backend using Neo4j
@@ -118,8 +119,7 @@ impl GraphStorage {
         // Serialize embedding as base64 for storage
         let embedding_bytes = bincode::serialize(&memory.embedding)
             .map_err(|e| MemoryError::Storage(format!("Embedding serialization failed: {}", e)))?;
-        use base64::Engine;
-        let embedding_b64 = base64::engine::general_purpose::STANDARD.encode(&embedding_bytes);
+        let embedding_b64 = BASE64.encode(&embedding_bytes);
 
         // Serialize metadata with proper error handling
         let metadata_json = serde_json::to_string(&memory.metadata)
@@ -577,10 +577,14 @@ impl GraphStorage {
 
     /// Rebuild vector index from database
     async fn rebuild_vector_index(&self) -> MemoryResult<()> {
+        info!("🔄 Rebuilding vector index from Neo4j...");
+        
         let _permit = self.connection_semaphore.acquire().await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
         let mut new_index = VectorIndex::new();
+        let mut processed_count = 0;
+        let mut error_count = 0;
 
         let mut query_result = self.graph.execute(
             query("MATCH (m:Memory) RETURN m.id, m.context_path, m.memory_type, m.importance, m.embedding")
@@ -596,17 +600,42 @@ impl GraphStorage {
                 row.get::<String>("m.embedding")
             ) {
                 if let Ok(memory_id) = Uuid::parse_str(&id_str) {
-                    use base64::Engine;
-                    if let Ok(embedding_bytes) = base64::engine::general_purpose::STANDARD.decode(&embedding_b64) {
+                    if let Ok(embedding_bytes) = BASE64.decode(&embedding_b64) {
                         if let Ok(embedding) = bincode::deserialize::<Vec<f32>>(&embedding_bytes) {
                             new_index.add_memory(memory_id, embedding, context_path, memory_type, importance as f32);
+                            processed_count += 1;
+                            
+                            // Log progress every 100 memories
+                            if processed_count % 100 == 0 {
+                                info!("📊 Processed {} memories...", processed_count);
+                            }
+                        } else {
+                            error!("❌ Failed to deserialize embedding for memory: {}", id_str);
+                            error_count += 1;
                         }
+                    } else {
+                        error!("❌ Failed to decode base64 embedding for memory: {}", id_str);
+                        error_count += 1;
                     }
+                } else {
+                    error!("❌ Failed to parse UUID for memory: {}", id_str);
+                    error_count += 1;
                 }
+            } else {
+                warn!("⚠️ Skipping memory with incomplete data");
+                error_count += 1;
             }
         }
 
+        // Replace the old index with the new one
         *self.vector_index.write() = new_index;
+        
+        info!("✅ Vector index rebuilt successfully: {} memories processed, {} errors", processed_count, error_count);
+        
+        if error_count > 0 {
+            warn!("⚠️ Encountered {} errors during index rebuild", error_count);
+        }
+        
         Ok(())
     }
 
@@ -750,8 +779,7 @@ impl GraphStorage {
         }
 
         // Decode base64 with size validation
-        use base64::Engine;
-        let embedding_bytes = base64::engine::general_purpose::STANDARD.decode(&embedding_b64)
+        let embedding_bytes = BASE64.decode(&embedding_b64)
             .map_err(|e| {
                 tracing::error!("Base64 decode failed for memory {}: {}", memory_id, e);
                 MemoryError::Storage("Invalid base64 encoding in embedding data".to_string())
@@ -822,21 +850,28 @@ impl GraphStorage {
         limit: usize,
     ) -> MemoryResult<Vec<MemoryCell>> {
         use super::simd_search::cosine_similarity_simd;
-        let vector_index = self.vector_index.read();
-        let mut similarities = Vec::new();
         
-        // Calculate similarities for all embeddings
-        for (id, embedding) in &vector_index.embeddings {
-            let similarity = cosine_similarity_simd(embedding, query_embedding);
-            similarities.push((*id, similarity));
-        }
+        // Collect similarities first, then drop the lock
+        let similarities = {
+            let vector_index = self.vector_index.read();
+            let mut similarities = Vec::new();
+            
+            // Calculate similarities for all embeddings
+            for (id, embedding) in &vector_index.embeddings {
+                let similarity = cosine_similarity_simd(embedding, query_embedding);
+                similarities.push((*id, similarity));
+            }
+            
+            similarities
+        }; // Lock is dropped here
         
         // Sort by similarity descending
-        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let mut sorted_similarities = similarities;
+        sorted_similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         
         // Get top results
         let mut results = Vec::new();
-        for (id, _) in similarities.iter().take(limit) {
+        for (id, _) in sorted_similarities.iter().take(limit) {
             if let Ok(memory) = self.get_memory(id).await {
                 results.push(memory);
             }

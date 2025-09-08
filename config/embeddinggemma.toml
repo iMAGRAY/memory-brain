@@ -54,7 +54,8 @@ default_device = "cpu"
 # Data type configuration for EmbeddingGemma
 # CRITICAL: EmbeddingGemma does NOT support float16
 # Options: "bfloat16" (recommended), "float32"
-torch_dtype = "bfloat16"
+# Using float32 for better compatibility and stability
+torch_dtype = "float32"
 
 # Batch processing
 default_batch_size = 8

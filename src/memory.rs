@@ -62,7 +62,7 @@ impl MemoryService {
         );
         
         // Initialize AI brain
-        let ai_brain = Arc::new(AIBrain::new(config.brain.model_name.clone()));
+        let ai_brain = Arc::new(AIBrain::new("gemma-300m".to_string()));
         
         // Initialize cache system
         let cache_config = CacheConfig {
@@ -106,7 +106,7 @@ impl MemoryService {
         
         // Generate embedding for the content
         let embedding = self.embedding_service
-            .embed_text(&content)
+            .embed(&content, crate::embedding::TaskType::Document)
             .await?;
         
         // Analyze content with AI brain
@@ -180,7 +180,7 @@ impl MemoryService {
         
         // Generate query embedding
         let query_embedding = self.embedding_service
-            .embed_text(&query.text)
+            .embed(&query.text, crate::embedding::TaskType::Query)
             .await?;
         
         // Layer 1: Semantic search - fast associative retrieval
@@ -309,6 +309,122 @@ impl MemoryService {
         stats.total_contexts = storage_stats.total_contexts;
         
         Ok(stats)
+    }
+    
+    /// Simple search method for basic text queries
+    pub async fn search(&self, query: &str, limit: usize) -> MemoryResult<Vec<MemoryCell>> {
+        // Create a simple memory query
+        let memory_query = MemoryQuery {
+            text: query.to_string(),
+            context_hint: None,
+            memory_types: None,
+            limit: Some(limit),
+            min_importance: Some(0.5),
+            time_range: None,
+            similarity_threshold: Some(0.5),
+            include_related: false,
+        };
+        
+        // Use recall_memory for the search
+        let recalled = self.recall_memory(memory_query).await?;
+        
+        // Combine all layers and deduplicate
+        let mut results = Vec::new();
+        results.extend(recalled.semantic_layer);
+        results.extend(recalled.contextual_layer);
+        results.extend(recalled.detailed_layer);
+        
+        // Deduplicate by ID
+        let mut seen = std::collections::HashSet::new();
+        results.retain(|m| seen.insert(m.id));
+        
+        // Sort by importance and limit (handle NaN safely)
+        results.sort_by(|a, b| {
+            let a_imp = if a.importance.is_finite() { a.importance } else { 0.0 };
+            let b_imp = if b.importance.is_finite() { b.importance } else { 0.0 };
+            b_imp.partial_cmp(&a_imp).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        results.truncate(limit);
+        
+        Ok(results)
+    }
+    
+    /// Search memories within a specific context
+    pub async fn search_by_context(&self, context_path: &str, query: Option<&str>, limit: usize) -> MemoryResult<Vec<MemoryCell>> {
+        // Get memories from the context
+        let mut memories = self.graph_storage.get_memories_in_context(context_path, limit * 2).await?;
+        
+        // If query is provided, filter by semantic similarity
+        if let Some(query_text) = query {
+            // Generate embedding for the query
+            let query_embedding = self.embedding_service.embed(query_text, crate::embedding::TaskType::Query).await
+                .map_err(|e| MemoryError::Embedding(format!("Failed to generate query embedding: {}", e)))?;
+            
+            // Calculate similarity scores with memories
+            let mut scored_memories: Vec<(f32, MemoryCell)> = memories.into_iter()
+                .map(|memory| {
+                    let similarity = crate::simd_search::cosine_similarity_simd(&query_embedding, &memory.embedding);
+                    (similarity, memory)
+                })
+                .filter(|(score, _)| *score > 0.5)  // Filter by minimum relevance
+                .collect();
+            
+            // Sort by relevance (handle NaN safely)
+            scored_memories.sort_by(|a, b| {
+                let a_score = if a.0.is_finite() { a.0 } else { 0.0 };
+                let b_score = if b.0.is_finite() { b.0 } else { 0.0 };
+                b_score.partial_cmp(&a_score).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            
+            // Extract memories and limit
+            memories = scored_memories.into_iter()
+                .take(limit)
+                .map(|(_, memory)| memory)
+                .collect();
+        } else {
+            // Sort by importance if no query (handle NaN safely)
+            memories.sort_by(|a, b| {
+                let a_imp = if a.importance.is_finite() { a.importance } else { 0.0 };
+                let b_imp = if b.importance.is_finite() { b.importance } else { 0.0 };
+                b_imp.partial_cmp(&a_imp).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            
+            // Limit results
+            memories.truncate(limit);
+        }
+        
+        Ok(memories)
+    }
+    
+    /// Get recent memories
+    pub async fn get_recent(&self, limit: usize, context: Option<&str>) -> MemoryResult<Vec<MemoryCell>> {
+        // Get recent memories from storage
+        let mut memories = if let Some(context_path) = context {
+            // Get recent from specific context
+            self.graph_storage.get_memories_in_context(context_path, limit).await?
+        } else {
+            // Get recent from all contexts - use search as workaround
+            // TODO: Implement proper get_recent_memories in GraphStorage
+            let contexts = self.graph_storage.list_contexts().await?;
+            let mut all_memories = Vec::new();
+            
+            // Get memories from first few contexts (limited for performance)
+            for context_path in contexts.iter().take(5) {
+                let context_memories = self.graph_storage
+                    .get_memories_in_context(context_path, limit / 5)
+                    .await
+                    .unwrap_or_default();
+                all_memories.extend(context_memories);
+            }
+            
+            all_memories
+        };
+        
+        // Sort by last_accessed time (most recent first)
+        memories.sort_by(|a, b| b.last_accessed.cmp(&a.last_accessed));
+        memories.truncate(limit);
+        
+        Ok(memories)
     }
     
     /// Perform detailed search with parallel processing

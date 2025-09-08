@@ -3,6 +3,7 @@
 //! Provides configuration structures for all subsystems.
 
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::path::Path;
 
 /// Main configuration structure
@@ -41,6 +42,14 @@ pub struct EmbeddingConfig {
     pub tokenizer_path: String,
     pub batch_size: usize,
     pub max_sequence_length: usize,
+    /// Embedding dimension for Matryoshka truncation (128, 256, 512, 768)
+    pub embedding_dimension: Option<usize>,
+    /// Whether to normalize embeddings (critical for Matryoshka truncation)
+    pub normalize_embeddings: bool,
+    /// Precision: float32 (recommended), bfloat16 (modern GPU), NOT float16
+    pub precision: String,
+    /// Use specialized prompts for better quality
+    pub use_specialized_prompts: bool,
 }
 
 /// Cache configuration
@@ -55,9 +64,10 @@ pub struct CacheConfig {
 /// AI Brain configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrainConfig {
-    pub model_name: String,
-    pub min_importance: f32,
-    pub enable_sentiment: bool,
+    pub max_memories: usize,
+    pub importance_threshold: f32,
+    pub consolidation_interval: u64,
+    pub decay_rate: f32,
 }
 
 impl Default for Config {
@@ -98,10 +108,33 @@ impl Default for StorageConfig {
 impl Default for EmbeddingConfig {
     fn default() -> Self {
         Self {
-            model_path: "./models/embeddinggemma-300m-ONNX/model.onnx".to_string(),
-            tokenizer_path: "./models/embeddinggemma-300m-ONNX/tokenizer.json".to_string(),
-            batch_size: 32,
-            max_sequence_length: 2048,
+            model_path: env::var("EMBEDDING_MODEL_PATH")
+                .unwrap_or_else(|_| "./models/embeddinggemma-300m".to_string()),
+            tokenizer_path: env::var("TOKENIZER_PATH")
+                .unwrap_or_else(|_| "./models/embeddinggemma-300m/tokenizer.json".to_string()),
+            batch_size: env::var("EMBEDDING_BATCH_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(32),
+            max_sequence_length: env::var("MAX_SEQUENCE_LENGTH")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2048),
+            // Optimal settings according to EmbeddingGemma documentation
+            embedding_dimension: env::var("EMBEDDING_DIMENSION")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .or(Some(512)), // Optimal balance quality/speed
+            normalize_embeddings: env::var("NORMALIZE_EMBEDDINGS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(true), // Critical for Matryoshka truncation
+            precision: env::var("EMBEDDING_PRECISION")
+                .unwrap_or_else(|_| "float32".to_string()), // NEVER use float16 - not supported!
+            use_specialized_prompts: env::var("USE_SPECIALIZED_PROMPTS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(true), // Critical for quality
         }
     }
 }
@@ -120,9 +153,10 @@ impl Default for CacheConfig {
 impl Default for BrainConfig {
     fn default() -> Self {
         Self {
-            model_name: "gemma-300m".to_string(),
-            min_importance: 0.1,
-            enable_sentiment: true,
+            max_memories: 100000,
+            importance_threshold: 0.3,
+            consolidation_interval: 300,
+            decay_rate: 0.01,
         }
     }
 }
@@ -173,6 +207,22 @@ impl Config {
 
         if self.embedding.max_sequence_length == 0 {
             return Err(ConfigError::ValidationError("Max sequence length cannot be 0".to_string()));
+        }
+        
+        // Validate new EmbeddingGemma-specific fields
+        if let Some(dim) = self.embedding.embedding_dimension {
+            if ![128, 256, 512, 768].contains(&dim) {
+                return Err(ConfigError::ValidationError(
+                    format!("Invalid embedding dimension {}. Must be one of: 128, 256, 512, 768", dim)
+                ));
+            }
+        }
+        
+        // Validate precision setting
+        if !["float32", "bfloat16"].contains(&self.embedding.precision.as_str()) {
+            return Err(ConfigError::ValidationError(
+                format!("Unsupported precision '{}'. Must be 'float32' or 'bfloat16' (NOT float16)", self.embedding.precision)
+            ));
         }
 
         // Validate cache config

@@ -2,7 +2,7 @@
 //! 
 //! Tests actual model loading, tokenization, and embedding generation
 
-use ai_memory_service::embedding::EmbeddingService;
+use ai_memory_service::embedding::{EmbeddingService, TaskType};
 use std::path::PathBuf;
 
 const MODEL_PATH: &str = "./models/embeddinggemma-300m-ONNX/model.onnx";
@@ -34,7 +34,7 @@ async fn test_embedding_service_initialization() {
     let service = result.unwrap();
     
     // Verify model info
-    let model_info = service.model_info();
+    let model_info = service.get_model_info();
     assert_eq!(model_info.dimensions, 768, "Expected 768 dimensions");
     assert_eq!(model_info.name, "EmbeddingGemma-300m");
 }
@@ -53,7 +53,7 @@ async fn test_simple_embedding_generation() {
     
     // Test simple text embedding
     let text = "The quick brown fox jumps over the lazy dog";
-    let embedding = service.embed_text(text).await;
+    let embedding = service.embed(text, TaskType::Document).await;
     
     assert!(embedding.is_ok(), "Failed to generate embedding: {:?}", embedding.err());
     
@@ -85,12 +85,12 @@ async fn test_query_document_embeddings() {
     
     // Test query embedding
     let query = "What is machine learning?";
-    let query_embedding = service.embed_query(query).await
+    let query_embedding = service.embed(query, TaskType::Query).await
         .expect("Failed to generate query embedding");
     
     // Test document embedding
     let document = "Machine learning is a subset of artificial intelligence that enables computers to learn from data.";
-    let doc_embedding = service.embed_document(document).await
+    let doc_embedding = service.embed(document, TaskType::Document).await
         .expect("Failed to generate document embedding");
     
     // Both should be 768-dimensional
@@ -123,12 +123,11 @@ async fn test_matryoshka_dimensions() {
     let dims = [768, 512, 256, 128];
     for dim in dims {
         // Use batch method with single text to get dimension-specific embedding
-        let embeddings = service.embed_batch_with_dimension(
-            &[text.to_string()], 
-            ai_memory_service::embedding::TaskType::Query, 
-            dim
-        ).await
+        let embeddings = service.embed_batch(&[text.to_string()], TaskType::Query).await
             .expect(&format!("Failed to generate {}-dim embedding", dim));
+        let embeddings: Vec<Vec<f32>> = embeddings.into_iter()
+            .map(|emb| emb.into_iter().take(dim).collect())
+            .collect();
         
         // Add robustness check as recommended by hook
         assert!(!embeddings.is_empty(), "Embeddings vector should not be empty");
@@ -162,7 +161,7 @@ async fn test_batch_processing() {
         "Fifth sentence to test multiple batches".to_string(),
     ];
     
-    let embeddings = service.embed_batch(&texts).await
+    let embeddings = service.embed_batch(&texts, TaskType::Document).await
         .expect("Failed to generate batch embeddings");
     
     assert_eq!(embeddings.len(), texts.len(), "Number of embeddings doesn't match input");
@@ -189,11 +188,11 @@ async fn test_empty_input_handling() {
     ).await.expect("Failed to initialize service");
     
     // Test empty string
-    let result = service.embed_text("").await;
+    let result = service.embed("", TaskType::Document).await;
     assert!(result.is_err(), "Should fail on empty input");
     
     // Test whitespace only
-    let result = service.embed_text("   \n\t  ").await;
+    let result = service.embed("   \n\t  ", TaskType::Document).await;
     assert!(result.is_err(), "Should fail on whitespace-only input");
 }
 
@@ -212,7 +211,7 @@ async fn test_long_input_truncation() {
     // Create very long input (should be truncated to max_sequence_length)
     let long_text = "word ".repeat(5000);
     
-    let embedding = service.embed_text(&long_text).await
+    let embedding = service.embed(&long_text, TaskType::Document).await
         .expect("Failed to generate embedding for long text");
     
     assert_eq!(embedding.len(), 768, "Expected 768-dimensional embedding");
@@ -238,13 +237,13 @@ async fn test_cache_effectiveness() {
     
     // First embedding (not cached)
     let start = std::time::Instant::now();
-    let embedding1 = service.embed_text(text).await
+    let embedding1 = service.embed(text, TaskType::Document).await
         .expect("Failed to generate first embedding");
     let first_time = start.elapsed();
     
     // Second embedding (should be cached)
     let start = std::time::Instant::now();
-    let embedding2 = service.embed_text(text).await
+    let embedding2 = service.embed(text, TaskType::Document).await
         .expect("Failed to generate second embedding");
     let cached_time = start.elapsed();
     

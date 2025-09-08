@@ -1,379 +1,188 @@
-//! AI Memory Service - Human-inspired memory system for AI agents
+//! AI Memory Service - Main Entry Point
 //! 
-//! Main entry point for the memory service server.
+//! Advanced intelligent memory system with GPT-4 orchestration
 
-mod api;
-mod brain;
-mod cache;
-mod config;
-mod embedding;
-mod embedding_config;
-mod memory;
-mod metrics;
-mod simd_search;
-mod storage;
-mod types;
-
-use crate::config::Config;
-use crate::memory::MemoryService;
-use api::{create_router, ApiState};
-use axum::Router;
-use std::net::SocketAddr;
+use ai_memory_service::{
+    MemoryService, MemoryOrchestrator, OrchestratorConfig,
+    api::{run_server, ApiConfig},
+    config::{Config, ServerConfig, StorageConfig, EmbeddingConfig, CacheConfig, BrainConfig},
+    distillation::{MemoryDistillationEngine, DistillationConfig},
+    ShutdownManager,
+};
 use std::sync::Arc;
-use std::time::Duration;
+use std::env;
+use std::path::Path;
+use tracing::{info, warn, error};
+use tracing_subscriber;
+use anyhow::Result;
 use tokio::signal;
-use tower_http::cors::{CorsLayer, Any};
-use tower_http::trace::TraceLayer;
-use tracing::{error, info, warn};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // Initialize tracing with structured logging
-    init_tracing()?;
-
-    info!("Starting AI Memory Service v{}", env!("CARGO_PKG_VERSION"));
-
-    // Load and validate configuration
-    let config = load_config().await?;
-    
-    // Initialize metrics system
-    metrics::init_metrics();
-    info!("Metrics system initialized");
-
-    // Create memory service with proper error handling
-    let memory_service = match MemoryService::new(config.clone()).await {
-        Ok(service) => {
-            info!("Memory service initialized successfully");
-            Arc::new(service)
-        }
-        Err(e) => {
-            error!("Failed to initialize memory service: {}", e);
-            // Try to recover with minimal configuration
-            let minimal_config = create_minimal_config();
-            warn!("Attempting to start with minimal configuration");
-            Arc::new(
-                MemoryService::new(minimal_config)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Cannot start service: {}", e))?,
-            )
-        }
-    };
-
-    // Perform health check on startup
-    perform_startup_health_check(&memory_service).await?;
-
-    // Create API state
-    let api_state = ApiState { memory_service };
-
-    // Build application with proper middleware configuration
-    let app = build_app(api_state, &config);
-
-    // Bind to address with validation
-    let addr = parse_socket_addr(&config)?;
-    
-    info!("Server starting on {}", addr);
-    info!("Environment: {}", config.server.environment);
-    info!("CORS origins: {:?}", config.server.cors_origins);
-
-    // Create TCP listener with error handling
-    let listener = match tokio::net::TcpListener::bind(addr).await {
-        Ok(listener) => listener,
-        Err(e) => {
-            error!("Failed to bind to {}: {}", addr, e);
-            // Try alternative port
-            let alt_addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port + 1)
-                .parse()?;
-            warn!("Trying alternative address: {}", alt_addr);
-            tokio::net::TcpListener::bind(alt_addr).await?
-        }
-    };
-
-    info!("Server listening on {}", listener.local_addr()?);
-
-    // Start server with graceful shutdown
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-
-    info!("Server shutdown complete");
-    Ok(())
-}
-
-/// Initialize tracing with environment-aware configuration
-fn init_tracing() -> anyhow::Result<()> {
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            // Default log levels for different environments
-            let level = std::env::var("RUST_ENV")
-                .unwrap_or_else(|_| "development".to_string());
-            
-            match level.as_str() {
-                "production" => "ai_memory_service=info,tower_http=warn",
-                "staging" => "ai_memory_service=debug,tower_http=info",
-                _ => "ai_memory_service=debug,tower_http=debug",
-            }
-            .parse()
-            .expect("Valid filter")
-        });
-
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .with_target(true)
-        .with_thread_ids(true)
-        .with_file(true)
-        .with_line_number(true);
-
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(fmt_layer)
+async fn main() -> Result<()> {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()))
         .init();
 
-    Ok(())
-}
+    info!("🚀 Starting AI Memory Service with GPT-4 Orchestrator");
 
-/// Load configuration with validation and fallback
-async fn load_config() -> anyhow::Result<Config> {
-    // Try loading from multiple sources
-    let config_paths = ["config.toml", "/etc/ai-memory/config.toml", "./config/default.toml"];
+    // Load .env file if it exists
+    if Path::new(".env").exists() {
+        dotenv::dotenv().ok();
+        info!("✅ Loaded .env configuration");
+    }
+
+    // Create configuration
+    let config = load_configuration()?;
     
-    for path in &config_paths {
-        match Config::from_file(path) {
-            Ok(mut config) => {
-                info!("Configuration loaded from: {}", path);
-                
-                // Validate configuration
-                validate_config(&mut config)?;
-                
-                // Apply environment variable overrides
-                apply_env_overrides(&mut config);
-                
-                return Ok(config);
+    // Initialize Memory Service
+    info!("📦 Initializing Memory Service...");
+    let memory_service = Arc::new(
+        MemoryService::new(config.clone()).await?
+    );
+    info!("✅ Memory Service initialized");
+
+    // Initialize GPT-5-nano Orchestrator
+    let orchestrator = if let Ok(api_key) = env::var("OPENAI_API_KEY") {
+        if api_key.starts_with("sk-") {
+            info!("🧠 Initializing GPT-5-nano Orchestrator...");
+            let orch_config = OrchestratorConfig {
+                api_key: api_key.clone(),
+                model: env::var("ORCHESTRATOR_MODEL").unwrap_or_else(|_| "gpt-5-nano".to_string()),
+                max_input_tokens: env::var("MAX_INPUT_TOKENS")
+                    .unwrap_or_else(|_| "400000".to_string())
+                    .parse()
+                    .unwrap_or_else(|e| {
+                        warn!("Invalid MAX_INPUT_TOKENS: {}, using default 400000", e);
+                        400000
+                    }),
+                max_output_tokens: env::var("MAX_OUTPUT_TOKENS")
+                    .unwrap_or_else(|_| "12000".to_string())
+                    .parse()
+                    .unwrap_or_else(|e| {
+                        warn!("Invalid MAX_OUTPUT_TOKENS: {}, using default 12000", e);
+                        12000
+                    }),
+                temperature: env::var("ORCHESTRATOR_TEMPERATURE")
+                    .unwrap_or_else(|_| "1.0".to_string())
+                    .parse()
+                    .unwrap_or_else(|e| {
+                        warn!("Invalid ORCHESTRATOR_TEMPERATURE: {}, using default 1.0", e);
+                        1.0
+                    }),
+                timeout_seconds: env::var("ORCHESTRATOR_TIMEOUT")
+                    .unwrap_or_else(|_| "120".to_string())
+                    .parse()
+                    .unwrap_or_else(|e| {
+                        warn!("Invalid ORCHESTRATOR_TIMEOUT: {}, using default 120", e);
+                        120
+                    }),
+            };
+            
+            match MemoryOrchestrator::new(orch_config) {
+                Ok(orch) => {
+                    info!("✅ GPT-5-nano Orchestrator ready");
+                    Some(Arc::new(orch))
+                }
+                Err(e) => {
+                    error!("❌ Failed to initialize GPT-5-nano Orchestrator: {}", e);
+                    None
+                }
             }
-            Err(e) => {
-                warn!("Failed to load config from {}: {}", path, e);
-            }
+        } else {
+            warn!("⚠️ Invalid OPENAI_API_KEY format (should start with 'sk-')");
+            None
         }
-    }
-
-    // Create default config with safe defaults
-    warn!("Using default configuration");
-    let mut config = create_safe_defaults();
-    validate_config(&mut config)?;
-    Ok(config)
-}
-
-/// Validate configuration values
-fn validate_config(config: &mut Config) -> anyhow::Result<()> {
-    // Validate server settings
-    if config.server.port == 0 {
-        config.server.port = 8080;
-    }
-    
-    if config.server.workers == 0 {
-        config.server.workers = num_cpus::get();
-    }
-    
-    // Validate storage settings
-    if config.storage.neo4j_uri.is_empty() {
-        return Err(anyhow::anyhow!("Neo4j URI cannot be empty"));
-    }
-    
-    // Validate cache settings
-    if config.cache.l1_size == 0 {
-        config.cache.l1_size = 1000;
-    }
-    
-    if config.cache.ttl_seconds == 0 {
-        config.cache.ttl_seconds = 3600;
-    }
-    
-    Ok(())
-}
-
-/// Apply environment variable overrides
-fn apply_env_overrides(config: &mut Config) {
-    if let Ok(port) = std::env::var("PORT") {
-        if let Ok(p) = port.parse() {
-            config.server.port = p;
-        }
-    }
-    
-    if let Ok(neo4j_uri) = std::env::var("NEO4J_URI") {
-        config.storage.neo4j_uri = neo4j_uri;
-    }
-    
-    if let Ok(env) = std::env::var("RUST_ENV") {
-        config.server.environment = env;
-    }
-}
-
-/// Create minimal configuration for recovery
-fn create_minimal_config() -> Config {
-    Config {
-        server: config::ServerConfig {
-            host: "127.0.0.1".to_string(),
-            port: 8080,
-            workers: 1,
-            environment: "recovery".to_string(),
-            cors_origins: vec!["http://localhost:3000".to_string()],
-        },
-        storage: config::StorageConfig {
-            neo4j_uri: "bolt://localhost:7687".to_string(),
-            neo4j_user: "neo4j".to_string(),
-            neo4j_password: String::new(),
-            connection_pool_size: 5,
-        },
-        embedding: config::EmbeddingConfig {
-            model_path: "./models/gemma-300m.onnx".to_string(),
-            tokenizer_path: "./models/tokenizer.json".to_string(),
-            batch_size: 8,
-            max_sequence_length: 512,
-        },
-        cache: config::CacheConfig {
-            l1_size: 100,
-            l2_size: 1000,
-            ttl_seconds: 300,
-            compression_enabled: false,
-        },
-        brain: config::BrainConfig {
-            model_name: "local".to_string(),
-            min_importance: 0.1,
-            enable_sentiment: false,
-        },
-    }
-}
-
-/// Create safe default configuration
-fn create_safe_defaults() -> Config {
-    Config {
-        server: config::ServerConfig {
-            host: "127.0.0.1".to_string(),
-            port: 8080,
-            workers: num_cpus::get(),
-            environment: "development".to_string(),
-            cors_origins: vec!["http://localhost:3000".to_string()],
-        },
-        storage: config::StorageConfig {
-            neo4j_uri: std::env::var("NEO4J_URI")
-                .unwrap_or_else(|_| "bolt://localhost:7687".to_string()),
-            neo4j_user: std::env::var("NEO4J_USER")
-                .unwrap_or_else(|_| "neo4j".to_string()),
-            neo4j_password: std::env::var("NEO4J_PASSWORD")
-                .unwrap_or_default(),
-            connection_pool_size: 10,
-        },
-        embedding: config::EmbeddingConfig {
-            model_path: "./models/gemma-300m.onnx".to_string(),
-            tokenizer_path: "./models/tokenizer.json".to_string(),
-            batch_size: 32,
-            max_sequence_length: 2048,
-        },
-        cache: config::CacheConfig {
-            l1_size: 1000,
-            l2_size: 10000,
-            ttl_seconds: 3600,
-            compression_enabled: true,
-        },
-        brain: config::BrainConfig {
-            model_name: "gemma-300m".to_string(),
-            min_importance: 0.1,
-            enable_sentiment: true,
-        },
-    }
-}
-
-/// Build application with middleware
-fn build_app(api_state: ApiState, config: &Config) -> Router {
-    // Configure CORS based on environment
-    let cors = if config.server.environment == "production" {
-        CorsLayer::new()
-            .allow_origin(
-                config.server.cors_origins
-                    .iter()
-                    .map(|s| s.parse().expect("Valid origin"))
-                    .collect::<Vec<_>>(),
-            )
-            .allow_methods([
-                axum::http::Method::GET,
-                axum::http::Method::POST,
-                axum::http::Method::DELETE,
-            ])
-            .allow_headers(Any)
-            .max_age(Duration::from_secs(3600))
     } else {
-        // More permissive for development
-        CorsLayer::new()
-            .allow_origin(Any)
-            .allow_methods(Any)
-            .allow_headers(Any)
+        warn!("⚠️ OPENAI_API_KEY not set, running without orchestrator");
+        None
     };
 
-    create_router(api_state)
-        .layer(cors)
-        .layer(TraceLayer::new_for_http())
-        .route("/metrics", axum::routing::get(metrics_handler))
-        .route("/health", axum::routing::get(health_handler))
-}
+    // Initialize Memory Distillation Engine (if orchestrator is available)
+    let distillation_engine = if let Some(ref orch) = orchestrator {
+        info!("🧠 Initializing Autonomous Memory Distillation Engine...");
+        
+        let distillation_config = DistillationConfig {
+            enabled: env::var("DISTILLATION_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .unwrap_or(true),
+            daily_hour: env::var("DISTILLATION_DAILY_HOUR")
+                .unwrap_or_else(|_| "2".to_string())
+                .parse()
+                .unwrap_or(2),
+            weekly_day: env::var("DISTILLATION_WEEKLY_DAY")
+                .unwrap_or_else(|_| "0".to_string())
+                .parse()
+                .unwrap_or(0),
+            monthly_day: env::var("DISTILLATION_MONTHLY_DAY")
+                .unwrap_or_else(|_| "1".to_string())
+                .parse()
+                .unwrap_or(1),
+            min_importance_threshold: env::var("DISTILLATION_MIN_IMPORTANCE")
+                .unwrap_or_else(|_| "0.3".to_string())
+                .parse()
+                .unwrap_or(0.3),
+            max_memories_per_batch: env::var("DISTILLATION_MAX_BATCH_SIZE")
+                .unwrap_or_else(|_| "1000".to_string())
+                .parse()
+                .unwrap_or(1000),
+            operation_timeout_minutes: env::var("DISTILLATION_TIMEOUT_MINUTES")
+                .unwrap_or_else(|_| "30".to_string())
+                .parse()
+                .unwrap_or(30),
+        };
+        
+        let engine = MemoryDistillationEngine::new(
+            orch.clone(),
+            memory_service.clone(),
+            distillation_config,
+        );
+        
+        // Start autonomous distillation
+        if let Err(e) = engine.start_autonomous_distillation().await {
+            error!("Failed to start distillation engine: {}", e);
+            None
+        } else {
+            info!("✅ Autonomous Memory Distillation Engine started");
+            Some(Arc::new(engine))
+        }
+    } else {
+        warn!("⚠️ Memory Distillation Engine disabled (no orchestrator available)");
+        None
+    };
 
-/// Parse and validate socket address
-fn parse_socket_addr(config: &Config) -> anyhow::Result<SocketAddr> {
-    let addr_str = format!("{}:{}", config.server.host, config.server.port);
-    addr_str
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Invalid server address '{}': {}", addr_str, e))
-}
+    // Create API configuration
+    let api_config = ApiConfig {
+        host: config.server.host.clone(),
+        port: config.server.port,
+        max_body_size: 10 * 1024 * 1024, // 10MB
+        enable_cors: true,
+        enable_compression: true,
+        enable_tracing: true,
+    };
 
-/// Perform startup health check
-async fn perform_startup_health_check(service: &MemoryService) -> anyhow::Result<()> {
-    info!("Performing startup health check");
+    // Start the REST API server
+    info!("🌐 Starting REST API server on {}:{}", api_config.host, api_config.port);
     
-    // Test database connection
-    match service.get_stats().await {
-        Ok(stats) => {
-            info!("Health check passed. Total memories: {}", stats.total_memories);
-            Ok(())
+    // Spawn the API server
+    let api_handle = tokio::spawn(async move {
+        if let Err(e) = run_server(memory_service, orchestrator, api_config).await {
+            error!("API server error: {}", e);
         }
-        Err(e) => {
-            warn!("Health check warning: {}", e);
-            // Continue anyway - service might recover
-            Ok(())
-        }
-    }
-}
+    });
 
-/// Metrics endpoint handler with basic protection
-async fn metrics_handler() -> Result<String, StatusCode> {
-    // In production, you might want to check for a metrics token
-    if let Ok(token) = std::env::var("METRICS_TOKEN") {
-        // Implement token validation here if needed
-        if !token.is_empty() {
-            // Token validation logic
-        }
-    }
-    
-    Ok(metrics::export_metrics())
-}
-
-use axum::http::StatusCode;
-
-/// Health check endpoint
-async fn health_handler() -> Result<String, StatusCode> {
-    Ok("OK".to_string())
-}
-
-/// Graceful shutdown signal handler
-async fn shutdown_signal() {
+    // Setup graceful shutdown
     let ctrl_c = async {
         signal::ctrl_c()
             .await
-            .expect("Failed to install Ctrl+C handler");
+            .expect("failed to install Ctrl+C handler");
     };
 
     #[cfg(unix)]
     let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("Failed to install signal handler")
+            .expect("failed to install signal handler")
             .recv()
             .await;
     };
@@ -383,40 +192,174 @@ async fn shutdown_signal() {
 
     tokio::select! {
         _ = ctrl_c => {
-            info!("Received Ctrl+C signal");
+            info!("💤 Received Ctrl+C, shutting down...");
         },
         _ = terminate => {
-            info!("Received terminate signal");
+            info!("💤 Received terminate signal, shutting down...");
         },
     }
 
-    info!("Starting graceful shutdown");
+    // Graceful shutdown
+    info!("🔄 Performing graceful shutdown...");
+    
+    // Shutdown distillation engine first
+    if let Some(ref engine) = distillation_engine {
+        info!("🧠 Shutting down Memory Distillation Engine...");
+        if let Err(e) = engine.shutdown().await {
+            error!("Error shutting down distillation engine: {}", e);
+        } else {
+            info!("✅ Memory Distillation Engine shutdown complete");
+        }
+    }
+    
+    // Abort the API server
+    api_handle.abort();
+    
+    // Perform graceful shutdown using ShutdownManager
+    if let Err(e) = ShutdownManager::shutdown().await {
+        error!("Error during shutdown: {}", e);
+    }
+    
+    info!("👋 AI Memory Service stopped");
+    Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_validation() {
-        let mut config = Config::default();
-        config.server.port = 0;
-        validate_config(&mut config).unwrap();
-        assert_eq!(config.server.port, 8080);
-    }
-
-    #[test]
-    fn test_socket_addr_parsing() {
-        let config = Config {
-            server: config::ServerConfig {
-                host: "127.0.0.1".to_string(),
-                port: 3000,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
+/// Load configuration from environment and/or config file
+fn load_configuration() -> Result<Config> {
+    // Check if config file exists
+    let config_path = env::var("CONFIG_FILE").unwrap_or_else(|_| "config.toml".to_string());
+    
+    let config = if Path::new(&config_path).exists() {
+        info!("📄 Loading configuration from {}", config_path);
+        let config_str = std::fs::read_to_string(&config_path)?;
+        toml::from_str(&config_str)?
+    } else {
+        info!("🔧 Using default configuration with environment overrides");
         
-        let addr = parse_socket_addr(&config).unwrap();
-        assert_eq!(addr.to_string(), "127.0.0.1:3000");
+        // Build configuration from environment variables
+        Config {
+            server: ServerConfig {
+                host: env::var("SERVICE_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
+                port: env::var("SERVICE_PORT")
+                    .unwrap_or_else(|_| "8080".to_string())
+                    .parse()
+                    .unwrap_or(8080),
+                workers: env::var("WORKERS")
+                    .unwrap_or_else(|_| "4".to_string())
+                    .parse()
+                    .unwrap_or(4),
+                environment: env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
+                cors_origins: env::var("CORS_ORIGINS")
+                    .unwrap_or_else(|_| "*".to_string())
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+            },
+            storage: StorageConfig {
+                neo4j_uri: env::var("NEO4J_URI").unwrap_or_else(|_| "bolt://localhost:7687".to_string()),
+                neo4j_user: env::var("NEO4J_USER").unwrap_or_else(|_| "neo4j".to_string()),
+                neo4j_password: env::var("NEO4J_PASSWORD").unwrap_or_else(|_| "password".to_string()),
+                connection_pool_size: env::var("NEO4J_POOL_SIZE")
+                    .unwrap_or_else(|_| "10".to_string())
+                    .parse()
+                    .unwrap_or(10),
+            },
+            embedding: EmbeddingConfig {
+                model_path: env::var("EMBEDDING_MODEL_PATH")
+                    .unwrap_or_else(|_| "./models/embeddinggemma-300m".to_string()),
+                tokenizer_path: env::var("TOKENIZER_PATH")
+                    .unwrap_or_else(|_| "./models/embeddinggemma-300m/tokenizer.json".to_string()),
+                batch_size: env::var("EMBEDDING_BATCH_SIZE")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(32),
+                max_sequence_length: env::var("MAX_SEQUENCE_LENGTH")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(2048),
+                // New EmbeddingGemma-specific fields
+                embedding_dimension: env::var("EMBEDDING_DIMENSION")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .or(Some(512)),
+                normalize_embeddings: env::var("NORMALIZE_EMBEDDINGS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(true),
+                precision: env::var("EMBEDDING_PRECISION")
+                    .unwrap_or_else(|_| "float32".to_string()),
+                use_specialized_prompts: env::var("USE_SPECIALIZED_PROMPTS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(true),
+            },
+            cache: CacheConfig {
+                l1_size: env::var("L1_CACHE_SIZE")
+                    .unwrap_or_else(|_| "1000".to_string())
+                    .parse()
+                    .unwrap_or(1000),
+                l2_size: env::var("L2_CACHE_SIZE")
+                    .unwrap_or_else(|_| "10000".to_string())
+                    .parse()
+                    .unwrap_or(10000),
+                ttl_seconds: env::var("CACHE_TTL")
+                    .unwrap_or_else(|_| "3600".to_string())
+                    .parse()
+                    .unwrap_or(3600),
+                compression_enabled: env::var("CACHE_COMPRESSION")
+                    .unwrap_or_else(|_| "true".to_string())
+                    .parse()
+                    .unwrap_or(true),
+            },
+            brain: BrainConfig {
+                max_memories: env::var("MAX_MEMORIES")
+                    .unwrap_or_else(|_| "100000".to_string())
+                    .parse()
+                    .unwrap_or(100000),
+                importance_threshold: env::var("IMPORTANCE_THRESHOLD")
+                    .unwrap_or_else(|_| "0.3".to_string())
+                    .parse()
+                    .unwrap_or(0.3),
+                consolidation_interval: env::var("CONSOLIDATION_INTERVAL")
+                    .unwrap_or_else(|_| "300".to_string())
+                    .parse()
+                    .unwrap_or(300),
+                decay_rate: env::var("MEMORY_DECAY_RATE")
+                    .unwrap_or_else(|_| "0.01".to_string())
+                    .parse()
+                    .unwrap_or(0.01),
+            },
+        }
+    };
+
+    // Validate configuration
+    validate_config(&config)?;
+    
+    Ok(config)
+}
+
+/// Validate configuration for correctness
+fn validate_config(config: &Config) -> Result<()> {
+    // Validate server config
+    if config.server.port == 0 {
+        return Err(anyhow::anyhow!("Invalid port number"));
     }
+    
+    // Validate Neo4j URI
+    if !config.storage.neo4j_uri.starts_with("bolt://") && 
+       !config.storage.neo4j_uri.starts_with("neo4j://") {
+        return Err(anyhow::anyhow!("Invalid Neo4j URI format"));
+    }
+    
+    // Validate cache sizes
+    if config.cache.l1_size == 0 || config.cache.l2_size == 0 {
+        return Err(anyhow::anyhow!("Cache sizes must be greater than 0"));
+    }
+    
+    // Validate brain config
+    if config.brain.importance_threshold < 0.0 || config.brain.importance_threshold > 1.0 {
+        return Err(anyhow::anyhow!("Importance threshold must be between 0.0 and 1.0"));
+    }
+    
+    Ok(())
 }

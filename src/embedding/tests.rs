@@ -242,7 +242,7 @@ mod embedding_tests {
 
     // Helper function to create mock service for testing validation logic
     fn create_mock_service_config() -> EmbeddingService {
-        let python_obj = pyo3::Python::with_gil(|py| py.None());
+        let python_obj = Python::with_gil(|py| py.None());
         
         EmbeddingService {
             python_module: Arc::new(std::sync::Mutex::new(python_obj)),

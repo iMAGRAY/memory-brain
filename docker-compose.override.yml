@@ -2,7 +2,7 @@
 # This file is automatically loaded and provides development-specific overrides
 # For production, rename this file or use: docker-compose -f docker-compose.yml up
 
-version: '3.8'
+# Note: version field is obsolete in Docker Compose v2.x+ and will be ignored
 
 services:
   neo4j:

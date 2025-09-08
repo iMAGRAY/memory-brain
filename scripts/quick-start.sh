@@ -1,6 +1,8 @@
 #!/bin/bash
+
 # AI Memory Service - Quick Start Script
-# Self-contained deployment requiring only Docker
+# Automated setup and deployment with security best practices
+# Requires only Docker and model files from user
 
 set -euo pipefail
 
@@ -9,311 +11,318 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ENV_FILE="$PROJECT_DIR/.env"
-ENV_EXAMPLE="$PROJECT_DIR/.env.example"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+ENV_FILE="$PROJECT_ROOT/.env"
+ENV_EXAMPLE="$PROJECT_ROOT/.env.example"
 
-log() {
-    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
+# Function: Print colored output
+print_step() {
+    echo -e "${BLUE}🔹 $1${NC}"
 }
 
-error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
 }
 
-warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+print_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
-success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
 }
 
-# Check system requirements
-check_requirements() {
-    log "🔍 Checking system requirements..."
+print_info() {
+    echo -e "${PURPLE}💡 $1${NC}"
+}
+
+# Function: Generate secure password
+generate_password() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 32 | tr -d "=+/" | cut -c1-25
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import secrets; print(secrets.token_urlsafe(25))"
+    else
+        # Fallback: use date and random
+        echo "$(date +%s)$(shuf -i 1000-9999 -n 1)" | sha256sum | cut -c1-25
+    fi
+}
+
+# Function: Check prerequisites
+check_prerequisites() {
+    print_step "Checking prerequisites..."
     
     # Check Docker
-    if ! command -v docker &> /dev/null; then
-        error "Docker is not installed. Please install Docker Desktop or Docker Engine."
-        echo "Visit: https://docs.docker.com/get-docker/"
-        exit 1
-    fi
-    
-    if ! docker info &> /dev/null; then
-        error "Docker daemon is not running. Please start Docker."
+    if ! command -v docker >/dev/null 2>&1; then
+        print_error "Docker is not installed. Please install Docker Desktop."
+        print_info "Visit: https://docs.docker.com/get-docker/"
         exit 1
     fi
     
     # Check Docker Compose
-    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-        error "Docker Compose is not installed. Please install Docker Compose."
+    if ! docker compose version >/dev/null 2>&1; then
+        print_error "Docker Compose is not available. Please update Docker Desktop."
         exit 1
     fi
     
-    # Check available resources
-    local available_memory
-    if command -v free &> /dev/null; then
-        available_memory=$(free -m | awk '/^Mem:/{print $2}')
-        if [[ $available_memory -lt 4096 ]]; then
-            warning "System has less than 4GB RAM ($available_memory MB). Performance may be limited."
-        fi
+    # Check if Docker is running
+    if ! docker info >/dev/null 2>&1; then
+        print_error "Docker is not running. Please start Docker Desktop."
+        exit 1
     fi
     
-    success "✅ System requirements satisfied"
+    print_success "Docker is available and running"
+    
+    # Check system resources
+    local available_memory
+    if command -v free >/dev/null 2>&1; then
+        available_memory=$(free -m | awk 'NR==2{printf "%d", $7}')
+    elif command -v vm_stat >/dev/null 2>&1; then
+        # macOS
+        available_memory=$(($(vm_stat | grep "Pages free" | awk '{print $3}' | tr -d '.') * 4096 / 1024 / 1024))
+    else
+        available_memory=8192  # Assume 8GB
+    fi
+    
+    if [ "$available_memory" -lt 4096 ]; then
+        print_warning "Less than 4GB RAM available ($available_memory MB). Performance may be affected."
+        print_info "Recommended: 8GB+ RAM for optimal performance"
+    fi
+    
+    print_success "Prerequisites check completed"
 }
 
-# Generate secure credentials
-generate_secure_env() {
-    log "🔐 Generating secure environment configuration..."
+# Function: Setup environment file
+setup_environment() {
+    print_step "Setting up environment configuration..."
     
-    if [[ -f "$ENV_FILE" ]]; then
-        warning ".env file already exists"
-        read -p "Do you want to regenerate credentials? [y/N]: " -n 1 -r
+    if [ -f "$ENV_FILE" ]; then
+        print_warning "Environment file already exists at $ENV_FILE"
+        read -p "Do you want to overwrite it? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log "Using existing .env file"
+            print_info "Using existing .env file"
             return 0
         fi
     fi
     
-    if [[ ! -f "$ENV_EXAMPLE" ]]; then
-        error ".env.example file not found"
+    if [ ! -f "$ENV_EXAMPLE" ]; then
+        print_error "Template file .env.example not found!"
         exit 1
     fi
+    
+    print_step "Generating secure passwords..."
     
     # Generate secure passwords
-    local neo4j_password redis_password grafana_password admin_api_key
-    neo4j_password=$(openssl rand -base64 24 | tr -d "=+/" | cut -c1-24)
-    redis_password=$(openssl rand -base64 20 | tr -d "=+/" | cut -c1-20)
-    grafana_password=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
-    admin_api_key=$(openssl rand -hex 32)
+    NEO4J_PASSWORD=$(generate_password)
+    GRAFANA_PASSWORD=$(generate_password)
     
-    # Create .env file with replacements
+    # Copy template and replace placeholders
     cp "$ENV_EXAMPLE" "$ENV_FILE"
     
-    # Replace placeholders
-    sed -i.bak \
-        -e "s/NEO4J_PASSWORD_PLACEHOLDER/$neo4j_password/g" \
-        -e "s/REDIS_PASSWORD_PLACEHOLDER/$redis_password/g" \
-        -e "s/GRAFANA_PASSWORD_PLACEHOLDER/$grafana_password/g" \
-        -e "s/ADMIN_API_KEY_PLACEHOLDER/$admin_api_key/g" \
-        "$ENV_FILE"
+    # Replace placeholder passwords with generated ones
+    if command -v sed >/dev/null 2>&1; then
+        sed -i.bak "s/your_secure_neo4j_password_here/$NEO4J_PASSWORD/g" "$ENV_FILE"
+        sed -i.bak "s/your_grafana_password_here/$GRAFANA_PASSWORD/g" "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
+    else
+        # Fallback for systems without sed
+        cp "$ENV_FILE" "$ENV_FILE.bak"
+        awk -v neo4j_pass="$NEO4J_PASSWORD" -v grafana_pass="$GRAFANA_PASSWORD" '
+        {
+            gsub(/your_secure_neo4j_password_here/, neo4j_pass);
+            gsub(/your_grafana_password_here/, grafana_pass);
+            print;
+        }' "$ENV_FILE.bak" > "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
+    fi
     
-    rm -f "$ENV_FILE.bak"
-    chmod 600 "$ENV_FILE"
-    
-    success "✅ Secure credentials generated"
-    
-    echo
-    echo "🔐 Generated Credentials (SAVE THESE SECURELY):"
-    echo "================================================="
-    echo "Neo4j Password: $neo4j_password"
-    echo "Redis Password: $redis_password"
-    echo "Grafana Password: $grafana_password"
-    echo "Admin API Key: $admin_api_key"
-    echo "================================================="
-    echo "⚠️  These credentials are saved in .env file"
-    echo
+    print_success "Environment file created with secure passwords"
+    print_warning "IMPORTANT: Please edit $ENV_FILE to add your OpenAI API key and review settings"
+    print_info "Neo4j password: $NEO4J_PASSWORD"
+    print_info "Grafana password: $GRAFANA_PASSWORD"
 }
 
-# Build and start services
+# Function: Check model files
+check_model_files() {
+    print_step "Checking for model files..."
+    
+    local models_dir="$PROJECT_ROOT/models"
+    local model_path="$models_dir/embeddinggemma-300m"
+    
+    if [ ! -d "$model_path" ]; then
+        print_warning "EmbeddingGemma-300m model not found at $model_path"
+        print_info "The service will attempt to download models at runtime"
+        print_info "For faster startup, you can:"
+        print_info "1. Create $models_dir directory"
+        print_info "2. Download EmbeddingGemma-300m model files there"
+        
+        # Create models directory
+        mkdir -p "$models_dir"
+        print_success "Created models directory: $models_dir"
+        
+        return 0
+    fi
+    
+    print_success "Model files found at $model_path"
+}
+
+# Function: Build and start services
 start_services() {
-    log "🚀 Building and starting AI Memory Service..."
+    print_step "Building and starting AI Memory Service..."
     
-    cd "$PROJECT_DIR"
+    cd "$PROJECT_ROOT"
     
-    # Validate docker-compose configuration
-    if ! docker-compose config >/dev/null 2>&1; then
-        error "Docker Compose configuration is invalid"
-        docker-compose config
+    # Pull latest base images
+    print_step "Pulling latest base images..."
+    docker compose pull neo4j || print_warning "Failed to pull Neo4j image"
+    
+    # Build the application
+    print_step "Building AI Memory Service (this may take several minutes)..."
+    if ! docker compose build ai-memory-service; then
+        print_error "Failed to build AI Memory Service"
+        print_info "Check the logs above for build errors"
         exit 1
     fi
     
-    # Build images
-    log "📦 Building container images (this may take 10-15 minutes)..."
-    docker-compose build --parallel
+    print_success "Build completed successfully"
     
-    # Start core services
-    log "🎯 Starting core services..."
-    docker-compose up -d neo4j python-embeddings ai-memory-service
+    # Start services
+    print_step "Starting services..."
+    if ! docker compose up -d; then
+        print_error "Failed to start services"
+        print_info "Run 'docker compose logs' to see error details"
+        exit 1
+    fi
     
-    # Wait for services to be healthy
-    log "⏳ Waiting for services to be ready..."
-    local timeout=600  # 10 minutes
-    local elapsed=0
+    print_success "Services started successfully"
+}
+
+# Function: Wait for services to be ready
+wait_for_services() {
+    print_step "Waiting for services to be ready..."
     
-    while [[ $elapsed -lt $timeout ]]; do
-        local healthy_count
-        healthy_count=$(docker-compose ps --format json | jq -r 'select(.Health == "healthy")' | wc -l)
-        
-        if [[ $healthy_count -ge 3 ]]; then
-            success "✅ All core services are healthy!"
+    # Wait for Neo4j
+    print_step "Waiting for Neo4j database..."
+    local max_attempts=60
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        if docker compose exec -T neo4j cypher-shell -u neo4j -p "$(grep NEO4J_PASSWORD "$ENV_FILE" | cut -d'=' -f2)" "RETURN 1" >/dev/null 2>&1; then
+            print_success "Neo4j is ready"
             break
         fi
         
-        sleep 15
-        elapsed=$((elapsed + 15))
-        log "Waiting... ($elapsed/${timeout}s) - Healthy services: $healthy_count/3"
+        attempt=$((attempt + 1))
+        echo -n "."
+        sleep 2
     done
     
-    if [[ $elapsed -ge $timeout ]]; then
-        error "❌ Services failed to start within timeout"
-        log "Service status:"
-        docker-compose ps
-        log "Logs:"
-        docker-compose logs --tail=20
-        exit 1
-    fi
-}
-
-# Display service information
-show_service_info() {
-    log "📋 Service Information"
-    echo "======================"
-    
-    # Load environment for port info
-    if [[ -f "$ENV_FILE" ]]; then
-        # shellcheck source=/dev/null
-        source "$ENV_FILE"
+    if [ $attempt -eq $max_attempts ]; then
+        print_warning "Neo4j taking longer than expected to start"
     fi
     
-    echo "🌐 Access Points:"
-    echo "  • Memory API:      http://localhost:${API_PORT:-8080}"
-    echo "  • Admin Panel:     http://localhost:${ADMIN_PORT:-8081}"
-    echo "  • Python Embeddings: http://localhost:8001"
-    echo "  • Neo4j Browser:   http://localhost:${NEO4J_HTTP_PORT:-7474}"
-    echo
-    echo "🧪 Quick API Test:"
-    echo "  curl -X GET http://localhost:8080/health"
-    echo
-    echo "🛠️  Management Commands:"
-    echo "  • View logs:       docker-compose logs -f"
-    echo "  • Stop services:   docker-compose down"
-    echo "  • Start monitoring: docker-compose --profile monitoring up -d"
-    echo "  • Update services: docker-compose pull && docker-compose up -d"
-    echo
-    echo "📊 Current Status:"
-    docker-compose ps
-    echo
-}
-
-# Test service connectivity
-test_services() {
-    log "🧪 Testing service connectivity..."
+    # Wait for AI Memory Service
+    print_step "Waiting for AI Memory Service..."
+    attempt=0
+    max_attempts=120  # 4 minutes for model loading
     
-    # Test main API
-    if curl -f -s http://localhost:8080/health >/dev/null; then
-        success "✅ Memory API: Healthy"
-    else
-        warning "⚠️  Memory API: Not responding"
-    fi
-    
-    # Test Python embeddings
-    if curl -f -s http://localhost:8001/health >/dev/null; then
-        success "✅ Python Embeddings: Healthy"
-    else
-        warning "⚠️  Python Embeddings: Not responding"
-    fi
-    
-    # Test Neo4j
-    if curl -f -s http://localhost:7474 >/dev/null; then
-        success "✅ Neo4j Browser: Accessible"
-    else
-        warning "⚠️  Neo4j Browser: Not accessible"
-    fi
-}
-
-# Optional monitoring services
-setup_monitoring() {
-    read -p "Do you want to enable monitoring (Prometheus + Grafana)? [y/N]: " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log "📊 Starting monitoring services..."
-        docker-compose --profile monitoring up -d
+    while [ $attempt -lt $max_attempts ]; do
+        if curl -sf http://localhost:8080/health >/dev/null 2>&1; then
+            print_success "AI Memory Service is ready"
+            break
+        fi
         
-        echo "📊 Monitoring Access:"
-        echo "  • Grafana Dashboard: http://localhost:${GRAFANA_PORT:-3000}"
-        echo "  • Prometheus:        http://localhost:${PROMETHEUS_PORT:-9090}"
-        echo "  • Health Monitor:    docker-compose logs -f healthcheck"
+        attempt=$((attempt + 1))
+        echo -n "."
+        sleep 2
+    done
+    
+    if [ $attempt -eq $max_attempts ]; then
+        print_warning "AI Memory Service taking longer than expected to start"
+        print_info "This is normal for first startup (model loading). Check logs: docker compose logs ai-memory-service"
     fi
 }
 
-# Cleanup function
-cleanup() {
-    if [[ ${1:-0} -ne 0 ]]; then
-        log "🧹 Cleaning up due to error..."
-        docker-compose down 2>/dev/null || true
-    fi
+# Function: Display service information
+show_service_info() {
+    print_success "🎉 AI Memory Service is running!"
+    echo
+    echo -e "${PURPLE}📋 Service Information:${NC}"
+    echo -e "${GREEN}🌐 Main API:${NC}          http://localhost:8080"
+    echo -e "${GREEN}🌐 Health Check:${NC}      http://localhost:8080/health"  
+    echo -e "${GREEN}🗄️  Neo4j Browser:${NC}     http://localhost:7474"
+    echo -e "${GREEN}👤 Neo4j Username:${NC}     neo4j"
+    echo -e "${GREEN}🔑 Neo4j Password:${NC}     $(grep NEO4J_PASSWORD "$ENV_FILE" | cut -d'=' -f2)"
+    echo
+    echo -e "${BLUE}📊 Optional Monitoring (run with --monitoring):${NC}"
+    echo -e "${BLUE}📈 Grafana:${NC}            http://localhost:3000 (admin/$(grep GRAFANA_PASSWORD "$ENV_FILE" | cut -d'=' -f2))"
+    echo -e "${BLUE}🔍 Prometheus:${NC}         http://localhost:9090"
+    echo
+    echo -e "${YELLOW}🛠️  Management Commands:${NC}"
+    echo -e "${YELLOW}📋 View logs:${NC}          docker compose logs -f"
+    echo -e "${YELLOW}🛑 Stop services:${NC}      docker compose down"
+    echo -e "${YELLOW}🔄 Restart:${NC}            docker compose restart"
+    echo -e "${YELLOW}🧹 Clean restart:${NC}      docker compose down -v && ./scripts/quick-start.sh"
+    echo
+    echo -e "${GREEN}🧪 Test the service:${NC}"
+    echo "curl http://localhost:8080/health"
+    echo
+    print_info "Edit .env file to configure OpenAI API key and other settings"
 }
 
-# Main execution
+# Function: Main execution
 main() {
-    echo "🚀 AI Memory Service - Quick Start"
-    echo "=================================="
-    echo "Self-contained deployment with everything included!"
+    echo -e "${GREEN}🚀 AI Memory Service - Quick Start${NC}"
+    echo -e "${GREEN}====================================${NC}"
     echo
     
-    # Set trap for cleanup on error
-    trap 'cleanup $?' EXIT
+    # Parse command line arguments
+    local enable_monitoring=false
     
-    # Run setup steps
-    check_requirements
-    generate_secure_env
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --monitoring)
+                enable_monitoring=true
+                shift
+                ;;
+            --help|-h)
+                echo "Usage: $0 [--monitoring] [--help]"
+                echo "  --monitoring    Enable Grafana and Prometheus monitoring"
+                echo "  --help         Show this help message"
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Execute setup steps
+    check_prerequisites
+    setup_environment
+    check_model_files
     start_services
-    test_services
+    
+    # Start monitoring if requested
+    if [ "$enable_monitoring" = true ]; then
+        print_step "Starting monitoring services..."
+        docker compose --profile monitoring up -d
+        print_success "Monitoring services started"
+    fi
+    
+    wait_for_services
     show_service_info
-    setup_monitoring
     
-    success "🎉 AI Memory Service is running!"
-    
-    echo
-    echo "🔗 Next Steps:"
-    echo "  1. Visit http://localhost:8080/health to verify the service"
-    echo "  2. Check the API documentation in docs/api.md"
-    echo "  3. Try the example requests in examples/"
-    echo
-    echo "📖 For troubleshooting, see DEPLOYMENT.md"
-    
-    # Reset trap
-    trap - EXIT
+    print_success "Setup completed successfully!"
 }
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --help|-h)
-            echo "AI Memory Service Quick Start"
-            echo "Usage: $0 [options]"
-            echo ""
-            echo "Options:"
-            echo "  --help, -h     Show this help message"
-            echo "  --monitoring   Enable monitoring services automatically"
-            echo "  --no-test      Skip service connectivity tests"
-            echo ""
-            echo "This script sets up a complete self-contained AI Memory Service"
-            echo "requiring only Docker to be installed on your system."
-            echo ""
-            exit 0
-            ;;
-        --monitoring)
-            ENABLE_MONITORING=1
-            shift
-            ;;
-        --no-test)
-            SKIP_TESTS=1
-            shift
-            ;;
-        *)
-            error "Unknown option: $1"
-            exit 1
-            ;;
-    esac
-done
-
-# Run main function
+# Run main function with all arguments
 main "$@"
