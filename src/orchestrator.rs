@@ -41,7 +41,7 @@ impl Default for OrchestratorConfig {
             model: "gpt-5-nano".to_string(), // Используем GPT-5-nano как требуется
             max_input_tokens: 400000,        // GPT-5-nano поддерживает 400K входного контекста
             max_output_tokens: 12000,        // Увеличиваем для GPT-5-nano (до 128K возможно)
-            temperature: 1.0,                 // GPT-5 не поддерживает изменение, только 1.0
+            temperature: 1.0,                // GPT-5 не поддерживает изменение, только 1.0
             timeout_seconds: 120,
         }
     }
@@ -52,11 +52,13 @@ impl Default for OrchestratorConfig {
 struct GPTRequest {
     model: String,
     messages: Vec<GPTMessage>,
-    max_tokens: usize,
+    /// Maximum number of tokens in the model's response (up to 128K for GPT-5-nano)
+    /// Validated in send_gpt_request() to ensure it doesn't exceed model limits
+    max_completion_tokens: usize,
     // GPT-5-nano не поддерживает temperature, top_p, stop и другие параметры
     // temperature: f32,  // УБРАНО - не поддерживается в GPT-5
     #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning_effort: Option<String>,  // Используем reasoning_effort вместо temperature
+    reasoning_effort: Option<String>, // Используем reasoning_effort вместо temperature
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -127,7 +129,10 @@ impl MemoryOrchestrator {
         memories: &[MemoryCell],
         context_hint: Option<&str>,
     ) -> Result<MemoryType> {
-        info!("Starting context distillation for {} memories", memories.len());
+        info!(
+            "Starting context distillation for {} memories",
+            memories.len()
+        );
 
         // Подготовить данные для дистилляции
         let context_data = self.prepare_context_data(memories)?;
@@ -138,7 +143,9 @@ impl MemoryOrchestrator {
         let user_prompt = self.get_distillation_user_prompt(&context_data, context_hint);
 
         // Отправить запрос к GPT-5-nano
-        let response = self.send_gpt_request(&system_prompt, &user_prompt, "medium").await?;
+        let response = self
+            .send_gpt_request(&system_prompt, &user_prompt, "medium")
+            .await?;
 
         // Парсинг ответа и создание ContextDistillation
         let distilled = self.parse_distillation_response(&response, total_size)?;
@@ -156,7 +163,11 @@ impl MemoryOrchestrator {
         memories: &[MemoryCell],
         insight_type: InsightType,
     ) -> Result<Vec<MemoryType>> {
-        info!("Generating insights of type {:?} from {} memories", insight_type, memories.len());
+        info!(
+            "Generating insights of type {:?} from {} memories",
+            insight_type,
+            memories.len()
+        );
 
         // Анализировать паттерны в памяти
         let patterns = self.analyze_memory_patterns(memories).await?;
@@ -166,7 +177,9 @@ impl MemoryOrchestrator {
         let user_prompt = self.get_insight_generation_user_prompt(&patterns, &insight_type);
 
         // Запрос к GPT-5-nano
-        let response = self.send_gpt_request(&system_prompt, &user_prompt, "high").await?;
+        let response = self
+            .send_gpt_request(&system_prompt, &user_prompt, "high")
+            .await?;
 
         // Парсинг ответа и создание инсайтов
         let insights = self.parse_insights_response(&response, memories)?;
@@ -183,7 +196,10 @@ impl MemoryOrchestrator {
         &self,
         memories: &[MemoryCell],
     ) -> Result<MemoryOptimization> {
-        info!("Starting memory optimization for {} memories", memories.len());
+        info!(
+            "Starting memory optimization for {} memories",
+            memories.len()
+        );
 
         // Анализ дубликатов и важности
         let analysis_data = self.analyze_memory_for_optimization(memories).await?;
@@ -193,7 +209,9 @@ impl MemoryOrchestrator {
         let user_prompt = self.get_optimization_user_prompt(&analysis_data);
 
         // Запрос к GPT-5-nano
-        let response = self.send_gpt_request(&system_prompt, &user_prompt, "medium").await?;
+        let response = self
+            .send_gpt_request(&system_prompt, &user_prompt, "medium")
+            .await?;
 
         // Парсинг рекомендаций по оптимизации
         let optimization = self.parse_optimization_response(&response, memories)?;
@@ -210,6 +228,14 @@ impl MemoryOrchestrator {
     ) -> Result<String> {
         let start_time = std::time::Instant::now();
 
+        // Валидация параметров GPT-5-nano
+        if self.config.max_output_tokens > 128000 {
+            return Err(anyhow!(
+                "max_output_tokens {} exceeds GPT-5-nano limit of 128K",
+                self.config.max_output_tokens
+            ));
+        }
+
         let request = GPTRequest {
             model: self.config.model.clone(),
             messages: vec![
@@ -222,7 +248,7 @@ impl MemoryOrchestrator {
                     content: user_prompt.to_string(),
                 },
             ],
-            max_tokens: self.config.max_output_tokens,
+            max_completion_tokens: self.config.max_output_tokens,
             // temperature убрана - GPT-5-nano не поддерживает
             reasoning_effort: Some(reasoning_effort.to_string()),
         };
@@ -247,10 +273,10 @@ impl MemoryOrchestrator {
         if !response.status().is_success() {
             let error_text = response.text().await?;
             error!("GPT-5 API error: {}", error_text);
-            
+
             let mut stats = self.stats.write().await;
             stats.failed_requests += 1;
-            
+
             return Err(anyhow!("GPT-5 API error: {}", error_text));
         }
 
@@ -260,7 +286,9 @@ impl MemoryOrchestrator {
         {
             let mut stats = self.stats.write().await;
             stats.successful_requests += 1;
-            stats.avg_response_time_ms = (stats.avg_response_time_ms * (stats.successful_requests - 1) as f64 + elapsed) / stats.successful_requests as f64;
+            stats.avg_response_time_ms =
+                (stats.avg_response_time_ms * (stats.successful_requests - 1) as f64 + elapsed)
+                    / stats.successful_requests as f64;
         }
 
         if let Some(choice) = gpt_response.choices.first() {
@@ -289,7 +317,7 @@ impl MemoryOrchestrator {
     /// Подготовить данные контекста для дистилляции
     fn prepare_context_data(&self, memories: &[MemoryCell]) -> Result<String> {
         let mut context_data = String::new();
-        
+
         for (i, memory) in memories.iter().enumerate() {
             context_data.push_str(&format!(
                 "ПАМЯТЬ {}: [{}] {}\nВажность: {:.2}, Контекст: {}, Теги: {}\n\n",
@@ -329,24 +357,28 @@ impl MemoryOrchestrator {
     /// Пользовательский промпт для дистилляции
     fn get_distillation_user_prompt(&self, context_data: &str, hint: Option<&str>) -> String {
         let mut prompt = format!("Дистиллируй следующий контекст:\n\n{}", context_data);
-        
+
         if let Some(hint) = hint {
             prompt.push_str(&format!("\n\nДополнительный контекст: {}", hint));
         }
-        
+
         prompt.push_str("\n\nСоздай дистиллированный контекст в JSON формате.");
         prompt
     }
 
     /// Парсинг ответа дистилляции с надежным JSON parsing
-    fn parse_distillation_response(&self, response: &str, original_size: usize) -> Result<MemoryType> {
+    fn parse_distillation_response(
+        &self,
+        response: &str,
+        original_size: usize,
+    ) -> Result<MemoryType> {
         // Извлечь JSON из ответа (может содержать дополнительный текст)
         let json_str = self.extract_json_from_response(response)?;
-        
+
         // Парсинг с помощью serde_json
         let parsed: Value = serde_json::from_str(&json_str)
             .map_err(|e| anyhow!("Failed to parse JSON response: {}", e))?;
-        
+
         // Извлечение полей с валидацией
         let key_points = parsed["key_points"]
             .as_array()
@@ -355,7 +387,7 @@ impl MemoryOrchestrator {
             .filter_map(|v| v.as_str())
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
-            
+
         let relationships = parsed["relationships"]
             .as_array()
             .ok_or_else(|| anyhow!("Missing or invalid 'relationships' field"))?
@@ -363,7 +395,7 @@ impl MemoryOrchestrator {
             .filter_map(|v| v.as_str())
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
-            
+
         let actionable_insights = parsed["actionable_insights"]
             .as_array()
             .ok_or_else(|| anyhow!("Missing or invalid 'actionable_insights' field"))?
@@ -371,20 +403,21 @@ impl MemoryOrchestrator {
             .filter_map(|v| v.as_str())
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
-            
+
         let confidence_score = parsed["confidence_score"]
             .as_f64()
-            .ok_or_else(|| anyhow!("Missing or invalid 'confidence_score' field"))? as f32;
-        
+            .ok_or_else(|| anyhow!("Missing or invalid 'confidence_score' field"))?
+            as f32;
+
         // Валидация значений
         if key_points.is_empty() {
             return Err(anyhow!("Distillation must contain at least one key point"));
         }
-        
+
         if confidence_score < 0.0 || confidence_score > 1.0 {
             return Err(anyhow!("Confidence score must be between 0.0 and 1.0"));
         }
-        
+
         Ok(MemoryType::ContextDistillation {
             original_context_size: original_size,
             key_points,
@@ -397,15 +430,17 @@ impl MemoryOrchestrator {
     /// Извлечь JSON из ответа модели (удаляет лишний текст)
     fn extract_json_from_response(&self, response: &str) -> Result<String> {
         // Поиск первой открывающей скобки и последней закрывающей
-        let json_start = response.find('{')
+        let json_start = response
+            .find('{')
             .ok_or_else(|| anyhow!("No JSON found in response"))?;
-        let json_end = response.rfind('}')
+        let json_end = response
+            .rfind('}')
             .ok_or_else(|| anyhow!("Incomplete JSON in response"))?;
-        
+
         if json_start >= json_end {
             return Err(anyhow!("Invalid JSON structure in response"));
         }
-        
+
         Ok(response[json_start..=json_end].to_string())
     }
 
@@ -414,63 +449,71 @@ impl MemoryOrchestrator {
     /// Анализ паттернов в памяти для выявления закономерностей
     pub async fn analyze_memory_patterns(&self, memories: &[MemoryCell]) -> Result<String> {
         debug!("Analyzing patterns in {} memories", memories.len());
-        
+
         // Группировка по типам памяти
         let mut type_groups: HashMap<String, Vec<&MemoryCell>> = HashMap::new();
         for memory in memories {
             let type_name = memory.memory_type.type_name();
-            type_groups.entry(type_name.to_string()).or_default().push(memory);
+            type_groups
+                .entry(type_name.to_string())
+                .or_default()
+                .push(memory);
         }
-        
+
         // Анализ временных паттернов
         let time_patterns = self.analyze_temporal_patterns(memories);
-        
+
         // Анализ важности и доступа
         let importance_analysis = self.analyze_importance_patterns(memories);
-        
+
         // Анализ контекстных паттернов
         let context_patterns = self.analyze_context_patterns(memories);
-        
+
         // Создание структурированного анализа
         let mut pattern_analysis = String::new();
         pattern_analysis.push_str(&format!("ТИПЫ ПАМЯТИ:\n"));
         for (mem_type, group) in &type_groups {
-            let avg_importance = group.iter().map(|m| m.importance).sum::<f32>() / group.len() as f32;
-            pattern_analysis.push_str(&format!("- {}: {} записей, средняя важность: {:.2}\n", 
-                mem_type, group.len(), avg_importance));
+            let avg_importance =
+                group.iter().map(|m| m.importance).sum::<f32>() / group.len() as f32;
+            pattern_analysis.push_str(&format!(
+                "- {}: {} записей, средняя важность: {:.2}\n",
+                mem_type,
+                group.len(),
+                avg_importance
+            ));
         }
-        
+
         pattern_analysis.push_str(&format!("\nВРЕМЕННЫЕ ПАТТЕРНЫ:\n{}\n", time_patterns));
         pattern_analysis.push_str(&format!("АНАЛИЗ ВАЖНОСТИ:\n{}\n", importance_analysis));
         pattern_analysis.push_str(&format!("КОНТЕКСТНЫЕ ПАТТЕРНЫ:\n{}", context_patterns));
-        
+
         Ok(pattern_analysis)
     }
 
     /// Анализ временных паттернов создания и доступа к памяти
     fn analyze_temporal_patterns(&self, memories: &[MemoryCell]) -> String {
         use chrono::{Duration, Utc};
-        
+
         let now = Utc::now();
         let mut recent = 0;
         let mut old = 0;
         let mut accessed_recently = 0;
-        
+
         for memory in memories {
             let age = now.signed_duration_since(memory.created_at);
-            
+
             if age < Duration::days(7) {
                 recent += 1;
             } else if age > Duration::days(30) {
                 old += 1;
             }
-            
+
             let last_access_age = now.signed_duration_since(memory.last_accessed);
             if last_access_age < Duration::days(3) {
                 accessed_recently += 1;
             }
         }
-        
+
         format!("- Недавно созданных (< 7 дней): {}\n- Старых (> 30 дней): {}\n- Недавно использованных: {}", 
             recent, old, accessed_recently)
     }
@@ -479,8 +522,9 @@ impl MemoryOrchestrator {
     fn analyze_importance_patterns(&self, memories: &[MemoryCell]) -> String {
         let mut high_importance = 0;
         let mut low_importance = 0;
-        let avg_importance = memories.iter().map(|m| m.importance).sum::<f32>() / memories.len() as f32;
-        
+        let avg_importance =
+            memories.iter().map(|m| m.importance).sum::<f32>() / memories.len() as f32;
+
         for memory in memories {
             if memory.importance > 0.7 {
                 high_importance += 1;
@@ -488,7 +532,7 @@ impl MemoryOrchestrator {
                 low_importance += 1;
             }
         }
-        
+
         format!("- Средняя важность: {:.2}\n- Высокой важности (>0.7): {}\n- Низкой важности (<0.3): {}", 
             avg_importance, high_importance, low_importance)
     }
@@ -496,7 +540,7 @@ impl MemoryOrchestrator {
     /// Анализ контекстных паттернов
     fn analyze_context_patterns(&self, memories: &[MemoryCell]) -> String {
         let mut context_counts: HashMap<String, usize> = HashMap::new();
-        
+
         for memory in memories {
             let parts: Vec<&str> = memory.context_path.split('/').collect();
             for (i, part) in parts.iter().enumerate() {
@@ -504,15 +548,15 @@ impl MemoryOrchestrator {
                 *context_counts.entry(context_level).or_insert(0) += 1;
             }
         }
-        
+
         let mut result = String::new();
         let mut sorted_contexts: Vec<_> = context_counts.iter().collect();
         sorted_contexts.sort_by(|a, b| b.1.cmp(a.1));
-        
+
         for (context, count) in sorted_contexts.iter().take(5) {
             result.push_str(&format!("- {}: {} записей\n", context, count));
         }
-        
+
         result
     }
 
@@ -540,41 +584,54 @@ impl MemoryOrchestrator {
       \"source_evidence\": [\"доказательство1\"]
     }
   ]
-}".to_string()
+}"
+        .to_string()
     }
 
     /// Пользовательский промпт для генерации инсайтов
-    fn get_insight_generation_user_prompt(&self, patterns: &str, insight_type: &InsightType) -> String {
-        format!("Проанализируй паттерны и сгенерируй инсайты типа {:?}:
+    fn get_insight_generation_user_prompt(
+        &self,
+        patterns: &str,
+        insight_type: &InsightType,
+    ) -> String {
+        format!(
+            "Проанализируй паттерны и сгенерируй инсайты типа {:?}:
 
 АНАЛИЗ ПАТТЕРНОВ:
 {}
 
-Создай 2-3 практичных инсайта в JSON формате.", insight_type, patterns)
+Создай 2-3 практичных инсайта в JSON формате.",
+            insight_type, patterns
+        )
     }
 
     /// Парсинг ответа с инсайтами
-    fn parse_insights_response(&self, response: &str, memories: &[MemoryCell]) -> Result<Vec<MemoryType>> {
+    fn parse_insights_response(
+        &self,
+        response: &str,
+        memories: &[MemoryCell],
+    ) -> Result<Vec<MemoryType>> {
         let json_str = self.extract_json_from_response(response)?;
         let parsed: Value = serde_json::from_str(&json_str)?;
-        
+
         let insights_array = parsed["insights"]
             .as_array()
             .ok_or_else(|| anyhow!("Missing 'insights' array in response"))?;
-        
+
         let mut memory_insights = Vec::new();
-        
+
         for insight_value in insights_array {
             let insight_type_str = insight_value["type"]
                 .as_str()
                 .ok_or_else(|| anyhow!("Missing 'type' field in insight"))?;
-            
+
             let insight_type = self.parse_insight_type(insight_type_str)?;
-            
+
             let confidence = insight_value["confidence"]
                 .as_f64()
-                .ok_or_else(|| anyhow!("Missing 'confidence' field"))? as f32;
-            
+                .ok_or_else(|| anyhow!("Missing 'confidence' field"))?
+                as f32;
+
             let implications = insight_value["implications"]
                 .as_array()
                 .ok_or_else(|| anyhow!("Missing 'implications' field"))?
@@ -582,7 +639,7 @@ impl MemoryOrchestrator {
                 .filter_map(|v| v.as_str())
                 .map(|s| s.to_string())
                 .collect();
-            
+
             let actionable_items = insight_value["actionable_items"]
                 .as_array()
                 .ok_or_else(|| anyhow!("Missing 'actionable_items' field"))?
@@ -590,14 +647,10 @@ impl MemoryOrchestrator {
                 .filter_map(|v| v.as_str())
                 .map(|s| s.to_string())
                 .collect();
-            
+
             // Выбрать случайные source memories для демонстрации
-            let source_memories = memories
-                .iter()
-                .take(3)
-                .map(|m| m.id)
-                .collect();
-            
+            let source_memories = memories.iter().take(3).map(|m| m.id).collect();
+
             let memory_insight = MemoryType::Insight {
                 insight_type,
                 confidence,
@@ -605,10 +658,10 @@ impl MemoryOrchestrator {
                 implications,
                 actionable_items,
             };
-            
+
             memory_insights.push(memory_insight);
         }
-        
+
         Ok(memory_insights)
     }
 
@@ -629,28 +682,31 @@ impl MemoryOrchestrator {
             "LearningPath" => Ok(InsightType::LearningPath),
             "ToolUsage" => Ok(InsightType::ToolUsage),
             "CodingStyle" => Ok(InsightType::CodingStyle),
-            _ => Err(anyhow!("Unknown insight type: {}", type_str))
+            _ => Err(anyhow!("Unknown insight type: {}", type_str)),
         }
     }
 
     /// Анализ памяти для оптимизации хранения
     async fn analyze_memory_for_optimization(&self, memories: &[MemoryCell]) -> Result<String> {
-        debug!("Analyzing {} memories for optimization opportunities", memories.len());
-        
+        debug!(
+            "Analyzing {} memories for optimization opportunities",
+            memories.len()
+        );
+
         // Поиск потенциальных дубликатов по содержимому
         let duplicate_candidates = self.find_duplicate_candidates(memories);
-        
+
         // Анализ устаревшей информации
         let outdated_analysis = self.analyze_outdated_memories(memories);
-        
+
         // Анализ неиспользуемых записей
         let unused_analysis = self.analyze_unused_memories(memories);
-        
+
         let analysis = format!(
             "ДУБЛИКАТЫ: {}\nУСТАРЕВШИЕ: {}\nНЕИСПОЛЬЗУЕМЫЕ: {}",
             duplicate_candidates, outdated_analysis, unused_analysis
         );
-        
+
         Ok(analysis)
     }
 
@@ -658,50 +714,59 @@ impl MemoryOrchestrator {
     fn find_duplicate_candidates(&self, memories: &[MemoryCell]) -> String {
         let mut candidates = 0;
         let mut content_hashes: HashMap<String, Vec<Uuid>> = HashMap::new();
-        
+
         for memory in memories {
             // Простой хеш на первых 100 символах содержимого
             let content_preview = memory.content.chars().take(100).collect::<String>();
-            let hash = format!("{:x}", content_preview.chars().fold(0u64, |acc, c| acc.wrapping_mul(31).wrapping_add(c as u64)));
-            
+            let hash = format!(
+                "{:x}",
+                content_preview
+                    .chars()
+                    .fold(0u64, |acc, c| acc.wrapping_mul(31).wrapping_add(c as u64))
+            );
+
             content_hashes.entry(hash).or_default().push(memory.id);
         }
-        
+
         for (_, ids) in content_hashes {
             if ids.len() > 1 {
                 candidates += ids.len() - 1; // Один оставляем, остальные - кандидаты
             }
         }
-        
+
         format!("{} потенциальных дубликатов", candidates)
     }
 
     /// Анализ устаревших записей
     fn analyze_outdated_memories(&self, memories: &[MemoryCell]) -> String {
         use chrono::{Duration, Utc};
-        
+
         let now = Utc::now();
         let mut outdated = 0;
-        
+
         for memory in memories {
             let age = now.signed_duration_since(memory.created_at);
             let last_access = now.signed_duration_since(memory.last_accessed);
-            
+
             // Считаем устаревшими записи старше 90 дней без доступа более 30 дней
-            if age > Duration::days(90) && last_access > Duration::days(30) && memory.importance < 0.5 {
+            if age > Duration::days(90)
+                && last_access > Duration::days(30)
+                && memory.importance < 0.5
+            {
                 outdated += 1;
             }
         }
-        
+
         format!("{} записей для архивации", outdated)
     }
 
     /// Анализ неиспользуемых записей
     fn analyze_unused_memories(&self, memories: &[MemoryCell]) -> String {
-        let unused = memories.iter()
+        let unused = memories
+            .iter()
             .filter(|m| m.access_frequency == 0 && m.importance < 0.3)
             .count();
-        
+
         format!("{} неиспользуемых записей", unused)
     }
 
@@ -729,19 +794,26 @@ impl MemoryOrchestrator {
 
     /// Пользовательский промпт для оптимизации
     fn get_optimization_user_prompt(&self, analysis: &str) -> String {
-        format!("Проанализируй данные оптимизации и предложи конкретные действия:
+        format!(
+            "Проанализируй данные оптимизации и предложи конкретные действия:
 
 АНАЛИЗ:
 {}
 
-Создай план оптимизации в JSON формате с конкретными рекомендациями.", analysis)
+Создай план оптимизации в JSON формате с конкретными рекомендациями.",
+            analysis
+        )
     }
 
     /// Парсинг ответа оптимизации
-    fn parse_optimization_response(&self, response: &str, _memories: &[MemoryCell]) -> Result<MemoryOptimization> {
+    fn parse_optimization_response(
+        &self,
+        response: &str,
+        _memories: &[MemoryCell],
+    ) -> Result<MemoryOptimization> {
         let json_str = self.extract_json_from_response(response)?;
         let parsed: Value = serde_json::from_str(&json_str)?;
-        
+
         let duplicates_to_remove = parsed["duplicates_to_remove"]
             .as_array()
             .unwrap_or(&vec![])
@@ -749,7 +821,7 @@ impl MemoryOrchestrator {
             .filter_map(|v| v.as_str())
             .filter_map(|s| Uuid::parse_str(s).ok())
             .collect();
-        
+
         let outdated_for_archive = parsed["outdated_for_archive"]
             .as_array()
             .unwrap_or(&vec![])
@@ -757,7 +829,7 @@ impl MemoryOrchestrator {
             .filter_map(|v| v.as_str())
             .filter_map(|s| Uuid::parse_str(s).ok())
             .collect();
-        
+
         let optimization_suggestions = parsed["optimization_suggestions"]
             .as_array()
             .unwrap_or(&vec![])
@@ -765,15 +837,11 @@ impl MemoryOrchestrator {
             .filter_map(|v| v.as_str())
             .map(|s| s.to_string())
             .collect();
-        
-        let compression_ratio = parsed["compression_ratio"]
-            .as_f64()
-            .unwrap_or(0.8) as f32;
-        
-        let space_savings_percent = parsed["space_savings_percent"]
-            .as_f64()
-            .unwrap_or(20.0) as f32;
-        
+
+        let compression_ratio = parsed["compression_ratio"].as_f64().unwrap_or(0.8) as f32;
+
+        let space_savings_percent = parsed["space_savings_percent"].as_f64().unwrap_or(20.0) as f32;
+
         Ok(MemoryOptimization {
             duplicates_to_remove,
             outdated_for_archive,
@@ -808,20 +876,34 @@ impl MemoryOrchestrator {
                 // Для семантической памяти используем поисковый промпт
                 let main_fact = facts.first().unwrap_or(&String::new()).clone();
                 let concept_list = concepts.join(", ");
-                format!("task: search result | query: {} - concepts: {}", main_fact, concept_list)
-            },
-            MemoryType::Episodic { event, participants, .. } => {
+                format!(
+                    "task: search result | query: {} - concepts: {}",
+                    main_fact, concept_list
+                )
+            }
+            MemoryType::Episodic {
+                event,
+                participants,
+                ..
+            } => {
                 // Для эпизодической памяти используем документный формат
                 let participants_str = participants.join(", ");
-                format!("title: event_{} | text: {} - participants: {}", 
-                    event.chars().take(50).collect::<String>(), event, participants_str)
-            },
+                format!(
+                    "title: event_{} | text: {} - participants: {}",
+                    event.chars().take(50).collect::<String>(),
+                    event,
+                    participants_str
+                )
+            }
             MemoryType::Procedural { steps, tools, .. } => {
                 // Для процедурной памяти используем код-специфичный промпт
                 let procedure_desc = steps.join(" -> ");
                 let tools_str = tools.join(", ");
-                format!("task: code retrieval | query: procedure: {} using {}", procedure_desc, tools_str)
-            },
+                format!(
+                    "task: code retrieval | query: procedure: {} using {}",
+                    procedure_desc, tools_str
+                )
+            }
             MemoryType::Working { task, priority, .. } => {
                 // Для рабочей памяти используем QA формат
                 let priority_str = match priority {
@@ -830,9 +912,18 @@ impl MemoryOrchestrator {
                     Priority::Medium => "medium",
                     Priority::Low => "low",
                 };
-                format!("task: question answering | query: {} task - priority: {}", task, priority_str)
-            },
-            MemoryType::Code { language, code_type, functions, concepts, .. } => {
+                format!(
+                    "task: question answering | query: {} task - priority: {}",
+                    task, priority_str
+                )
+            }
+            MemoryType::Code {
+                language,
+                code_type,
+                functions,
+                concepts,
+                ..
+            } => {
                 // Для кода используем специализированный промпт
                 let code_context = match code_type {
                     CodeType::Function => "function implementation",
@@ -845,10 +936,17 @@ impl MemoryOrchestrator {
                 };
                 let functions_str = functions.join(", ");
                 let concepts_str = concepts.join(", ");
-                format!("task: code retrieval | query: {} {} - functions: {} concepts: {}", 
-                    language, code_context, functions_str, concepts_str)
-            },
-            MemoryType::Documentation { doc_type, topics, examples, .. } => {
+                format!(
+                    "task: code retrieval | query: {} {} - functions: {} concepts: {}",
+                    language, code_context, functions_str, concepts_str
+                )
+            }
+            MemoryType::Documentation {
+                doc_type,
+                topics,
+                examples,
+                ..
+            } => {
                 // Для документации используем документный формат с типом
                 let doc_title = match doc_type {
                     DocumentationType::Api => "API Documentation",
@@ -859,9 +957,18 @@ impl MemoryOrchestrator {
                 };
                 let topics_str = topics.join(", ");
                 let examples_preview = examples.first().map(|s| s.as_str()).unwrap_or("");
-                format!("title: {} | text: topics: {} example: {}", doc_title, topics_str, examples_preview)
-            },
-            MemoryType::Conversation { session_id, intent, user_requests, ai_actions, .. } => {
+                format!(
+                    "title: {} | text: topics: {} example: {}",
+                    doc_title, topics_str, examples_preview
+                )
+            }
+            MemoryType::Conversation {
+                session_id,
+                intent,
+                user_requests,
+                ai_actions,
+                ..
+            } => {
                 // Для разговоров используем similarity промпт
                 let intent_str = match intent {
                     ConversationIntent::CodeHelp => "code assistance",
@@ -872,10 +979,17 @@ impl MemoryOrchestrator {
                 };
                 let user_request = user_requests.first().map(|s| s.as_str()).unwrap_or("");
                 let ai_action = ai_actions.first().map(|s| s.as_str()).unwrap_or("");
-                format!("task: sentence similarity | query: {} session {} - request: {} response: {}", 
-                    intent_str, session_id, user_request, ai_action)
-            },
-            MemoryType::Insight { insight_type, implications, actionable_items, .. } => {
+                format!(
+                    "task: sentence similarity | query: {} session {} - request: {} response: {}",
+                    intent_str, session_id, user_request, ai_action
+                )
+            }
+            MemoryType::Insight {
+                insight_type,
+                implications,
+                actionable_items,
+                ..
+            } => {
                 // Для инсайтов используем classification промпт
                 let insight_context = match insight_type {
                     InsightType::UserPreference => "user preference pattern",
@@ -886,40 +1000,79 @@ impl MemoryOrchestrator {
                 };
                 let main_implication = implications.first().map(|s| s.as_str()).unwrap_or("");
                 let action = actionable_items.first().map(|s| s.as_str()).unwrap_or("");
-                format!("task: classification | text: {} - {} action: {}", insight_context, main_implication, action)
-            },
-            MemoryType::ProblemPattern { problem_category, typical_solutions, prevention_strategies, .. } => {
+                format!(
+                    "task: classification | text: {} - {} action: {}",
+                    insight_context, main_implication, action
+                )
+            }
+            MemoryType::ProblemPattern {
+                problem_category,
+                typical_solutions,
+                prevention_strategies,
+                ..
+            } => {
                 // Для паттернов проблем используем fact checking
                 let solution_preview = typical_solutions.first().map(|s| s.as_str()).unwrap_or("");
-                let prevention = prevention_strategies.first().map(|s| s.as_str()).unwrap_or("");
-                format!("task: fact checking | query: {} problem - solution: {} prevention: {}", 
-                    problem_category, solution_preview, prevention)
-            },
-            MemoryType::UserPreference { preference_type, examples, contexts, .. } => {
+                let prevention = prevention_strategies
+                    .first()
+                    .map(|s| s.as_str())
+                    .unwrap_or("");
+                format!(
+                    "task: fact checking | query: {} problem - solution: {} prevention: {}",
+                    problem_category, solution_preview, prevention
+                )
+            }
+            MemoryType::UserPreference {
+                preference_type,
+                examples,
+                contexts,
+                ..
+            } => {
                 // Для предпочтений используем clustering
                 let example = examples.first().map(|s| s.as_str()).unwrap_or("");
                 let context = contexts.first().map(|s| s.as_str()).unwrap_or("");
-                format!("task: clustering | text: user preference {} - example: {} in context: {}", 
-                    preference_type, example, context)
-            },
-            MemoryType::ContextDistillation { key_points, relationships, .. } => {
+                format!(
+                    "task: clustering | text: user preference {} - example: {} in context: {}",
+                    preference_type, example, context
+                )
+            }
+            MemoryType::ContextDistillation {
+                key_points,
+                relationships,
+                ..
+            } => {
                 // Для дистиллированного контекста используем summary формат
                 let points_summary = key_points.join("; ");
                 let relations = relationships.join("; ");
-                format!("task: search result | query: distilled context - points: {} relations: {}", 
+                format!(
+                    "task: search result | query: distilled context - points: {} relations: {}",
                     points_summary.chars().take(200).collect::<String>(),
-                    relations.chars().take(100).collect::<String>())
-            },
-            MemoryType::ProblemSolution { problem, solution_steps, prevention, .. } => {
+                    relations.chars().take(100).collect::<String>()
+                )
+            }
+            MemoryType::ProblemSolution {
+                problem,
+                solution_steps,
+                prevention,
+                ..
+            } => {
                 // Для решений проблем используем QA промпт
                 let solution_preview = solution_steps.join(" -> ");
                 let prevention_str = prevention.join(", ");
-                format!("task: question answering | query: problem: {} solution: {} prevention: {}", 
-                    problem, 
+                format!(
+                    "task: question answering | query: problem: {} solution: {} prevention: {}",
+                    problem,
                     solution_preview.chars().take(150).collect::<String>(),
-                    prevention_str.chars().take(100).collect::<String>())
-            },
-            MemoryType::MetaCognitive { insight, context, implications, confidence, .. } => {
+                    prevention_str.chars().take(100).collect::<String>()
+                )
+            }
+            MemoryType::MetaCognitive {
+                insight,
+                context,
+                implications,
+                confidence,
+                ..
+            } => {
                 // Для метакогнитивных инсайтов используем classification
                 let implications_str = implications.join("; ");
                 format!("task: classification | text: insight: {} context: {} implications: {} confidence: {:.2}", 
@@ -933,7 +1086,8 @@ impl MemoryOrchestrator {
 
     /// Оптимизация batch промптов для массовой обработки
     pub fn prepare_batch_prompts(&self, memories: &[MemoryCell]) -> Vec<String> {
-        memories.iter()
+        memories
+            .iter()
             .map(|memory| self.prepare_embedding_prompt(memory, None))
             .collect()
     }
@@ -941,7 +1095,7 @@ impl MemoryOrchestrator {
     /// Анализ и выбор оптимального task type для набора памяти
     pub fn determine_optimal_task_type(&self, memories: &[MemoryCell]) -> String {
         let mut type_counts = HashMap::new();
-        
+
         for memory in memories {
             let task_type = match &memory.memory_type {
                 MemoryType::Code { .. } => "code",
@@ -954,8 +1108,9 @@ impl MemoryOrchestrator {
             };
             *type_counts.entry(task_type).or_insert(0) += 1;
         }
-        
-        type_counts.into_iter()
+
+        type_counts
+            .into_iter()
             .max_by_key(|(_, count)| *count)
             .map(|(task_type, _)| task_type.to_string())
             .unwrap_or_else(|| "search".to_string())
@@ -968,11 +1123,11 @@ impl MemoryOptimization {
         if self.compression_ratio < 0.0 || self.compression_ratio > 1.0 {
             return Err(anyhow!("Invalid compression ratio"));
         }
-        
+
         if self.space_savings_percent < 0.0 || self.space_savings_percent > 100.0 {
             return Err(anyhow!("Invalid space savings percentage"));
         }
-        
+
         Ok(())
     }
 }
@@ -987,7 +1142,7 @@ mod tests {
             api_key: "test-key".to_string(),
             ..Default::default()
         };
-        
+
         let orchestrator = MemoryOrchestrator::new(config);
         assert!(orchestrator.is_ok());
     }
@@ -997,9 +1152,9 @@ mod tests {
         let mut optimization = MemoryOptimization::default();
         optimization.compression_ratio = 0.5;
         optimization.space_savings_percent = 25.0;
-        
+
         assert!(optimization.validate().is_ok());
-        
+
         optimization.compression_ratio = 1.5; // Невалидное значение
         assert!(optimization.validate().is_err());
     }

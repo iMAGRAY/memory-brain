@@ -1,0 +1,123 @@
+{
+  "test_metadata": {
+    "test_id": "3dc3a3f5-1ed3-49f3-a1eb-81e6fa956d77",
+    "timestamp": 1757357155,
+    "test_type": "tasktype_consistency"
+  },
+  "storage_results": [
+    {
+      "memory_index": 1,
+      "content_preview": "Python programming language syntax and f...",
+      "context": "programming",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 2,
+      "content_preview": "Python development best practices and co...",
+      "context": "programming",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 3,
+      "content_preview": "JavaScript framework React component lif...",
+      "context": "web_development",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 4,
+      "content_preview": "React hooks useState and useEffect patte...",
+      "context": "web_development",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 5,
+      "content_preview": "Machine learning neural network architec...",
+      "context": "ai_ml",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 6,
+      "content_preview": "Deep learning convolutional neural netwo...",
+      "context": "ai_ml",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 7,
+      "content_preview": "Database SQL query optimization techniqu...",
+      "context": "database",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    },
+    {
+      "memory_index": 8,
+      "content_preview": "PostgreSQL performance tuning and indexi...",
+      "context": "database",
+      "success": true,
+      "status_code": 200,
+      "message": "Storage successful"
+    }
+  ],
+  "search_results": [
+    {
+      "query_index": 1,
+      "query": "Python coding standards",
+      "success": false,
+      "status_code": 400,
+      "results_count": 0,
+      "message": "Search failed with status 400"
+    },
+    {
+      "query_index": 2,
+      "query": "React component patterns",
+      "success": false,
+      "status_code": 400,
+      "results_count": 0,
+      "message": "Search failed with status 400"
+    },
+    {
+      "query_index": 3,
+      "query": "neural network design",
+      "success": false,
+      "status_code": 400,
+      "results_count": 0,
+      "message": "Search failed with status 400"
+    },
+    {
+      "query_index": 4,
+      "query": "SQL optimization strategies",
+      "success": false,
+      "status_code": 400,
+      "results_count": 0,
+      "message": "Search failed with status 400"
+    }
+  ],
+  "consistency_metrics": {
+    "storage_success_rate": 1.0,
+    "search_success_rate": 0.0,
+    "avg_results_per_query": 0.0,
+    "total_memories_stored": 8,
+    "total_searches_performed": 4,
+    "total_results_found": 0,
+    "error_count": 4
+  },
+  "total_time": 6.16651177406311,
+  "errors": [
+    "Search failed for query 1: Search failed with status 400",
+    "Search failed for query 2: Search failed with status 400",
+    "Search failed for query 3: Search failed with status 400",
+    "Search failed for query 4: Search failed with status 400"
+  ]
+}

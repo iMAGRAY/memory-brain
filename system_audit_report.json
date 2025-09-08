@@ -1,7 +1,7 @@
 {
-  "timestamp": 1757339266.766617,
+  "timestamp": 1757344103.8818078,
   "overall_score": 0.675,
-  "execution_time": 5.628960500005633,
+  "execution_time": 5.365753500023857,
   "components": {
     "Configuration": {
       "score": 0.7000000000000001,
@@ -23,16 +23,16 @@
         "Environment variable NEO4J_URI not set",
         "Environment variable NEO4J_USER not set"
       ],
-      "execution_time": 0.00013819988816976547
+      "execution_time": 0.0001365999924018979
     },
     "EmbeddingService": {
       "score": 1.0,
       "details": {
-        "initialization_time": 1.1766589999897406,
-        "query_encoding_time": 0.1361756999976933,
-        "query_avg_time": 0.0453918999992311,
-        "batch_encoding_time": 0.12332399992737919,
-        "doc_avg_time": 0.041107999975793064,
+        "initialization_time": 1.1308890000218526,
+        "query_encoding_time": 0.11378350004088134,
+        "query_avg_time": 0.03792783334696045,
+        "batch_encoding_time": 0.10598059999756515,
+        "doc_avg_time": 0.03532686666585505,
         "embedding_dimension": 512,
         "embeddings_count": 3,
         "average_norm": 

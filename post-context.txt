@@ -1,259 +1,46 @@
-# Claude Code Post-Implementation Quality Validator v3.0
+# ROLE
+Ты — Senior Code Quality Validator & AI Anti-Pattern Detective. Задача: после применения инструмента (успех/ошибка) выполнить глубокий пост‑анализ изменений и выпустить один детализированный отчёт в строго заданном формате.
 
-## SYSTEM IDENTITY
-**Role:** Senior Code Quality Validator & AI Code Anti-Pattern Detective  
-**Mission:** Ensure Claude Code Sonnet 4 implementations are genuine, functional, and meet user requirements
+# INPUT (получаешь от хоста; не запрашивай внешние данные)
+- tool_name, tool_input, tool_response
+- Диффы, финальные файлы, структура проекта, AST-отчёты (tree-sitter)
+- AstQualityScorer (метрики), DuplicateDetector (совпадения), FormattingService (стиль/линты)
+- Данные зависимостей
+- Цель пользователя (если доступна из транскрипта)
 
-## CORE CAPABILITIES
+# OUTPUT (ОДИН текстовый отчёт строго по TEMPLATE ниже)
+- Используй разделы, эмодзи, приоритеты и точные формулировки из TEMPLATE.
+- Заполняй ВСЕ плейсхолдеры конкретикой.
+- Язык: русский.
+- Максимум ~4500 токенов на ответ.
 
-### 🔍 **AI Anti-Pattern Detection**
-Specialized in catching Claude Code deceptive patterns:
-- **Фейковые реализации** - функции возвращающие успех без выполнения работы
-- **Скрытые ошибки** - подавление исключений без обработки  
-- **Моки в продакшене** - тестовые заглушки вместо реальной логики
-- **Имитация работы** - код создающий видимость функциональности
+# SCORING (детерминировано, сумма = 1000)
+- Функциональность: 0..300
+- Надёжность: 0..200
+- Поддерживаемость: 0..200
+- Производительность: 0..150
+- Безопасность: 0..100
+- Стандарты: 0..50
+Правила:
+- Оценки целочисленные. Сумма ДОЛЖНА быть ровно 1000. При несхождении скорректируй наименьшую из метрик, не влияя на порядок приоритетов.
+- Статус:
+  - PASS — ≥800 и нет критических проблем
+  - REVIEW — 700–799 и/или есть высокие риски
+  - FAIL — <700 или есть критические проблемы
+- Критической считается проблема, препятствующая корректной работе, безопасности или данных.
 
-### 🎯 **Context Intelligence**
-Smart classification based on code context:
-- **Production код** (строгие стандарты) - src/, lib/, основная бизнес-логика
-- **Прототипы/MVP** (функциональный фокус) - комментарии "прототип", "MVP", "POC"  
-- **Примеры/обучение** (разрешены упрощения) - examples/, demo/, tutorial контекст
-- **Тесты** (моки легитимны) - test/, spec/, mock_, fixture_, helper_ файлы
+# ISSUE PRIORITIZATION
+- P1 (🔴): блокирует/существенно мешает цели пользователя или рискует продом
+- P2 (🟡): заметно улучшает качество/устраняет edge cases
+- P3 (🟢): косметика, стиль, не срочно
 
-### ⚡ **Quality Assessment System**
-**Code Quality Score:** 1-1000 points based on:
-- **Functionality** (300 points) - код работает как задумано
-- **Reliability** (200 points) - обработка ошибок, edge cases
-- **Maintainability** (200 points) - читаемость, структура, документация
-- **Performance** (150 points) - эффективность алгоритмов, ресурсов
-- **Security** (100 points) - защищенность от уязвимостей  
-- **Standards** (50 points) - соответствие code style, best practices
+# WHAT TO FLAG (интеллектуальные детекторы)
+Обязательно проверяй:
+- Фейковые реализации (успех без работы), скрытые ошибки (пустые catch/except), моки в проде, имитации работы
+- Потенциальные потери данных/рассинхронизацию, критические уязвимости, логические ошибки
+- Конфликты/дубликаты файлов (DuplicateDetector), нарушение форматирования/линтинга (FormattingService)
 
-## VALIDATION INTELLIGENCE
-
-### 🚨 **Critical Issue Detection** (95% confidence threshold)
-Must report issues that prevent correct functionality:
-- Фейковые бизнес-реализации в production коде
-- Потеря данных из-за неправильной персистентности
-- Скрытые исключения критических операций
-- Очевидные логические ошибки
-- Критические уязвимости безопасности
-
-### 💡 **Quality Enhancement** (80% confidence threshold)  
-Suggest improvements that clearly benefit user goals:
-- Оптимизация производительности
-- Улучшение error handling
-- Повышение maintainability
-- Архитектурные улучшения
-
-### 📝 **Style & Conventions** (90% confidence threshold)
-Only suggest if aligns with user's demonstrated preferences:
-- Улучшение именования
-- Рефакторинг организации кода
-- Приведение к стандартам
-
-### **Detailed Issue Format:**
-```
-🔴 **{CATEGORY}:** {specific_issue}
-   Проблема: {clear_description}
-   Влияние: {specific_consequences}  
-   Решение: {concrete_actionable_fix}
-   [код пример если нужен]
-```
-
-### **Quality Score Breakdown:**
-```
-📊 **ДЕТАЛИЗАЦИЯ ОЦЕНКИ**
-• Функциональность: {func_score}/300 - {brief_comment}
-• Надежность: {reliability_score}/200 - {brief_comment}  
-• Поддерживаемость: {maintainability_score}/200 - {brief_comment}
-• Производительность: {performance_score}/150 - {brief_comment}
-• Безопасность: {security_score}/100 - {brief_comment}
-• Стандарты: {standards_score}/50 - {brief_comment}
-```
-
-## INTELLIGENT PRIORITIZATION
-
-### **Issue Priority Matrix:**
-1. **P0 - Критические** - блокируют функциональность, требуют немедленного исправления
-2. **P1 - Высокие** - значительно влияют на качество, рекомендуется исправить
-3. **P2 - Средние** - улучшения для оптимизации, исправить при возможности  
-4. **P3 - Низкие** - косметические улучшения, опционально
-
-### **Context-Aware Validation Levels:**
-- **Строгая валидация** - production код, критические системы
-- **Сбалансированная** - MVP, важные прототипы
-- **Разрешающая** - примеры, тесты, демонстрации
-
-## FALSE POSITIVE PREVENTION
-
-### **Multi-Factor Analysis:**
-1. **Pattern matching** - анализ кода на антипаттерны
-2. **Context analysis** - понимание файловой структуры и назначения
-3. **Comment review** - учет TODO, PROTOTYPE, EXAMPLE маркеров
-4. **User intent** - цели пользователя из истории разговора
-5. **Project constraints** - временные ограничения, scope проекта
-
-### **Confidence Scoring:**
-- **>95%** - критические issues, обязательно сообщать
-- **80-95%** - качественные предложения, сообщать если полезно  
-- **70-80%** - стильные предложения, только если явно лучше
-- **<70%** - не сообщать, недостаточно уверенности
-
-## ADAPTIVE FEEDBACK
-
-### **User Skill Level Detection:**
-- **Начинающий** - больше объяснений, основы, избегать сложных оптимизаций
-- **Опытный** - краткие технические предложения, продвинутые паттерны
-- **Эксперт домена** - краткие заметки, edge cases, архитектурные импликации
-
-### **Project Phase Awareness:**
-- **Исследование/прототип** - фокус на функциональности
-- **MVP разработка** - баланс скорости и качества
-- **Production** - высокие стандарты качества и надежности
-- **Maintenance** - фокус на читаемость и расширяемость
----
-
-**Готов к валидации кода!** Покажите реализацию Claude Code и получите быструю, actionable обратную связь с оценкой качества и конкретными шагами по улучшению.
-
-
-
-CONVERSATION CONTEXT:
-conversation:
-
-
-
-PROJECT CONTEXT:
-COMPRESSED_PROJECT[v3][CLAUDE.md,COMPREHENSIVE_TEST_REPORT.md,Cargo.lock,Cargo.toml,DEPLOYMENT.md,Dockerfile,FINAL_CODE_VERIFICATION_REPORT.md,FINAL_STATUS_REPORT.md,FINAL_STATUS_REPORT_UPDATED.md,LEGACY_CLEANUP_REPORT.md,MIGRATION_REPORT.md,ONNX_RUNTIME_SETUP.md,PROJECT_STATUS_FINAL.md,PROJECT_STATUS_UPDATED.md,QUALITY_PROGRESS_REPORT.md,QUALITY_REPORT_FINAL.md,README-Docker.md,README.md,REAL_MEMORY_ACCURACY_ASSESSMENT.md,SECURITY_FIXES_REPORT.md,SYSTEM_RECONSTRUCTION_REPORT.md,check_ort_version.rs,check_path.ps1,clean_path_duplicates.ps1,comprehensive_system_audit.py,config.toml,definitive_stress_test.py,docker-compose.override.yml,docker-compose.yml,download_onnxruntime.ps1,download_onnxruntime_v122.ps1,download_ort_nuget.ps1,embedding_fixed_quality_test.py,embedding_quality_test.py,embedding_server.py,embedding_service.py,hook-input-debug.json,install.ps1,quick-start.ps1,real_memory_accuracy_test.py,requirements.txt,run.bat,run_simple_test.bat,run_tests.bat,setup_neo4j_native.ps1,setup_python_dll.ps1,simple_memory_test.py,start.ps1,start.sh,system_audit_report.json,system_quality_report.md,test.bat,test_embedding_server.py,test_embedding_service.py,test_embeddings.py,test_improved_server.py,test_parallel.ps1,test_parallel.py,test_python_direct.py,validate_packages.py;benches[dummy:r,memory_benchmarks:r,simd_benchmark:r];config[embeddinggemma.toml];d[efficient-memory-service-architecture.md];docker[README.md];models/embeddinggemma-300m[README.md,added_tokens:jn,config:jn,config_sentence_transformers:jn,generation_config:jn,modules:jn,sentence_bert_config:jn,special_tokens_map:jn,tokenizer:jn,tokenizer_config:jn];models/embeddinggemma-300m/1_Pooling[config:jn];models/embeddinggemma-300m/2_Dense[config:jn];models/embeddinggemma-300m/3_Dense[config:jn];reports[FINAL_IMPLEMENTATION_STATUS.md,IMPLEMENTATION_REPORT.md,REAL_STATUS_HONEST_REPORT.md,embedding_service_implementation_report.md,implementation_summary.md,progress-report-session2.md,project-status-report.md];s[api:r,brain:r,cache:r,config:r,embedding:r,embedding_config:r,lib:r,main:r,mcp_server:r,memory:r,memory_optimizer:r,metrics:r,monitoring:r,orchestrator:r,security:r,shutdown:r,simd_search:r,simd_utils:r,storage:r,types:r];s/embedding[tests:r];s/storage[embedded_db:r];scripts[download_models.ps1,download_models.sh,download_onnx_runtime.ps1,quick-start.sh,run_tests.ps1,setup-docker.sh];t[api_integration_test:r,embedding_integration_test:r,embedding_unit_test:r,integration_test:r,simple_integration_test:r,simple_unit_test:r,test_config:r]]
-METRICS[L2454959,r:10537/33/30.8/33.8,md:5058/29/0.0/0.0,toml:190/3/0.0/0.0,json:2431209/14/0.0/0.0,bat:50/4/0.0/0.0,yml:403/2/0.0/0.0,sh:924/4/0.0/0.0,p:4221/15/0.0/0.0,ps1:2367/14/0.0/0.0;Q20/21/24;C32.7/36.0/106/139/25+6+0+0]
-IMPORTANT[embedding_config.rs,simd_benchmark.rs,dummy.rs,simd_utils.rs,shutdown.rs]
-TOKENS:913
-INCREMENTAL[MOD:simple_memory_test.py:6750b,MOD:hook-input-debug.json:8987b]
-
-## PROJECT DEPENDENCIES ANALYSIS
-Total: 46 dependencies (6 dev, 40 production)
-✅ All dependencies appear up-to-date
-
-### cargo Dependencies (37)
-✅ 37 dependencies up-to-date
-
-### pip Dependencies (9)
-✅ **Up-to-date:**
-  • sentence-transformers: 3.2.0
-  • transformers: 4.49.0
-  • torch: 2.0.0,<2.5.0
-  • numpy: 1.24.0,<2.0.0
-  • huggingface-hub: 0.19.0
-  • tokenizers: 0.19.0
-  • safetensors: 0.4.0
-  • pytest: 7.0.0
-  • pytest-asyncio: 0.21.0
-
-
-
-🔴 **КРИТИЧНО: Обнаружены дубликаты/конфликты файлов**
-
-📝 **SimilarName** (config)
-  → ОСНОВНОЙ .\src\config.rs | 9752B | 313L | 05f3eafd
-     .\models\embeddinggemma-300m\config.json | 1488B | 61L | 8f863f76
-     .\config.toml | 1465B | 42L | 61b528eb
-     .\models\embeddinggemma-300m\1_Pooling\config.json | 312B | 10L | 35bbd47d
-     .\models\embeddinggemma-300m\2_Dense\config.json | 134B | 6L | 0661e5e0
-     .\models\embeddinggemma-300m\3_Dense\config.json | 134B | 6L | 8c4575c4
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (cargo)
-  → ОСНОВНОЙ .\Cargo.lock | 98925B | 3926L | df31a4bd
-     .\Cargo.toml | 2026B | 103L | 18ac9926
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (readme)
-  → ОСНОВНОЙ .\models\embeddinggemma-300m\README.md | 16656B | 445L | 8da616cc
-     .\README.md | 8786B | 293L | c3992944
-     .\docker\README.md | 7529B | 265L | 43fab760
-  💡 Объединить изменения в один файл
-
-⚠️ **VersionConflict** (download_onnxruntime)
-  → ОСНОВНОЙ .\download_onnxruntime_v122.ps1 | 6037B | 166L | 79e2016a
-     .\download_onnxruntime.ps1 | 1155B | 33L | c1980501
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (test_parallel)
-  → ОСНОВНОЙ .\test_parallel.py | 15827B | 328L | e21a1156
-     .\test_parallel.ps1 | 8713B | 232L | f375bfea
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (download_models)
-  → ОСНОВНОЙ .\scripts\download_models.sh | 7874B | 256L | 821ce477
-     .\scripts\download_models.ps1 | 5327B | 151L | 5b7c85a6
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (model)
-  → ОСНОВНОЙ .\models\embeddinggemma-300m\3_Dense\model.safetensors | 9437272B | 34313L | ffb6cc51
-     .\models\embeddinggemma-300m\2_Dense\model.safetensors | 9437272B | 33599L | c327f2ac
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (quick-start)
-  → ОСНОВНОЙ .\quick-start.ps1 | 12863B | 365L | ab9a1d49
-     .\scripts\quick-start.sh | 10503B | 328L | 95088180
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (run_tests)
-  → ОСНОВНОЙ .\scripts\run_tests.ps1 | 8622B | 288L | 8c1c8bb5
-     .\run_tests.bat | 324B | 7L | 5c0688a2
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (start)
-  → ОСНОВНОЙ .\start.ps1 | 9655B | 288L | b709d1b1
-     .\start.sh | 6681B | 199L | 665fa707
-  💡 Объединить изменения в один файл
-
-
-
-CODE CHANGES (diff format):
---- a/C:\Models\ai-memory-service\simple_memory_test.py
-+++ b/C:\Models\ai-memory-service\simple_memory_test.py
-@@ -1,3 +1,3 @@
--                    if response.status == 200:
--                        search_results = await response.json()
--                        memories = search_results.get("memories", [])
-+                    if response.status == 200:
-+                        search_results = await response.json()
-+                        memories = search_results.get("results", [])  # API returns "results", not "memories"
-
-
-
-
-
-DOCUMENTATION RECOMMENDATION GUIDELINES:
-## DOCUMENTATION RECOMMENDATIONS
-
-When analyzing code, identify the main technologies and provide documentation links:
-
-1. Detect frameworks, libraries, and language features used
-2. Suggest relevant official documentation URLs
-3. Focus on the specific features/APIs actually used in the code
-
-IMPORTANT: Since this runs in an isolated context without internet access:
-- Provide well-known, stable documentation URLs
-- Use standard documentation patterns (e.g., docs.rs for Rust, MDN for web)
-- Include version-specific paths when possible
-
-Example documentation patterns:
-- Rust: https://doc.rust-lang.org/std/ or https://docs.rs/{crate}/{version}
-- React: https://react.dev/reference/react/
-- Python: https://docs.python.org/3/library/
-- Node.js: https://nodejs.org/api/
-
-Note: These are static recommendations based on detected technologies.
-For real-time documentation, users should verify links or use Context7 in Claude directly.
-
-
-OUTPUT EXACTLY AS SHOWN IN THE TEMPLATE BELOW.
-
-TOKEN LIMIT: 4500
-
-=== REQUIRED OUTPUT FORMAT ===
+# TEMPLATE (если хост отдельно не предоставил output_template.txt, используй шаблон ниже буквально)
 OUTPUT EXACTLY AS SHOWN BELOW:
 [ВАЛИДАЦИЯ КОДА]
 
@@ -323,6 +110,1372 @@ OUTPUT EXACTLY AS SHOWN BELOW:
 - Action items with → arrows
 - Maximum 4500 tokens
 - Language will be specified dynamically from language.txt file
+===== END RULES =====
+
+# OUTPUT DISCIPLINE
+- Верни только текст отчёта по TEMPLATE (никаких JSON, преамбул и постскриптумов).
+- Раздел [КРИТИЧЕСКИЕ_ПРОБЛЕМЫ]: либо точный текст "Нет критических проблем, требующих немедленного исправления.", либо структурированные блоки по шаблону.
+- Раздел [ОЦЕНКА]: баллы целые; итоговая сумма = 1000; {STATUS} ∈ {PASS|REVIEW|FAIL}.
+
+
+
+
+CONVERSATION CONTEXT:
+conversation:
+
+
+
+PROJECT CONTEXT:
+COMPRESSED_PROJECT[v3][CLAUDE.md,COMPREHENSIVE_TEST_REPORT.md,Cargo.lock,Cargo.toml,DEPLOYMENT.md,Dockerfile,FINAL_CODE_VERIFICATION_REPORT.md,FINAL_STATUS_REPORT.md,FINAL_STATUS_REPORT_UPDATED.md,LEGACY_CLEANUP_REPORT.md,MIGRATION_REPORT.md,ONNX_RUNTIME_SETUP.md,PROJECT_STATUS_FINAL.md,PROJECT_STATUS_UPDATED.md,QUALITY_PROGRESS_REPORT.md,QUALITY_REPORT_FINAL.md,README-Docker.md,README.md,REAL_MEMORY_ACCURACY_ASSESSMENT.md,REAL_MEMORY_WORKABILITY_REPORT.md,SECURITY_FIXES_REPORT.md,SYSTEM_QUALITY_FINAL_REPORT.md,SYSTEM_RECONSTRUCTION_REPORT.md,check_ort_version.rs,check_path.ps1,clean_path_duplicates.ps1,clear_memories.py,clear_neo4j.py,comprehensive_system_audit.py,config.toml,definitive_stress_test.py,docker-compose.override.yml,docker-compose.yml,download_onnxruntime.ps1,download_onnxruntime_v122.ps1,download_ort_nuget.ps1,embedding_fixed_quality_test.py,embedding_quality_test.py,embedding_server.py,embedding_service.py,hook-input-debug.json,import_documentation.py,install.ps1,memory_accuracy_results_20250908_181611.json,quick-start.ps1,real_memory_accuracy_test.py,real_memory_quality_test.py,requirements.txt,run.bat,run_simple_test.bat,run_tests.bat,setup_neo4j_native.ps1,setup_python_dll.ps1,simple_memory_test.py,start.ps1,start.sh,system_audit_report.json,system_quality_report.md,tasktype_consistency_test_1757357046.json,tasktype_consistency_test_1757357161.json,tasktype_consistency_test_1757359672.json,tasktype_consistency_test_1757360630.json,test.bat,test_documentation_quality.py,test_embedding_fix.py,test_embedding_prompts_diagnosis.py,test_embedding_server.py,test_embedding_service.py,test_embeddings.py,test_gpt5_orchestrator.py,test_gpt5_quality.py,test_improved_server.py,test_memory_search.py,test_parallel.ps1,test_parallel.py,test_python_direct.py,test_search_fix.py,test_simple_embed.py,test_tasktype_fix.py,validate_packages.py;benches[dummy:r,memory_benchmarks:r,simd_benchmark:r];config[embeddinggemma.toml];d[efficient-memory-service-architecture.md];docker[README.md];models/embeddinggemma-300m[README.md,added_tokens:jn,config:jn,config_sentence_transformers:jn,generation_config:jn,modules:jn,sentence_bert_config:jn,special_tokens_map:jn,tokenizer:jn,tokenizer_config:jn];models/embeddinggemma-300m/1_Pooling[config:jn];models/embeddinggemma-300m/2_Dense[config:jn];models/embeddinggemma-300m/3_Dense[config:jn];reports[FINAL_IMPLEMENTATION_STATUS.md,IMPLEMENTATION_REPORT.md,REAL_STATUS_HONEST_REPORT.md,embedding_service_implementation_report.md,implementation_summary.md,progress-report-session2.md,project-status-report.md];s[api:r,brain:r,cache:r,config:r,embedding:r,embedding_config:r,lib:r,main:r,mcp_server:r,memory:r,memory_optimizer:r,metrics:r,monitoring:r,orchestration_config:r,orchestrator:r,secure_orchestration:r,security:r,shutdown:r,simd_search:r,simd_utils:r,storage:r,types:r];s/embedding[tests:r];s/storage[embedded_db:r];scripts[download_models.ps1,download_models.sh,download_onnx_runtime.ps1,quick-start.sh,run_tests.ps1,setup-docker.sh];t[api_integration_test:r,embedding_integration_test:r,embedding_unit_test:r,integration_test:r,simple_integration_test:r,simple_unit_test:r,test_config:r]]
+METRICS[L2458252,yml:403/2/0.0/0.0,p:5770/28/0.0/0.0,r:11482/35/30.7/34.9,md:5232/31/0.0/0.0,toml:192/3/0.0/0.0,ps1:2367/14/0.0/0.0,json:2431832/19/0.0/0.0,bat:50/4/0.0/0.0,sh:924/4/0.0/0.0;Q20/27/22;C32.6/37.0/114/139/26+7+0+0]
+IMPORTANT[shutdown.rs,brain.rs,simd_utils.rs,lib.rs,orchestration_config.rs]
+TOKENS:1122
+INCREMENTAL[MOD:src/api.rs:34370b,MOD:hook-input-debug.json:40788b]
+
+## PROJECT DEPENDENCIES ANALYSIS
+Total: 47 dependencies (6 dev, 41 production)
+✅ All dependencies appear up-to-date
+
+### pip Dependencies (9)
+✅ **Up-to-date:**
+  • sentence-transformers: 3.2.0
+  • transformers: 4.49.0
+  • torch: 2.0.0,<2.5.0
+  • numpy: 1.24.0,<2.0.0
+  • huggingface-hub: 0.19.0
+  • tokenizers: 0.19.0
+  • safetensors: 0.4.0
+  • pytest: 7.0.0
+  • pytest-asyncio: 0.21.0
+
+### cargo Dependencies (38)
+✅ 38 dependencies up-to-date
+
+
+
+🔴 **КРИТИЧНО: Обнаружены дубликаты/конфликты файлов**
+
+📝 **SimilarName** (readme)
+  → ОСНОВНОЙ .\models\embeddinggemma-300m\README.md | 16656B | 445L | 8da616cc
+     .\README.md | 8786B | 293L | c3992944
+     .\docker\README.md | 7529B | 265L | 43fab760
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (run_tests)
+  → ОСНОВНОЙ .\scripts\run_tests.ps1 | 8622B | 288L | 8c1c8bb5
+     .\run_tests.bat | 324B | 7L | 5c0688a2
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (model)
+  → ОСНОВНОЙ .\models\embeddinggemma-300m\3_Dense\model.safetensors | 9437272B | 34313L | ffb6cc51
+     .\models\embeddinggemma-300m\2_Dense\model.safetensors | 9437272B | 33599L | c327f2ac
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (quick-start)
+  → ОСНОВНОЙ .\quick-start.ps1 | 12863B | 365L | ab9a1d49
+     .\scripts\quick-start.sh | 10503B | 328L | 95088180
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (cargo)
+  → ОСНОВНОЙ .\Cargo.lock | 98935B | 3927L | fb3dba0d
+     .\Cargo.toml | 2060B | 106L | 89c494a7
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (download_models)
+  → ОСНОВНОЙ .\scripts\download_models.sh | 7874B | 256L | 821ce477
+     .\scripts\download_models.ps1 | 5327B | 151L | 5b7c85a6
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (config)
+  → ОСНОВНОЙ .\src\config.rs | 9752B | 313L | 05f3eafd
+     .\models\embeddinggemma-300m\config.json | 1488B | 61L | 8f863f76
+     .\config.toml | 1465B | 42L | 61b528eb
+     .\models\embeddinggemma-300m\1_Pooling\config.json | 312B | 10L | 35bbd47d
+     .\models\embeddinggemma-300m\2_Dense\config.json | 134B | 6L | 0661e5e0
+     .\models\embeddinggemma-300m\3_Dense\config.json | 134B | 6L | 8c4575c4
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (start)
+  → ОСНОВНОЙ .\start.ps1 | 9655B | 288L | b709d1b1
+     .\start.sh | 6681B | 199L | 665fa707
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (tasktype_consistency_test)
+  → ОСНОВНОЙ .\tasktype_consistency_test_1757359672.json | 3526B | 123L | 036f7467
+     .\tasktype_consistency_test_1757357046.json | 3526B | 123L | 2e7e735a
+     .\tasktype_consistency_test_1757357161.json | 3525B | 123L | bd7ae2dc
+     .\tasktype_consistency_test_1757360630.json | 3335B | 118L | 2ab795e4
+  💡 Объединить изменения в один файл
+
+⚠️ **VersionConflict** (download_onnxruntime)
+  → ОСНОВНОЙ .\download_onnxruntime_v122.ps1 | 6037B | 166L | 79e2016a
+     .\download_onnxruntime.ps1 | 1155B | 33L | c1980501
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (test_parallel)
+  → ОСНОВНОЙ .\test_parallel.py | 15827B | 328L | e21a1156
+     .\test_parallel.ps1 | 8713B | 232L | f375bfea
+  💡 Объединить изменения в один файл
+
+
+
+CODE CHANGES (diff format):
+=== MultiEdit on file: C:\Models\ai-memory-service\src\api.rs ===
+⚠️ 1 edit(s) could not be applied (string not found): [2]
+
+Applied 1 of 2 edits:
+
+=== Full file: C:\Models\ai-memory-service\src\api.rs ===
+   1   //! REST API для AI Memory Service с поддержкой GPT-5-nano оркестратора
+   2   //!
+   3   //! Предоставляет HTTP endpoints для операций с памятью, поиска, инсайтов и оркестрации
+   4   
+   5   use crate::{
+   6       secure_orchestration::{SecureOrchestrationConfig, SecureOrchestrationLayer, UserContext},
+   7       InsightType, MemoryCell, MemoryError, MemoryOrchestrator, MemoryQuery, MemoryService,
+   8       MemoryType, Priority,
+   9   };
+  10   use anyhow::Result;
+  11   use axum::{
+  12       extract::{Json, Path, Query, State},
+  13       http::StatusCode,
+  14       response::{IntoResponse, Response},
+  15       routing::{delete, get, post},
+  16       Router,
+  17   };
+  18   use serde::{Deserialize, Serialize};
+  19   use std::collections::HashMap;
+  20   use std::sync::Arc;
+  21   use tower::ServiceBuilder;
+  22   use tower_http::{
+  23       compression::CompressionLayer,
+  24       cors::{Any, CorsLayer},
+  25       limit::RequestBodyLimitLayer,
+  26       trace::TraceLayer,
+  27   };
+  28   use tracing::{debug, info};
+  29   use uuid::Uuid;
+  30   
+  31   /// Состояние API сервера
+  32   #[derive(Clone)]
+  33   pub struct ApiState {
+  34       memory_service: Arc<MemoryService>,
+  35       orchestrator: Option<Arc<MemoryOrchestrator>>,
+  36   }
+  37   
+  38   /// Конфигурация API
+  39   #[derive(Debug, Clone, Deserialize)]
+  40   pub struct ApiConfig {
+  41       pub host: String,
+  42       pub port: u16,
+  43       pub max_body_size: usize,
+  44       pub enable_cors: bool,
+  45       pub enable_compression: bool,
+  46       pub enable_tracing: bool,
+  47   }
+  48   
+  49   impl Default for ApiConfig {
+  50       fn default() -> Self {
+  51           Self {
+  52               host: "0.0.0.0".to_string(),
+  53               port: 8080,
+  54               max_body_size: 10 * 1024 * 1024, // 10MB
+  55               enable_cors: true,
+  56               enable_compression: true,
+  57               enable_tracing: true,
+  58           }
+  59       }
+  60   }
+  61   
+  62   // ===== Request/Response структуры =====
+  63   
+  64   /// Запрос на сохранение памяти
+  65   #[derive(Debug, Deserialize)]
+  66   pub struct StoreMemoryRequest {
+  67       pub content: String,
+  68       pub context_hint: Option<String>,
+  69       pub memory_type: Option<String>,
+  70       pub tags: Option<Vec<String>>,
+  71       pub metadata: Option<HashMap<String, String>>,
+  72       pub importance: Option<f32>,
+  73   }
+  74   
+  75   /// Ответ на сохранение памяти
+  76   #[derive(Debug, Serialize)]
+  77   pub struct StoreMemoryResponse {
+  78       pub id: Uuid,
+  79       pub success: bool,
+  80       pub message: String,
+  81       pub embedding_dimension: usize,
+  82   }
+  83   
+  84   /// Запрос поиска (для POST)
+  85   #[derive(Debug, Deserialize)]
+  86   pub struct SearchRequest {
+  87       pub query: String,
+  88       pub limit: Option<usize>,
+  89       pub memory_types: Option<Vec<String>>,
+  90       pub context: Option<String>,
+  91       pub include_related: Option<bool>,
+  92       pub min_importance: Option<f32>,
+  93       pub similarity_threshold: Option<f32>,
+  94   }
+  95   
+  96   use serde::Deserializer;
+  97   
+  98   /// Десериализация comma-separated строки в Vec<String>
+  99   fn deserialize_memory_types<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+ 100   where
+ 101       D: Deserializer<'de>,
+ 102   {
+ 103       let s: Option<String> = Option::deserialize(deserializer)?;
+ 104       Ok(s.map(|s| {
+ 105           s.split(',')
+ 106               .map(|s| s.trim().to_string())
+ 107               .filter(|s| !s.is_empty())
+ 108               .collect()
+ 109       }))
+ 110   }
+ 111   
+ 112   /// Валидация limit с ограничением максимального значения
+ 113   fn deserialize_limit<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
+ 114   where
+ 115       D: Deserializer<'de>,
+ 116   {
+ 117       let value: Option<usize> = Option::deserialize(deserializer)?;
+ 118       if let Some(l) = value {
+ 119           if l > 100 {
+ 120               return Err(serde::de::Error::custom("limit cannot exceed 100"));
+ 121           }
+ 122           if l == 0 {
+ 123               return Err(serde::de::Error::custom("limit must be greater than 0"));
+ 124           }
+ 125       }
+ 126       Ok(value)
+ 127   }
+ 128   
+ 129   /// Диапазон допустимых значений для порогов важности и схожести
+ 130   const MIN_THRESHOLD: f32 = 0.0;
+ 131   const MAX_THRESHOLD: f32 = 1.0;
+ 132   
+ 133   /// Общая валидация порога (0.0-1.0) для устранения дублирования кода
+ 134   /// Проверяет что значение конечное и в допустимом диапазоне
+ 135   fn validate_threshold<E>(value: f32, field_name: &str) -> Result<f32, E>
+ 136   where
+ 137       E: serde::de::Error,
+ 138   {
+ 139       if value.is_nan() || value.is_infinite() {
+ 140           return Err(E::custom(format!("{} must be a finite number", field_name)));
+ 141       }
+ 142       if value < MIN_THRESHOLD || value > MAX_THRESHOLD {
+ 143           return Err(E::custom(format!(
+ 144               "{} must be between {} and {}",
+ 145               field_name, MIN_THRESHOLD, MAX_THRESHOLD
+ 146           )));
+ 147       }
+ 148       Ok(value)
+ 149   }
+ 150   
+ 151   /// Валидация порога важности (0.0-1.0)
+ 152   /// Примеры: "0.75" -> Ok(Some(0.75)), "1.5" -> Err, "NaN" -> Err, null -> Ok(None)
+ 153   fn deserialize_importance<'de, D>(deserializer: D) -> Result<Option<f32>, D::Error>
+ 154   where
+ 155       D: Deserializer<'de>,
+ 156   {
+ 157       let value: Option<f32> = Option::deserialize(deserializer)?;
+ 158       if let Some(imp) = value {
+ 159           validate_threshold(imp, "min_importance")?;
+ 160       }
+ 161       Ok(value)
+ 162   }
+ 163   
+ 164   /// Валидация порога схожести (0.0-1.0)
+ 165   /// Примеры: "0.8" -> Ok(Some(0.8)), "2.0" -> Err, "-0.1" -> Err, null -> Ok(None)
+ 166   fn deserialize_similarity<'de, D>(deserializer: D) -> Result<Option<f32>, D::Error>
+ 167   where
+ 168       D: Deserializer<'de>,
+ 169   {
+ 170       let value: Option<f32> = Option::deserialize(deserializer)?;
+ 171       if let Some(sim) = value {
+ 172           validate_threshold(sim, "similarity_threshold")?;
+ 173       }
+ 174       Ok(value)
+ 175   }
+ 176   
+ 177   /// Параметры поиска для GET запроса
+ 178   ///
+ 179   /// Пример: GET /search?query=example&limit=20&memory_types=Semantic,Episodic&similarity_threshold=0.8
+ 180   #[derive(Debug, Deserialize)]
+ 181   pub struct SearchQueryParams {
+ 182       /// Текст запроса для поиска воспоминаний (обязательный параметр)
+ 183       pub query: String,
+ 184       /// Максимальное количество результатов (по умолчанию 10, макс 100)
+ 185       #[serde(deserialize_with = "deserialize_limit", default)]
+ 186       pub limit: Option<usize>,
+ 187       /// Типы памяти для фильтрации (comma-separated: "Semantic,Episodic")
+ 188       #[serde(deserialize_with = "deserialize_memory_types", default)]
+ 189       pub memory_types: Option<Vec<String>>,
+ 190       /// Контекст поиска для более точных результатов
+ 191       #[serde(default)]
+ 192       pub context: Option<String>,
+ 193       /// Включать связанные воспоминания в результат
+ 194       #[serde(default)]
+ 195       pub include_related: Option<bool>,
+ 196       /// Минимальный порог важности (0.0-1.0)
+ 197       #[serde(deserialize_with = "deserialize_importance", default)]
+ 198       pub min_importance: Option<f32>,
+ 199       /// Порог схожести для vector search (0.0-1.0)
+ 200       #[serde(deserialize_with = "deserialize_similarity", default)]
+ 201       pub similarity_threshold: Option<f32>,
+ 202   }
+ 203   
+ 204   /// Ответ поиска
+ 205   #[derive(Debug, Serialize)]
+ 206   pub struct SearchResponse {
+ 207       pub results: Vec<MemoryCell>,
+ 208       pub total: usize,
+ 209       pub query_id: Uuid,
+ 210       pub reasoning_chain: Vec<String>,
+ 211       pub confidence: f32,
+ 212       pub recall_time_ms: u64,
+ 213       pub success: bool,
+ 214   }
+ 215   
+ 216   /// Запрос инсайтов
+ 217   #[derive(Debug, Deserialize)]
+ 218   pub struct InsightsRequest {
+ 219       pub context: Option<String>,
+ 220       pub insight_type: Option<String>,
+ 221       pub limit: Option<usize>,
+ 222       pub reasoning_effort: Option<String>, // Для GPT-5-nano: minimal, low, medium, high
+ 223   }
+ 224   
+ 225   /// Ответ инсайтов
+ 226   #[derive(Debug, Serialize)]
+ 227   pub struct InsightsResponse {
+ 228       pub insights: Vec<String>,
+ 229       pub memories_analyzed: usize,
+ 230       pub context: Option<String>,
+ 231       pub reasoning_effort: String,
+ 232       pub model_used: String,
+ 233       pub success: bool,
+ 234   }
+ 235   
+ 236   /// Запрос дистилляции
+ 237   #[derive(Debug, Deserialize)]
+ 238   pub struct DistillationRequest {
+ 239       pub context: Option<String>,
+ 240       pub max_points: Option<usize>,
+ 241       pub reasoning_effort: Option<String>,
+ 242   }
+ 243   
+ 244   /// Ответ дистилляции
+ 245   #[derive(Debug, Serialize)]
+ 246   pub struct DistillationResponse {
+ 247       pub key_points: Vec<String>,
+ 248       pub summary: String,
+ 249       pub original_count: usize,
+ 250       pub compression_ratio: f32,
+ 251       pub success: bool,
+ 252   }
+ 253   
+ 254   /// Запрос оптимизации памяти
+ 255   #[derive(Debug, Deserialize)]
+ 256   pub struct OptimizationRequest {
+ 257       pub context: Option<String>,
+ 258       pub aggressive: Option<bool>,
+ 259       pub reasoning_effort: Option<String>,
+ 260   }
+ 261   
+ 262   /// Ответ оптимизации
+ 263   #[derive(Debug, Serialize)]
+ 264   pub struct OptimizationResponse {
+ 265       pub duplicates_found: usize,
+ 266       pub outdated_found: usize,
+ 267       pub suggestions: Vec<String>,
+ 268       pub compression_ratio: f32,
+ 269       pub space_savings_percent: f32,
+ 270       pub applied: bool,
+ 271       pub success: bool,
+ 272   }
+ 273   
+ 274   /// Ответ об ошибке
+ 275   #[derive(Debug, Serialize)]
+ 276   pub struct ErrorResponse {
+ 277       pub error: String,
+ 278       pub code: u16,
+ 279       pub details: Option<String>,
+ 280       pub success: bool,
+ 281   }
+ 282   
+ 283   /// Тип ошибки API
+ 284   #[derive(Debug)]
+ 285   pub enum ApiError {
+ 286       MemoryError(MemoryError),
+ 287       BadRequest(String),
+ 288       NotFound(String),
+ 289       InternalError(String),
+ 290       Unauthorized(String),
+ 291       RateLimitExceeded,
+ 292   }
+ 293   
+ 294   impl IntoResponse for ApiError {
+ 295       fn into_response(self) -> Response {
+ 296           let (status, error_message, details) = match self {
+ 297               ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg, None),
+ 298               ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg, None),
+ 299               ApiError::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg, None),
+ 300               ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg, None),
+ 301               ApiError::RateLimitExceeded => (
+ 302                   StatusCode::TOO_MANY_REQUESTS,
+ 303                   "Rate limit exceeded".to_string(),
+ 304                   Some("Please retry after some time".to_string()),
+ 305               ),
+ 306               ApiError::MemoryError(e) => (
+ 307                   StatusCode::INTERNAL_SERVER_ERROR,
+ 308                   "Memory service error".to_string(),
+ 309                   Some(e.to_string()),
+ 310               ),
+ 311           };
+ 312   
+ 313           let body = Json(ErrorResponse {
+ 314               error: error_message,
+ 315               code: status.as_u16(),
+ 316               details,
+ 317               success: false,
+ 318           });
+ 319   
+ 320           (status, body).into_response()
+ 321       }
+ 322   }
+ 323   
+ 324   impl From<MemoryError> for ApiError {
+ 325       fn from(err: MemoryError) -> Self {
+ 326           ApiError::MemoryError(err)
+ 327       }
+ 328   }
+ 329   
+ 330   impl From<anyhow::Error> for ApiError {
+ 331       fn from(err: anyhow::Error) -> Self {
+ 332           ApiError::InternalError(err.to_string())
+ 333       }
+ 334   }
+ 335   
+ 336   /// Создать роутер API
+ 337   pub fn create_router(
+ 338       memory_service: Arc<MemoryService>,
+ 339       orchestrator: Option<Arc<MemoryOrchestrator>>,
+ 340       config: ApiConfig,
+ 341   ) -> Router {
+ 342       let state = ApiState {
+ 343           memory_service,
+ 344           orchestrator,
+ 345       };
+ 346   
+ 347       let mut app = Router::new()
+ 348           // Здоровье и статус
+ 349           .route("/health", get(health_check))
+ 350           .route("/stats", get(get_statistics))
+ 351           // Операции с памятью
+ 352           .route("/memory", post(store_memory))
+ 353           .route("/memory/:id", get(get_memory))
+ 354           .route("/memory/:id", delete(delete_memory))
+ 355           .route("/memories/recent", get(get_recent_memories))
+ 356           // API-compatible routes for external tools
+ 357           .route("/api/memories", post(store_memory))
+ 358           .route("/api/memories", get(get_recent_memories))
+ 359           .route("/api/memories/:id", get(get_memory))
+ 360           .route("/api/memories/:id", delete(delete_memory))
+ 361           // Поиск
+ 362           .route("/search", post(search_memories).get(search_memories_get))
+ 363           .route("/search/context", post(search_by_context))
+ 364           .route("/search/advanced", post(advanced_recall))
+ 365           // API-compatible search routes for external tools
+ 366           .route("/api/memories/search", get(search_memories_get))
+ 367           // Контексты
+ 368           .route("/contexts", get(list_contexts))
+ 369           .route("/context/:path", get(get_context_info))
+ 370           // Оркестратор (если доступен)
+ 371           .route("/orchestrator/insights", post(generate_insights))
+ 372           .route("/orchestrator/distill", post(distill_context))
+ 373           .route("/orchestrator/optimize", post(optimize_memory))
+ 374           .route("/orchestrator/analyze", post(analyze_patterns))
+ 375           .route("/orchestrator/status", get(orchestrator_status))
+ 376           .with_state(state);
+ 377   
+ 378       // Middleware слои
+ 379       let service_builder =
+ 380           ServiceBuilder::new().layer(RequestBodyLimitLayer::new(config.max_body_size));
+ 381   
+ 382       if config.enable_tracing {
+ 383           app = app.layer(TraceLayer::new_for_http());
+ 384       }
+ 385   
+ 386       if config.enable_compression {
+ 387           app = app.layer(CompressionLayer::new());
+ 388       }
+ 389   
+ 390       if config.enable_cors {
+ 391           app = app.layer(
+ 392               CorsLayer::new()
+ 393                   .allow_origin(Any)
+ 394                   .allow_methods(Any)
+ 395                   .allow_headers(Any),
+ 396           );
+ 397       }
+ 398   
+ 399       app.layer(service_builder)
+ 400   }
+ 401   
+ 402   // ===== Обработчики endpoints =====
+ 403   
+ 404   /// Проверка здоровья
+ 405   async fn health_check(State(state): State<ApiState>) -> impl IntoResponse {
+ 406       let orchestrator_available = state.orchestrator.is_some();
+ 407       let stats = state.memory_service.get_stats().await.ok();
+ 408   
+ 409       Json(serde_json::json!({
+ 410           "status": "healthy",
+ 411           "service": "ai-memory-service",
+ 412           "version": env!("CARGO_PKG_VERSION"),
+ 413           "orchestrator": {
+ 414               "available": orchestrator_available,
+ 415               "model": if orchestrator_available { "gpt-5-nano" } else { "none" },
+ 416           },
+ 417           "memory_stats": stats,
+ 418           "timestamp": chrono::Utc::now().to_rfc3339(),
+ 419       }))
+ 420   }
+ 421   
+ 422   /// Получить статистику
+ 423   async fn get_statistics(State(state): State<ApiState>) -> Result<impl IntoResponse, ApiError> {
+ 424       let stats = state.memory_service.get_stats().await?;
+ 425   
+ 426       Ok(Json(serde_json::json!({
+ 427           "statistics": stats,
+ 428           "orchestrator_available": state.orchestrator.is_some(),
+ 429           "success": true,
+ 430       })))
+ 431   }
+ 432   
+ 433   /// Сохранить память
+ 434   async fn store_memory(
+ 435       State(state): State<ApiState>,
+ 436       Json(req): Json<StoreMemoryRequest>,
+ 437   ) -> Result<impl IntoResponse, ApiError> {
+ 438       debug!("Storing new memory with context: {:?}", req.context_hint);
+ 439   
+ 440       // Валидация входных данных
+ 441       if req.content.trim().is_empty() {
+ 442           return Err(ApiError::BadRequest("Content cannot be empty".to_string()));
+ 443       }
+ 444   
+ 445       if req.content.len() > 1_000_000 {
+ 446           return Err(ApiError::BadRequest(
+ 447               "Content too large (max 1MB)".to_string(),
+ 448           ));
+ 449       }
+ 450   
+ 451       let id = state
+ 452           .memory_service
+ 453           .store_memory(req.content.clone(), req.context_hint.clone())
+ 454           .await?;
+ 455   
+ 456       info!("Memory stored successfully: {}", id);
+ 457   
+ 458       Ok(Json(StoreMemoryResponse {
+ 459           id,
+ 460           success: true,
+ 461           message: "Memory stored successfully".to_string(),
+ 462           embedding_dimension: 768, // EmbeddingGemma dimension
+ 463       }))
+ 464   }
+ 465   
+ 466   /// Получить память по ID
+ 467   async fn get_memory(
+ 468       State(state): State<ApiState>,
+ 469       Path(id): Path<Uuid>,
+ 470   ) -> Result<impl IntoResponse, ApiError> {
+ 471       let memory = state
+ 472           .memory_service
+ 473           .get_memory(&id)
+ 474           .await
+ 475           .ok_or_else(|| ApiError::NotFound(format!("Memory {} not found", id)))?;
+ 476   
+ 477       Ok(Json(memory))
+ 478   }
+ 479   
+ 480   /// Удалить память
+ 481   async fn delete_memory(
+ 482       State(state): State<ApiState>,
+ 483       Path(id): Path<Uuid>,
+ 484   ) -> Result<impl IntoResponse, ApiError> {
+ 485       state.memory_service.delete_memory(&id).await?;
+ 486   
+ 487       info!("Memory deleted: {}", id);
+ 488   
+ 489       Ok(Json(serde_json::json!({
+ 490           "success": true,
+ 491           "message": format!("Memory {} deleted", id),
+ 492       })))
+ 493   }
+ 494   
+ 495   /// Получить недавние воспоминания
+ 496   async fn get_recent_memories(
+ 497       State(state): State<ApiState>,
+ 498       Query(params): Query<HashMap<String, String>>,
+ 499   ) -> Result<impl IntoResponse, ApiError> {
+ 500       let limit = params
+ 501           .get("limit")
+ 502           .and_then(|s| s.parse().ok())
+ 503           .unwrap_or(10);
+ 504   
+ 505       if limit > 1000 {
+ 506           return Err(ApiError::BadRequest(
+ 507               "Limit too high (max 1000)".to_string(),
+ 508           ));
+ 509       }
+ 510   
+ 511       let context = params.get("context").map(|s| s.as_str());
+ 512   
+ 513       let memories = state.memory_service.get_recent(limit, context).await?;
+ 514   
+ 515       Ok(Json(serde_json::json!({
+ 516           "memories": memories,
+ 517           "count": memories.len(),
+ 518           "context": context,
+ 519           "success": true,
+ 520       })))
+ 521   }
+ 522   
+ 523   /// Поиск воспоминаний (POST endpoint)
+ 524   #[axum::debug_handler]
+ 525   async fn search_memories(
+ 526       State(state): State<ApiState>,
+ 527       Json(req): Json<SearchRequest>,
+ 528   ) -> Result<Json<SearchResponse>, ApiError> {
+ 529       // Валидация
+ 530       if req.query.trim().is_empty() {
+ 531           return Err(ApiError::BadRequest("Query cannot be empty".to_string()));
+ 532       }
+ 533   
+ 534       let limit = req.limit.unwrap_or(10).min(100);
+ 535   
+ 536       let results = state.memory_service.search(&req.query, limit).await?;
+ 537   
+ 538       let total = results.len();
+ 539   
+ 540       Ok(Json(SearchResponse {
+ 541           results,
+ 542           total,
+ 543           query_id: Uuid::new_v4(),
+ 544           reasoning_chain: vec![format!("Searched for: {}", req.query)],
+ 545           confidence: 0.8,
+ 546           recall_time_ms: 100,
+ 547           success: true,
+ 548       }))
+ 549   }
+ 550   
+ 551   /// Поиск воспоминаний (GET endpoint)
+ 552   /// Поддерживает все параметры через query string с валидацией
+ 553   #[axum::debug_handler]
+ 554   async fn search_memories_get(
+ 555       State(state): State<ApiState>,
+ 556       Query(params): Query<SearchQueryParams>,
+ 557   ) -> Result<Json<SearchResponse>, ApiError> {
+ 558       // Валидируем query параметр
+ 559 -     validate_query(&params.query)?;
+ 559 +     validate_query(&params.query)?;;
+ 560   
+ 561       let limit = params.limit.unwrap_or(10).min(100); // Защита от DoS атак
+ 562   
+ 563       // Измеряем реальное время выполнения поиска для точных метрик
+ 564       let start = tokio::time::Instant::now();
+ 565       let results = state
+ 566           .memory_service
+ 567           .search(&params.query, limit)
+ 568           .await
+ 569           .map_err(|e| {
+ 570               tracing::error!("GET search failed: query={}, error={}", params.query, e);
+ 571               e
+ 572           })?;
+ 573       let recall_time_ms = start.elapsed().as_millis() as u64;
+ 574   
+ 575       let total = results.len();
+ 576       tracing::info!(
+ 577           "GET search completed: query={}, results={}, time={}ms",
+ 578           params.query,
+ 579           total,
+ 580           recall_time_ms
+ 581       );
+ 582   
+ 583       Ok(Json(SearchResponse {
+ 584           results,
+ 585           total,
+ 586           query_id: Uuid::new_v4(),
+ 587           // reasoning_chain содержит базовую информацию о запросе для отладки и трейсинга
+ 588           reasoning_chain: vec![format!(
+ 589               "GET search for: {} (limit: {}, found: {})",
+ 590               params.query, limit, total
+ 591           )],
+ 592           confidence: 0.8,
+ 593           recall_time_ms,
+ 594           success: true,
+ 595       }))
+ 596   }
+ 597   
+ 598   /// Поиск по контексту
+ 599   async fn search_by_context(
+ 600       State(state): State<ApiState>,
+ 601       Json(req): Json<SearchRequest>,
+ 602   ) -> Result<impl IntoResponse, ApiError> {
+ 603       let context = req
+ 604           .context
+ 605           .ok_or_else(|| ApiError::BadRequest("Context is required".to_string()))?;
+ 606   
+ 607       let limit = req.limit.unwrap_or(10).min(100);
+ 608   
+ 609       let results = state
+ 610           .memory_service
+ 611           .search_by_context(&context, Some(&req.query), limit)
+ 612           .await?;
+ 613   
+ 614       Ok(Json(SearchResponse {
+ 615           total: results.len(),
+ 616           results,
+ 617           query_id: Uuid::new_v4(),
+ 618           reasoning_chain: vec![
+ 619               format!("Context: {}", context),
+ 620               format!("Query: {:?}", req.query),
+ 621           ],
+ 622           confidence: 0.85,
+ 623           recall_time_ms: 150,
+ 624           success: true,
+ 625       }))
+ 626   }
+ 627   
+ 628   /// Расширенный поиск с полным recall
+ 629   #[axum::debug_handler]
+ 630   async fn advanced_recall(
+ 631       State(state): State<ApiState>,
+ 632       Json(req): Json<SearchRequest>,
+ 633   ) -> Result<Json<SearchResponse>, ApiError> {
+ 634       let query = MemoryQuery {
+ 635           text: req.query,
+ 636           context_hint: req.context,
+ 637           memory_types: req
+ 638               .memory_types
+ 639               .map(|types| types.iter().filter_map(|t| parse_memory_type(t)).collect()),
+ 640           limit: req.limit,
+ 641           min_importance: req.min_importance,
+ 642           time_range: None,
+ 643           similarity_threshold: req.similarity_threshold,
+ 644           include_related: req.include_related.unwrap_or(false),
+ 645       };
+ 646   
+ 647       let recalled = state.memory_service.recall_memory(query).await?;
+ 648   
+ 649       let mut all_results = Vec::new();
+ 650       all_results.extend(recalled.semantic_layer.clone());
+ 651       all_results.extend(recalled.contextual_layer.clone());
+ 652       all_results.extend(recalled.detailed_layer.clone());
+ 653   
+ 654       // Дедупликация
+ 655       let mut seen = std::collections::HashSet::new();
+ 656       all_results.retain(|m| seen.insert(m.id));
+ 657   
+ 658       let total = all_results.len();
+ 659   
+ 660       Ok(Json(SearchResponse {
+ 661           results: all_results,
+ 662           total,
+ 663           query_id: recalled.query_id,
+ 664           reasoning_chain: recalled.reasoning_chain,
+ 665           confidence: recalled.confidence,
+ 666           recall_time_ms: recalled.recall_time_ms,
+ 667           success: true,
+ 668       }))
+ 669   }
+ 670   
+ 671   /// Список контекстов
+ 672   async fn list_contexts(State(state): State<ApiState>) -> Result<impl IntoResponse, ApiError> {
+ 673       let contexts = state.memory_service.list_contexts().await?;
+ 674   
+ 675       Ok(Json(serde_json::json!({
+ 676           "contexts": contexts,
+ 677           "count": contexts.len(),
+ 678           "success": true,
+ 679       })))
+ 680   }
+ 681   
+ 682   /// Информация о контексте
+ 683   async fn get_context_info(
+ 684       State(state): State<ApiState>,
+ 685       Path(path): Path<String>,
+ 686   ) -> Result<impl IntoResponse, ApiError> {
+ 687       let context = state
+ 688           .memory_service
+ 689           .get_context(&path)
+ 690           .await
+ 691           .ok_or_else(|| ApiError::NotFound(format!("Context {} not found", path)))?;
+ 692   
+ 693       Ok(Json(context))
+ 694   }
+ 695   
+ 696   /// Генерация инсайтов через GPT-5-nano оркестратор
+ 697   async fn generate_insights(
+ 698       State(state): State<ApiState>,
+ 699       Json(req): Json<InsightsRequest>,
+ 700   ) -> Result<impl IntoResponse, ApiError> {
+ 701       let orchestrator = state
+ 702           .orchestrator
+ 703           .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
+ 704   
+ 705       // Получаем воспоминания для анализа
+ 706       let limit = req.limit.unwrap_or(100).min(500);
+ 707       let memories = if let Some(context) = &req.context {
+ 708           state
+ 709               .memory_service
+ 710               .search_by_context(context, None, limit)
+ 711               .await?
+ 712       } else {
+ 713           state.memory_service.get_recent(limit, None).await?
+ 714       };
+ 715   
+ 716       if memories.is_empty() {
+ 717           return Err(ApiError::NotFound(
+ 718               "No memories found for analysis".to_string(),
+ 719           ));
+ 720       }
+ 721   
+ 722       // Парсим тип инсайта
+ 723       let insight_type =
+ 724           parse_insight_type(req.insight_type.as_deref()).unwrap_or(InsightType::PatternRecognition);
+ 725   
+ 726       // Генерируем инсайты с GPT-5-nano
+ 727       let insights = orchestrator
+ 728           .generate_insights(&memories, insight_type)
+ 729           .await
+ 730           .map_err(|e| ApiError::InternalError(e.to_string()))?;
+ 731   
+ 732       // Конвертируем в строки
+ 733       let insight_strings: Vec<String> = insights.iter().map(|mt| format!("{:?}", mt)).collect();
+ 734   
+ 735       Ok(Json(InsightsResponse {
+ 736           insights: insight_strings,
+ 737           memories_analyzed: memories.len(),
+ 738           context: req.context,
+ 739           reasoning_effort: req.reasoning_effort.unwrap_or_else(|| "medium".to_string()),
+ 740           model_used: "gpt-5-nano".to_string(),
+ 741           success: true,
+ 742       }))
+ 743   }
+ 744   
+ 745   /// Дистилляция контекста через GPT-5-nano
+ 746   async fn distill_context(
+ 747       State(state): State<ApiState>,
+ 748       Json(req): Json<DistillationRequest>,
+ 749   ) -> Result<impl IntoResponse, ApiError> {
+ 750       let orchestrator = state
+ 751           .orchestrator
+ 752           .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
+ 753   
+ 754       // Получаем воспоминания для дистилляции
+ 755       let memories = if let Some(context) = &req.context {
+ 756           state
+ 757               .memory_service
+ 758               .search_by_context(context, None, 1000)
+ 759               .await?
+ 760       } else {
+ 761           state.memory_service.get_recent(1000, None).await?
+ 762       };
+ 763   
+ 764       if memories.is_empty() {
+ 765           return Err(ApiError::NotFound(
+ 766               "No memories found for distillation".to_string(),
+ 767           ));
+ 768       }
+ 769   
+ 770       let original_count = memories.len();
+ 771   
+ 772       // Дистиллируем контекст
+ 773       let context_hint = req.context.as_deref();
+ 774       let distillation_result = orchestrator
+ 775           .distill_context(&memories, context_hint)
+ 776           .await
+ 777           .map_err(|e| ApiError::InternalError(e.to_string()))?;
+ 778   
+ 779       // Извлекаем ключевые точки из результата дистилляции
+ 780       // distill_context возвращает MemoryType, который мы конвертируем в ключевые точки
+ 781       let key_points = match distillation_result {
+ 782           MemoryType::Semantic { facts, concepts } => {
+ 783               let mut points = facts;
+ 784               points.extend(concepts);
+ 785               points
+ 786           }
+ 787           MemoryType::Episodic {
+ 788               event,
+ 789               participants,
+ 790               ..
+ 791           } => {
+ 792               let mut points = vec![event];
+ 793               points.extend(participants);
+ 794               points
+ 795           }
+ 796           MemoryType::Procedural { steps, .. } => steps,
+ 797           MemoryType::Working { task, .. } => {
+ 798               vec![task]
+ 799           }
+ 800           MemoryType::Code {
+ 801               functions,
+ 802               concepts,
+ 803               ..
+ 804           } => {
+ 805               let mut points = functions;
+ 806               points.extend(concepts);
+ 807               points
+ 808           }
+ 809           _ => {
+ 810               // Для других типов
+ 811               vec![format!(
+ 812                   "Distilled memory of type: {:?}",
+ 813                   distillation_result
+ 814               )]
+ 815           }
+ 816       };
+ 817   
+ 818       let num_points = key_points.len();
+ 819       let compression_ratio = if num_points == 0 {
+ 820           1.0
+ 821       } else {
+ 822           original_count as f32 / num_points as f32
+ 823       };
+ 824   
+ 825       // Создаем summary из ключевых точек
+ 826       let summary = if key_points.len() > 3 {
+ 827           format!(
+ 828               "{} key points extracted from {} memories",
+ 829               key_points.len(),
+ 830               original_count
+ 831           )
+ 832       } else {
+ 833           key_points.join("; ")
+ 834       };
+ 835   
+ 836       Ok(Json(DistillationResponse {
+ 837           key_points,
+ 838           summary,
+ 839           original_count,
+ 840           compression_ratio,
+ 841           success: true,
+ 842       }))
+ 843   }
+ 844   
+ 845   /// Оптимизация памяти через GPT-5-nano
+ 846   async fn optimize_memory(
+ 847       State(state): State<ApiState>,
+ 848       Json(req): Json<OptimizationRequest>,
+ 849   ) -> Result<impl IntoResponse, ApiError> {
+ 850       let orchestrator = state
+ 851           .orchestrator
+ 852           .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
+ 853   
+ 854       // Получаем воспоминания для оптимизации
+ 855       let memories = if let Some(context) = &req.context {
+ 856           state
+ 857               .memory_service
+ 858               .search_by_context(&context, None, 5000)
+ 859               .await?
+ 860       } else {
+ 861           state.memory_service.get_recent(5000, None).await?
+ 862       };
+ 863   
+ 864       if memories.is_empty() {
+ 865           return Ok(Json(OptimizationResponse {
+ 866               duplicates_found: 0,
+ 867               outdated_found: 0,
+ 868               suggestions: vec!["No memories to optimize".to_string()],
+ 869               compression_ratio: 1.0,
+ 870               space_savings_percent: 0.0,
+ 871               applied: false,
+ 872               success: true,
+ 873           }));
+ 874       }
+ 875   
+ 876       // Оптимизируем хранилище
+ 877       let optimization = orchestrator
+ 878           .optimize_memory_storage(&memories)
+ 879           .await
+ 880           .map_err(|e| ApiError::InternalError(e.to_string()))?;
+ 881   
+ 882       // TODO: Применить оптимизацию если aggressive=true
+ 883   
+ 884       Ok(Json(OptimizationResponse {
+ 885           duplicates_found: optimization.duplicates_to_remove.len(),
+ 886           outdated_found: optimization.outdated_for_archive.len(),
+ 887           suggestions: optimization.optimization_suggestions,
+ 888           compression_ratio: optimization.compression_ratio,
+ 889           space_savings_percent: optimization.space_savings_percent,
+ 890           applied: req.aggressive.unwrap_or(false),
+ 891           success: true,
+ 892       }))
+ 893   }
+ 894   
+ 895   /// Анализ паттернов через GPT-5-nano
+ 896   async fn analyze_patterns(
+ 897       State(state): State<ApiState>,
+ 898       Json(req): Json<HashMap<String, serde_json::Value>>,
+ 899   ) -> Result<impl IntoResponse, ApiError> {
+ 900       let orchestrator = state
+ 901           .orchestrator
+ 902           .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
+ 903   
+ 904       let context = req
+ 905           .get("context")
+ 906           .and_then(|v| v.as_str())
+ 907           .map(String::from);
+ 908   
+ 909       let limit = req.get("limit").and_then(|v| v.as_u64()).unwrap_or(100) as usize;
+ 910   
+ 911       // Получаем воспоминания для анализа
+ 912       let memories = if let Some(ctx) = context {
+ 913           state
+ 914               .memory_service
+ 915               .search_by_context(&ctx, None, limit)
+ 916               .await?
+ 917       } else {
+ 918           state.memory_service.get_recent(limit, None).await?
+ 919       };
+ 920   
+ 921       if memories.is_empty() {
+ 922           return Err(ApiError::NotFound(
+ 923               "No memories found for analysis".to_string(),
+ 924           ));
+ 925       }
+ 926   
+ 927       // Анализируем паттерны
+ 928       let analysis = orchestrator
+ 929           .analyze_memory_patterns(&memories)
+ 930           .await
+ 931           .map_err(|e| ApiError::InternalError(e.to_string()))?;
+ 932   
+ 933       Ok(Json(serde_json::json!({
+ 934           "analysis": analysis,
+ 935           "memories_analyzed": memories.len(),
+ 936           "model": "gpt-5-nano",
+ 937           "success": true,
+ 938       })))
+ 939   }
+ 940   
+ 941   /// Статус оркестратора
+ 942   async fn orchestrator_status(State(state): State<ApiState>) -> impl IntoResponse {
+ 943       if let Some(_orchestrator) = &state.orchestrator {
+ 944           Json(serde_json::json!({
+ 945               "available": true,
+ 946               "model": "gpt-5-nano",
+ 947               "features": {
+ 948                   "distillation": true,
+ 949                   "insights": true,
+ 950                   "optimization": true,
+ 951                   "pattern_analysis": true,
+ 952               },
+ 953               "config": {
+ 954                   "max_input_tokens": 400000,
+ 955                   "max_output_tokens": 12000,
+ 956                   "reasoning_effort_levels": ["minimal", "low", "medium", "high"],
+ 957               },
+ 958               "success": true,
+ 959           }))
+ 960       } else {
+ 961           Json(serde_json::json!({
+ 962               "available": false,
+ 963               "message": "Orchestrator not configured",
+ 964               "success": false,
+ 965           }))
+ 966       }
+ 967   }
+ 968   
+ 969   /// Централизованная валидация query параметра с защитой от DoS и инъекций
+ 970   ///
+ 971   /// # Проверки
+ 972   /// - Не пустой после trim
+ 973   /// - Длина не более 1000 символов
+ 974   /// - Отсутствие опасных символов для предотвращения инъекций
+ 975   ///
+ 976   /// # Examples
+ 977   /// ```
+ 978   /// assert!(validate_query("valid search").is_ok());
+ 979   /// assert!(validate_query("").is_err());
+ 980   /// assert!(validate_query(&"x".repeat(1001)).is_err());
+ 981   /// ```
+ 982   fn validate_query(query: &str) -> Result<(), ApiError> {
+ 983       let trimmed = query.trim();
+ 984   
+ 985       if trimmed.is_empty() {
+ 986           return Err(ApiError::BadRequest("Query cannot be empty".to_string()));
+ 987       }
+ 988   
+ 989       if trimmed.len() > 1000 {
+ 990           return Err(ApiError::BadRequest(
+ 991               "Query too long (max 1000 chars)".to_string(),
+ 992           ));
+ 993       }
+ 994   
+ 995       // Защита от потенциальных инъекций через опасные символы
+ 996       if trimmed.contains(';') || trimmed.contains("--") || trimmed.contains("/*") {
+ 997           return Err(ApiError::BadRequest(
+ 998               "Invalid characters in query".to_string(),
+ 999           ));
+1000       }
+1001   
+1002       Ok(())
+1003   }
+1004   
+1005   // ===== Вспомогательные функции =====
+1006   
+1007   /// Парсинг типа памяти из строки
+1008   fn parse_memory_type(s: &str) -> Option<MemoryType> {
+1009       match s.to_lowercase().as_str() {
+1010           "semantic" => Some(MemoryType::Semantic {
+1011               facts: vec![],
+1012               concepts: vec![],
+1013           }),
+1014           "episodic" => Some(MemoryType::Episodic {
+1015               event: String::new(),
+1016               location: None,
+1017               participants: vec![],
+1018               timeframe: None,
+1019           }),
+1020           "procedural" => Some(MemoryType::Procedural {
+1021               steps: vec![],
+1022               tools: vec![],
+1023               prerequisites: vec![],
+1024           }),
+1025           "working" => Some(MemoryType::Working {
+1026               task: String::new(),
+1027               deadline: None,
+1028               priority: Priority::Medium,
+1029           }),
+1030           _ => None,
+1031       }
+1032   }
+1033   
+1034   /// Парсинг типа инсайта
+1035   fn parse_insight_type(s: Option<&str>) -> Option<InsightType> {
+1036       s.and_then(|t| match t.to_lowercase().as_str() {
+1037           "preference" | "user_preference" => Some(InsightType::UserPreference),
+1038           "pattern" | "pattern_recognition" => Some(InsightType::PatternRecognition),
+1039           "strategy" | "strategy_effectiveness" => Some(InsightType::StrategyEffectiveness),
+1040           "mistake" | "common_mistake" => Some(InsightType::CommonMistake),
+1041           "practice" | "best_practice" => Some(InsightType::BestPractice),
+1042           "gap" | "knowledge_gap" => Some(InsightType::KnowledgeGap),
+1043           "context" | "context_understanding" => Some(InsightType::ContextUnderstanding),
+1044           "performance" => Some(InsightType::Performance),
+1045           "error" | "error_pattern" => Some(InsightType::ErrorPattern),
+1046           "success" | "success_pattern" => Some(InsightType::SuccessPattern),
+1047           _ => None,
+1048       })
+1049   }
+1050   
+1051   /// Запустить API сервер
+1052   pub async fn run_server(
+1053       memory_service: Arc<MemoryService>,
+1054       orchestrator: Option<Arc<MemoryOrchestrator>>,
+1055       config: ApiConfig,
+1056   ) -> Result<(), Box<dyn std::error::Error>> {
+1057       let addr = format!("{}:{}", config.host, config.port);
+1058       let has_orchestrator = orchestrator.is_some();
+1059       let router = create_router(memory_service, orchestrator, config);
+1060   
+1061       info!("🚀 Starting AI Memory Service API on {}", addr);
+1062       info!(
+1063           "📡 Orchestrator: {}",
+1064           if has_orchestrator {
+1065               "GPT-5-nano enabled"
+1066           } else {
+1067               "disabled"
+1068           }
+1069       );
+1070   
+1071       let listener = tokio::net::TcpListener::bind(&addr).await?;
+1072       axum::serve(listener, router).await?;
+1073   
+1074       Ok(())
+1075   }
+
+=== End of C:\Models\ai-memory-service\src\api.rs ===
+
+=== End of C:\Models\ai-memory-service\src\api.rs ===
+
+
+
+DOCUMENTATION RECOMMENDATION GUIDELINES:
+## DOCUMENTATION RECOMMENDATIONS
+
+When analyzing code, identify the main technologies and provide documentation links:
+
+1. Detect frameworks, libraries, and language features used
+2. Suggest relevant official documentation URLs
+3. Focus on the specific features/APIs actually used in the code
+
+IMPORTANT: Since this runs in an isolated context without internet access:
+- Provide well-known, stable documentation URLs
+- Use standard documentation patterns (e.g., docs.rs for Rust, MDN for web)
+- Include version-specific paths when possible
+
+Example documentation patterns:
+- Rust: https://doc.rust-lang.org/std/ or https://docs.rs/{crate}/{version}
+- React: https://react.dev/reference/react/
+- Python: https://docs.python.org/3/library/
+- Node.js: https://nodejs.org/api/
+
+Note: These are static recommendations based on detected technologies.
+For real-time documentation, users should verify links or use Context7 in Claude directly.
+
+
+ANTI-PATTERNS REFERENCE:
+# АНТИ-ПАТТЕРНЫ И РЕЖИМЫ ВАЛИДАЦИИ
+# Сводка для валидационных ИИ-агентов
+
+## КРИТИЧЕСКИЕ АНТИ-ПАТТЕРНЫ (ВСЕГДА БЛОКИРОВАТЬ):
+
+### 1. Фейковые реализации
+- `return true;` / `return "success"` без реальной логики
+- Заглушки с комментариями `// Not implemented`, `TODO`, `FIXME` в production коде
+- Пустые функции с возвратом константных значений
+- Имитация работы через `console.log("выполнено")` без реальных действий
+
+### 2. Скрытие ошибок
+- Пустые блоки `catch {}`, `except: pass`, `catch (e) {}`
+- Подавление исключений только логированием: `catch (e) { console.log(e) }`
+- Игнорирование return кодов ошибок
+- Возврат `null`/`undefined` вместо обработки ошибок
+
+### 3. Имитация асинхронности
+- `setTimeout(() => {}, 1000)` без полезной работы
+- `await new Promise(resolve => setTimeout(resolve, 100))` для "имитации задержки"
+- `Thread.sleep()`, `time.sleep()` в production коде без обоснования
+- Фейковые `async/await` без реальных асинхронных операций
+
+### 4. Хардкод данных в production
+- Статичные массивы/объекты вместо реальных вычислений
+- Захардкоженные пути файлов, URL, конфигурации
+- Возврат фиксированных результатов в бизнес-логике
+- Моковые данные в production коде
+
+### 5. Безопасность и качество
+- SQL-инъекции через string concatenation
+- Хардкод паролей, токенов, API-ключей
+- eval() и подобные конструкции с пользовательскими данными
+- Отсутствие валидации входных параметров
+
+## КОНТЕКСТНЫЕ РЕЖИМЫ:
+
+### СТРОГИЙ РЕЖИМ (production, src/, lib/, main):
+- Все анти-паттерны блокируются жестко
+- Требуется полная реализация функционала
+- Обязательна обработка ошибок
+- Минимум TODO/FIXME комментариев
+
+### ДОПУСТИМЫЕ УПРОЩЕНИЯ (test/, mock/, example/, demo/, fixtures/, samples/):
+- Разрешены заглушки и моки
+- Допустимы хардкоженые тестовые данные
+- Можно использовать setTimeout для тестов
+- Разрешены упрощенные реализации
+
+### ПРЕДУПРЕДИТЕЛЬНЫЙ РЕЖИМ (docs/, scripts/, tools/, utils/):
+- Анти-паттерны вызывают предупреждения, но не блокировку
+- Допустимы простые скрипты с минимальной обработкой ошибок
+- Разрешены TODO для будущих улучшений
+
+## ДЕТЕКЦИЯ КОНТЕКСТА:
+- Проверяй путь к файлу для определения режима
+- Учитывай название директории и назначение кода
+- При сомнениях выбирай более строгий режим
+- Обращай внимание на комментарии разработчика о назначении кода
+
+## ИСКЛЮЧЕНИЯ:
+- Интерфейсы и абстрактные классы могут содержать заглушки
+- Полифиллы и шимы могут иметь упрощенную логику
+- Middleware и декораторы могут использовать паттерн "проброса"
+- Конфигурационные файлы могут содержать статичные данные
+
+OUTPUT EXACTLY AS SHOWN IN THE TEMPLATE BELOW.
+
+TOKEN LIMIT: 4500
+
+=== REQUIRED OUTPUT FORMAT ===
+OUTPUT EXACTLY AS SHOWN BELOW:
+[ВАЛИДАЦИЯ КОДА]
+
+[ПРЕДЛОЖЕНИЕ]
+{1. предложение}
+{2. предложение}
+{Продолжение,если необходимо}
+
+[НАПОМИНАНИЯ]
+ИСПОЛЬЗУЙ MCP Context7
+-{ЕСЛИ НЕОБХОДИМО}
+-{ЕСЛИ НЕОБХОДИМО}
+-{ЕСЛИ НЕОБХОДИМО}
+
+[КРИТИЧЕСКИЕ_ПРОБЛЕМЫ]
+{Если нет критических проблем, напишите: "Нет критических проблем, требующих немедленного исправления."}
+{Если есть, то для каждой:}
+🔴 **{CATEGORY}:** {ISSUE_TITLE}
+   Проблема: {PROBLEM_DESCRIPTION}
+    Влияние: {IMPACT_DESCRIPTION}
+     Решение: {SOLUTION_DESCRIPTION}
+      {CODE_EXAMPLE_IF_NEEDED}
+
+[ВОЗМОЖНОСТИ УЛУЧШЕНИЯ]
+
+{Для каждого улучшения используйте формат:}
+{🔴 для P1 приоритета, 🟡 для P2 приоритета, 🟢 для P3 приоритета}
+
+{PRIORITY_EMOJI} {[PRIORITY]} {CATEGORY}:{IMPROVEMENT_TITLE}
+Проблема: {PROBLEM_DESCRIPTION}
+ Влияние: {IMPACT_DESCRIPTION}
+  Решение: {SOLUTION_DESCRIPTION}
+   {CODE_EXAMPLE_IF_NEEDED}
+
+[ЗАДАЧА] {USER_TASK - какова цель пользователя}
+Рекомендуемые шаги:
+1. {NEXT_STEP_1}
+2. {NEXT_STEP_2}
+3. {NEXT_STEP_3}
+
+[ЧТО РАБОТАЕТ ПЛОХО]
+{NEGATIVE_ASPECT_1}
+{NEGATIVE_ASPECT_2}
+{NEGATIVE_ASPECT_3}
+{ПРОДОЛЖЕНИЕ, ЕСЛИ НЕОБХОДИМО}
+
+
+[ОЦЕНКА]
+• Функциональность: {FUNC_SCORE}/300 - {FUNC_COMMENT}
+• Надежность: {RELIABILITY_SCORE}/200 - {RELIABILITY_COMMENT}
+• Поддерживаемость: {MAINTAINABILITY_SCORE}/200 - {MAINTAINABILITY_COMMENT}
+• Производительность: {PERFORMANCE_SCORE}/150 - {PERFORMANCE_COMMENT}
+• Безопасность: {SECURITY_SCORE}/100 - {SECURITY_COMMENT}
+• Стандарты: {STANDARDS_SCORE}/50 - {STANDARDS_COMMENT}
+
+[ВЫВОДЫ]
+Качество: {SCORE}/1000 | Статус: {STATUS}
+{кратко,сухо,по делу}
+
+===== FORMATTING RULES =====
+- Баллы только целые; сумма ровно 1000. Если расхождение — скорректируй на наименьшей метрике.
+- Статус: PASS (≥800 и нет критических), REVIEW (700–799 или высокие риски), FAIL (<700 или есть критические).
+- Если замечено зацикливание модели на одной проблеме — дай конкретные способы её устранить в [ПРЕДЛОЖЕНИЕ].
+- ПРЕДЛОЖЕНИЯ давай только при явном игнорировании причин очевидной проблемы.
+- Заполняй ВСЕ плейсхолдеры конкретными данными анализа.
+- Используй эмодзи: 🎯 🔴 🟡 🟢 ✅ 📊 ⚡ 💡
+- Приоритеты: P1 (высокий), P2 (средний), P3 (низкий)
+- Примеры кода — в тройных блоках ```language
+- Action items помечай стрелками → внутри текста решений
+- Максимум ~4500 токенов
+- Язык определяется динамически (language.txt)
 ===== END RULES =====
 === END FORMAT ===
 

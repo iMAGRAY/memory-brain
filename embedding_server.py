@@ -57,7 +57,7 @@ class EmbeddingService:
     # Максимальный контекст модели
     MAX_CONTEXT_TOKENS = 2048
     
-    def __init__(self, model_path: str, max_workers: int = 4, default_dimension: int = 512, cache_size: int = 1000):
+    def __init__(self, model_path: str, max_workers: int = 4, default_dimension: int = 768, cache_size: int = 1000):
         """
         Инициализация optimized EmbeddingGemma service
         
@@ -300,6 +300,9 @@ class EmbeddingService:
                     # Экранируем title для предотвращения инъекций
                     safe_title = escape(title or "none")[:100]
                     prompt = prompt_template.format(title=safe_title)
+                elif task_type == 'retrieval_query':
+                    # КРИТИЧНО: Для EmbeddingGemma используем точный формат промпта
+                    prompt = "task: search result | query: "
                 else:
                     prompt = prompt_template
                     
@@ -435,9 +438,11 @@ class EmbeddingService:
         if batch_size is None or batch_size <= 0:
             batch_size = 32 if torch.cuda.is_available() else 16
         
-        # Используем нативный метод модели если доступен
-        if hasattr(self.model, 'encode_query'):
-            # Нативный метод SentenceTransformer автоматически добавляет промпт
+        # КРИТИЧНО: Принудительно используем fallback для EmbeddingGemma промптов!
+        # Нативные методы encode_query/encode_document могут использовать неправильные промпты
+        # что приводит к потере качества 15-30% согласно документации EmbeddingGemma
+        if False:  # hasattr(self.model, 'encode_query'):
+            # Отключено: нативный метод может использовать неоптимальные промпты
             embeddings = self.model.encode_query(queries, batch_size=batch_size,
                                                  convert_to_numpy=True,
                                                  normalize_embeddings=True)
@@ -493,9 +498,11 @@ class EmbeddingService:
         if batch_size is None or batch_size <= 0:
             batch_size = 32 if torch.cuda.is_available() else 16
         
-        # Используем нативный метод модели если доступен
-        if hasattr(self.model, 'encode_document'):
-            # Нативный метод SentenceTransformer автоматически добавляет промпт
+        # КРИТИЧНО: Принудительно используем fallback для EmbeddingGemma промптов!
+        # Нативные методы encode_document могут использовать неправильные промпты
+        # что приводит к потере качества 15-30% согласно документации EmbeddingGemma
+        if False:  # hasattr(self.model, 'encode_document'):
+            # Отключено: нативный метод может использовать неоптимальные промпты
             # Подготавливаем документы с заголовками если есть
             if titles:
                 docs_with_titles = []
@@ -1148,11 +1155,29 @@ class EmbeddingServer:
         for route in list(self.app.router.routes()):
             cors.add(route)
     
+    def _process_embeddings(self, embeddings) -> List[float]:
+        """Обработка результатов embeddings в единообразный формат"""
+        if isinstance(embeddings, np.ndarray):
+            # Если это одиночный embedding (1D array), оборачиваем в список
+            if embeddings.ndim == 1:
+                return [embeddings.tolist()]
+            # Если это batch embeddings (2D array), конвертируем в список списков
+            else:
+                return embeddings.tolist()
+        elif isinstance(embeddings, list):
+            if len(embeddings) == 0:
+                raise ValueError("Empty embeddings returned")
+            return embeddings
+        else:
+            # Если это что-то другое (например, единичное значение), оборачиваем в список
+            return [embeddings]
+    
     async def handle_embed(self, request: web.Request) -> web.Response:
         """Обработка запроса на embedding одного текста (локальный сервер)"""
         try:
             data = await request.json()
             text = data.get('text', '')
+            task_type = data.get('task_type', 'general')
             
             # Минимальная валидация для локального сервера
             if not text:
@@ -1161,8 +1186,25 @@ class EmbeddingServer:
                     status=400
                 )
             
-            # Кодируем текст
-            embeddings = await self.service.encode_async([text])
+            # Кодируем текст в зависимости от task_type
+            try:
+                if task_type == 'query':
+                    # Для поисковых запросов используем encode_query асинхронно
+                    embeddings = await asyncio.to_thread(self.service.encode_query, text)
+                    embeddings = self._process_embeddings(embeddings)
+                elif task_type == 'document':
+                    # Для документов используем encode_document асинхронно
+                    embeddings = await asyncio.to_thread(self.service.encode_document, text)
+                    embeddings = self._process_embeddings(embeddings)
+                else:
+                    # Для общих случаев используем encode_async
+                    embeddings = await self.service.encode_async([text])
+            except Exception as e:
+                logger.error(f"Error encoding text with task_type '{task_type}': {e}")
+                return web.json_response(
+                    {'error': f'Encoding failed: {str(e)}'},
+                    status=500
+                )
             
             return web.json_response({
                 'embedding': embeddings[0],

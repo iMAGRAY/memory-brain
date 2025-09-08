@@ -58,6 +58,9 @@ fastrand = "2.0"
 # Cryptography
 sha2 = "0.10"
 
+# Text processing
+regex = "1.10"
+
 # Windows API
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["psapi", "processthreadsapi", "winnt"] }

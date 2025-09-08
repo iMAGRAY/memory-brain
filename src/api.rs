@@ -3,29 +3,30 @@
 //! Предоставляет HTTP endpoints для операций с памятью, поиска, инсайтов и оркестрации
 
 use crate::{
-    MemoryService, MemoryOrchestrator, MemoryCell, MemoryQuery, MemoryType,
-    InsightType, MemoryError, Priority,
+    secure_orchestration::{SecureOrchestrationConfig, SecureOrchestrationLayer, UserContext},
+    InsightType, MemoryCell, MemoryError, MemoryOrchestrator, MemoryQuery, MemoryService,
+    MemoryType, Priority,
 };
+use anyhow::Result;
 use axum::{
-    extract::{Query, State, Path, Json},
+    extract::{Json, Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post, delete},
+    routing::{delete, get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::{CorsLayer, Any},
-    trace::TraceLayer,
     compression::CompressionLayer,
+    cors::{Any, CorsLayer},
     limit::RequestBodyLimitLayer,
+    trace::TraceLayer,
 };
-use tracing::{info, debug};
+use tracing::{debug, info};
 use uuid::Uuid;
-use std::collections::HashMap;
-use anyhow::Result;
 
 /// Состояние API сервера
 #[derive(Clone)]
@@ -100,10 +101,12 @@ where
     D: Deserializer<'de>,
 {
     let s: Option<String> = Option::deserialize(deserializer)?;
-    Ok(s.map(|s| s.split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect()))
+    Ok(s.map(|s| {
+        s.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    }))
 }
 
 /// Валидация limit с ограничением максимального значения
@@ -129,7 +132,7 @@ const MAX_THRESHOLD: f32 = 1.0;
 
 /// Общая валидация порога (0.0-1.0) для устранения дублирования кода
 /// Проверяет что значение конечное и в допустимом диапазоне
-fn validate_threshold<E>(value: f32, field_name: &str) -> Result<f32, E> 
+fn validate_threshold<E>(value: f32, field_name: &str) -> Result<f32, E>
 where
     E: serde::de::Error,
 {
@@ -137,7 +140,10 @@ where
         return Err(E::custom(format!("{} must be a finite number", field_name)));
     }
     if value < MIN_THRESHOLD || value > MAX_THRESHOLD {
-        return Err(E::custom(format!("{} must be between {} and {}", field_name, MIN_THRESHOLD, MAX_THRESHOLD)));
+        return Err(E::custom(format!(
+            "{} must be between {} and {}",
+            field_name, MIN_THRESHOLD, MAX_THRESHOLD
+        )));
     }
     Ok(value)
 }
@@ -169,27 +175,29 @@ where
 }
 
 /// Параметры поиска для GET запроса
-/// 
+///
 /// Пример: GET /search?query=example&limit=20&memory_types=Semantic,Episodic&similarity_threshold=0.8
 #[derive(Debug, Deserialize)]
 pub struct SearchQueryParams {
-    /// Текст запроса для поиска воспоминаний
+    /// Текст запроса для поиска воспоминаний (обязательный параметр)
     pub query: String,
     /// Максимальное количество результатов (по умолчанию 10, макс 100)
-    #[serde(deserialize_with = "deserialize_limit")]
+    #[serde(deserialize_with = "deserialize_limit", default)]
     pub limit: Option<usize>,
     /// Типы памяти для фильтрации (comma-separated: "Semantic,Episodic")
-    #[serde(deserialize_with = "deserialize_memory_types")]
+    #[serde(deserialize_with = "deserialize_memory_types", default)]
     pub memory_types: Option<Vec<String>>,
     /// Контекст поиска для более точных результатов
+    #[serde(default)]
     pub context: Option<String>,
     /// Включать связанные воспоминания в результат
+    #[serde(default)]
     pub include_related: Option<bool>,
     /// Минимальный порог важности (0.0-1.0)
-    #[serde(deserialize_with = "deserialize_importance")]
+    #[serde(deserialize_with = "deserialize_importance", default)]
     pub min_importance: Option<f32>,
     /// Порог схожести для vector search (0.0-1.0)
-    #[serde(deserialize_with = "deserialize_similarity")]
+    #[serde(deserialize_with = "deserialize_similarity", default)]
     pub similarity_threshold: Option<f32>,
 }
 
@@ -340,43 +348,36 @@ pub fn create_router(
         // Здоровье и статус
         .route("/health", get(health_check))
         .route("/stats", get(get_statistics))
-        
         // Операции с памятью
         .route("/memory", post(store_memory))
         .route("/memory/:id", get(get_memory))
         .route("/memory/:id", delete(delete_memory))
         .route("/memories/recent", get(get_recent_memories))
-        
         // API-compatible routes for external tools
         .route("/api/memories", post(store_memory))
         .route("/api/memories", get(get_recent_memories))
         .route("/api/memories/:id", get(get_memory))
         .route("/api/memories/:id", delete(delete_memory))
-        
         // Поиск
         .route("/search", post(search_memories).get(search_memories_get))
         .route("/search/context", post(search_by_context))
         .route("/search/advanced", post(advanced_recall))
-        
         // API-compatible search routes for external tools
         .route("/api/memories/search", get(search_memories_get))
-        
         // Контексты
         .route("/contexts", get(list_contexts))
         .route("/context/:path", get(get_context_info))
-        
         // Оркестратор (если доступен)
         .route("/orchestrator/insights", post(generate_insights))
         .route("/orchestrator/distill", post(distill_context))
         .route("/orchestrator/optimize", post(optimize_memory))
         .route("/orchestrator/analyze", post(analyze_patterns))
         .route("/orchestrator/status", get(orchestrator_status))
-        
         .with_state(state);
 
     // Middleware слои
-    let service_builder = ServiceBuilder::new()
-        .layer(RequestBodyLimitLayer::new(config.max_body_size));
+    let service_builder =
+        ServiceBuilder::new().layer(RequestBodyLimitLayer::new(config.max_body_size));
 
     if config.enable_tracing {
         app = app.layer(TraceLayer::new_for_http());
@@ -404,7 +405,7 @@ pub fn create_router(
 async fn health_check(State(state): State<ApiState>) -> impl IntoResponse {
     let orchestrator_available = state.orchestrator.is_some();
     let stats = state.memory_service.get_stats().await.ok();
-    
+
     Json(serde_json::json!({
         "status": "healthy",
         "service": "ai-memory-service",
@@ -421,7 +422,7 @@ async fn health_check(State(state): State<ApiState>) -> impl IntoResponse {
 /// Получить статистику
 async fn get_statistics(State(state): State<ApiState>) -> Result<impl IntoResponse, ApiError> {
     let stats = state.memory_service.get_stats().await?;
-    
+
     Ok(Json(serde_json::json!({
         "statistics": stats,
         "orchestrator_available": state.orchestrator.is_some(),
@@ -435,17 +436,20 @@ async fn store_memory(
     Json(req): Json<StoreMemoryRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     debug!("Storing new memory with context: {:?}", req.context_hint);
-    
+
     // Валидация входных данных
     if req.content.trim().is_empty() {
         return Err(ApiError::BadRequest("Content cannot be empty".to_string()));
     }
-    
+
     if req.content.len() > 1_000_000 {
-        return Err(ApiError::BadRequest("Content too large (max 1MB)".to_string()));
+        return Err(ApiError::BadRequest(
+            "Content too large (max 1MB)".to_string(),
+        ));
     }
-    
-    let id = state.memory_service
+
+    let id = state
+        .memory_service
         .store_memory(req.content.clone(), req.context_hint.clone())
         .await?;
 
@@ -464,7 +468,8 @@ async fn get_memory(
     State(state): State<ApiState>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let memory = state.memory_service
+    let memory = state
+        .memory_service
         .get_memory(&id)
         .await
         .ok_or_else(|| ApiError::NotFound(format!("Memory {} not found", id)))?;
@@ -478,9 +483,9 @@ async fn delete_memory(
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     state.memory_service.delete_memory(&id).await?;
-    
+
     info!("Memory deleted: {}", id);
-    
+
     Ok(Json(serde_json::json!({
         "success": true,
         "message": format!("Memory {} deleted", id),
@@ -492,19 +497,20 @@ async fn get_recent_memories(
     State(state): State<ApiState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let limit = params.get("limit")
+    let limit = params
+        .get("limit")
         .and_then(|s| s.parse().ok())
         .unwrap_or(10);
-    
+
     if limit > 1000 {
-        return Err(ApiError::BadRequest("Limit too high (max 1000)".to_string()));
+        return Err(ApiError::BadRequest(
+            "Limit too high (max 1000)".to_string(),
+        ));
     }
-    
+
     let context = params.get("context").map(|s| s.as_str());
-    
-    let memories = state.memory_service
-        .get_recent(limit, context)
-        .await?;
+
+    let memories = state.memory_service.get_recent(limit, context).await?;
 
     Ok(Json(serde_json::json!({
         "memories": memories,
@@ -524,13 +530,11 @@ async fn search_memories(
     if req.query.trim().is_empty() {
         return Err(ApiError::BadRequest("Query cannot be empty".to_string()));
     }
-    
+
     let limit = req.limit.unwrap_or(10).min(100);
-    
-    let results = state.memory_service
-        .search(&req.query, limit)
-        .await?;
-    
+
+    let results = state.memory_service.search(&req.query, limit).await?;
+
     let total = results.len();
 
     Ok(Json(SearchResponse {
@@ -551,16 +555,15 @@ async fn search_memories_get(
     State(state): State<ApiState>,
     Query(params): Query<SearchQueryParams>,
 ) -> Result<Json<SearchResponse>, ApiError> {
-    // Валидация уже выполнена в кастомных десериализаторах
-    if params.query.trim().is_empty() {
-        return Err(ApiError::BadRequest("Query cannot be empty".to_string()));
-    }
-    
+    // Валидируем query параметр
+    validate_query(&params.query)?;
+
     let limit = params.limit.unwrap_or(10).min(100); // Защита от DoS атак
-    
+
     // Измеряем реальное время выполнения поиска для точных метрик
     let start = tokio::time::Instant::now();
-    let results = state.memory_service
+    let results = state
+        .memory_service
         .search(&params.query, limit)
         .await
         .map_err(|e| {
@@ -568,16 +571,24 @@ async fn search_memories_get(
             e
         })?;
     let recall_time_ms = start.elapsed().as_millis() as u64;
-    
+
     let total = results.len();
-    tracing::info!("GET search completed: query={}, results={}, time={}ms", params.query, total, recall_time_ms);
+    tracing::info!(
+        "GET search completed: query={}, results={}, time={}ms",
+        params.query,
+        total,
+        recall_time_ms
+    );
 
     Ok(Json(SearchResponse {
         results,
         total,
         query_id: Uuid::new_v4(),
         // reasoning_chain содержит базовую информацию о запросе для отладки и трейсинга
-        reasoning_chain: vec![format!("GET search for: {} (limit: {}, found: {})", params.query, limit, total)],
+        reasoning_chain: vec![format!(
+            "GET search for: {} (limit: {}, found: {})",
+            params.query, limit, total
+        )],
         confidence: 0.8,
         recall_time_ms,
         success: true,
@@ -589,12 +600,14 @@ async fn search_by_context(
     State(state): State<ApiState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let context = req.context
+    let context = req
+        .context
         .ok_or_else(|| ApiError::BadRequest("Context is required".to_string()))?;
-    
+
     let limit = req.limit.unwrap_or(10).min(100);
-    
-    let results = state.memory_service
+
+    let results = state
+        .memory_service
         .search_by_context(&context, Some(&req.query), limit)
         .await?;
 
@@ -621,29 +634,29 @@ async fn advanced_recall(
     let query = MemoryQuery {
         text: req.query,
         context_hint: req.context,
-        memory_types: req.memory_types.map(|types| {
-            types.iter().filter_map(|t| parse_memory_type(t)).collect()
-        }),
+        memory_types: req
+            .memory_types
+            .map(|types| types.iter().filter_map(|t| parse_memory_type(t)).collect()),
         limit: req.limit,
         min_importance: req.min_importance,
         time_range: None,
         similarity_threshold: req.similarity_threshold,
         include_related: req.include_related.unwrap_or(false),
     };
-    
+
     let recalled = state.memory_service.recall_memory(query).await?;
-    
+
     let mut all_results = Vec::new();
     all_results.extend(recalled.semantic_layer.clone());
     all_results.extend(recalled.contextual_layer.clone());
     all_results.extend(recalled.detailed_layer.clone());
-    
+
     // Дедупликация
     let mut seen = std::collections::HashSet::new();
     all_results.retain(|m| seen.insert(m.id));
-    
+
     let total = all_results.len();
-    
+
     Ok(Json(SearchResponse {
         results: all_results,
         total,
@@ -656,11 +669,9 @@ async fn advanced_recall(
 }
 
 /// Список контекстов
-async fn list_contexts(
-    State(state): State<ApiState>,
-) -> Result<impl IntoResponse, ApiError> {
+async fn list_contexts(State(state): State<ApiState>) -> Result<impl IntoResponse, ApiError> {
     let contexts = state.memory_service.list_contexts().await?;
-    
+
     Ok(Json(serde_json::json!({
         "contexts": contexts,
         "count": contexts.len(),
@@ -673,7 +684,8 @@ async fn get_context_info(
     State(state): State<ApiState>,
     Path(path): Path<String>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let context = state.memory_service
+    let context = state
+        .memory_service
         .get_context(&path)
         .await
         .ok_or_else(|| ApiError::NotFound(format!("Context {} not found", path)))?;
@@ -686,28 +698,30 @@ async fn generate_insights(
     State(state): State<ApiState>,
     Json(req): Json<InsightsRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let orchestrator = state.orchestrator
+    let orchestrator = state
+        .orchestrator
         .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
 
     // Получаем воспоминания для анализа
     let limit = req.limit.unwrap_or(100).min(500);
     let memories = if let Some(context) = &req.context {
-        state.memory_service
+        state
+            .memory_service
             .search_by_context(context, None, limit)
             .await?
     } else {
-        state.memory_service
-            .get_recent(limit, None)
-            .await?
+        state.memory_service.get_recent(limit, None).await?
     };
 
     if memories.is_empty() {
-        return Err(ApiError::NotFound("No memories found for analysis".to_string()));
+        return Err(ApiError::NotFound(
+            "No memories found for analysis".to_string(),
+        ));
     }
 
     // Парсим тип инсайта
-    let insight_type = parse_insight_type(req.insight_type.as_deref())
-        .unwrap_or(InsightType::PatternRecognition);
+    let insight_type =
+        parse_insight_type(req.insight_type.as_deref()).unwrap_or(InsightType::PatternRecognition);
 
     // Генерируем инсайты с GPT-5-nano
     let insights = orchestrator
@@ -716,9 +730,7 @@ async fn generate_insights(
         .map_err(|e| ApiError::InternalError(e.to_string()))?;
 
     // Конвертируем в строки
-    let insight_strings: Vec<String> = insights.iter()
-        .map(|mt| format!("{:?}", mt))
-        .collect();
+    let insight_strings: Vec<String> = insights.iter().map(|mt| format!("{:?}", mt)).collect();
 
     Ok(Json(InsightsResponse {
         insights: insight_strings,
@@ -735,22 +747,24 @@ async fn distill_context(
     State(state): State<ApiState>,
     Json(req): Json<DistillationRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let orchestrator = state.orchestrator
+    let orchestrator = state
+        .orchestrator
         .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
 
     // Получаем воспоминания для дистилляции
     let memories = if let Some(context) = &req.context {
-        state.memory_service
+        state
+            .memory_service
             .search_by_context(context, None, 1000)
             .await?
     } else {
-        state.memory_service
-            .get_recent(1000, None)
-            .await?
+        state.memory_service.get_recent(1000, None).await?
     };
 
     if memories.is_empty() {
-        return Err(ApiError::NotFound("No memories found for distillation".to_string()));
+        return Err(ApiError::NotFound(
+            "No memories found for distillation".to_string(),
+        ));
     }
 
     let original_count = memories.len();
@@ -761,7 +775,7 @@ async fn distill_context(
         .distill_context(&memories, context_hint)
         .await
         .map_err(|e| ApiError::InternalError(e.to_string()))?;
-    
+
     // Извлекаем ключевые точки из результата дистилляции
     // distill_context возвращает MemoryType, который мы конвертируем в ключевые точки
     let key_points = match distillation_result {
@@ -770,38 +784,51 @@ async fn distill_context(
             points.extend(concepts);
             points
         }
-        MemoryType::Episodic { event, participants, .. } => {
+        MemoryType::Episodic {
+            event,
+            participants,
+            ..
+        } => {
             let mut points = vec![event];
             points.extend(participants);
             points
         }
-        MemoryType::Procedural { steps, .. } => {
-            steps
-        }
+        MemoryType::Procedural { steps, .. } => steps,
         MemoryType::Working { task, .. } => {
             vec![task]
         }
-        MemoryType::Code { functions, concepts, .. } => {
+        MemoryType::Code {
+            functions,
+            concepts,
+            ..
+        } => {
             let mut points = functions;
             points.extend(concepts);
             points
         }
         _ => {
             // Для других типов
-            vec![format!("Distilled memory of type: {:?}", distillation_result)]
+            vec![format!(
+                "Distilled memory of type: {:?}",
+                distillation_result
+            )]
         }
     };
-    
+
     let num_points = key_points.len();
-    let compression_ratio = if num_points == 0 { 
-        1.0 
-    } else { 
-        original_count as f32 / num_points as f32 
+    let compression_ratio = if num_points == 0 {
+        1.0
+    } else {
+        original_count as f32 / num_points as f32
     };
-    
+
     // Создаем summary из ключевых точек
     let summary = if key_points.len() > 3 {
-        format!("{} key points extracted from {} memories", key_points.len(), original_count)
+        format!(
+            "{} key points extracted from {} memories",
+            key_points.len(),
+            original_count
+        )
     } else {
         key_points.join("; ")
     };
@@ -820,18 +847,18 @@ async fn optimize_memory(
     State(state): State<ApiState>,
     Json(req): Json<OptimizationRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let orchestrator = state.orchestrator
+    let orchestrator = state
+        .orchestrator
         .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
 
     // Получаем воспоминания для оптимизации
     let memories = if let Some(context) = &req.context {
-        state.memory_service
+        state
+            .memory_service
             .search_by_context(&context, None, 5000)
             .await?
     } else {
-        state.memory_service
-            .get_recent(5000, None)
-            .await?
+        state.memory_service.get_recent(5000, None).await?
     };
 
     if memories.is_empty() {
@@ -870,30 +897,31 @@ async fn analyze_patterns(
     State(state): State<ApiState>,
     Json(req): Json<HashMap<String, serde_json::Value>>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let orchestrator = state.orchestrator
+    let orchestrator = state
+        .orchestrator
         .ok_or_else(|| ApiError::BadRequest("Orchestrator not available".to_string()))?;
 
-    let context = req.get("context")
+    let context = req
+        .get("context")
         .and_then(|v| v.as_str())
         .map(String::from);
-    
-    let limit = req.get("limit")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(100) as usize;
+
+    let limit = req.get("limit").and_then(|v| v.as_u64()).unwrap_or(100) as usize;
 
     // Получаем воспоминания для анализа
     let memories = if let Some(ctx) = context {
-        state.memory_service
+        state
+            .memory_service
             .search_by_context(&ctx, None, limit)
             .await?
     } else {
-        state.memory_service
-            .get_recent(limit, None)
-            .await?
+        state.memory_service.get_recent(limit, None).await?
     };
 
     if memories.is_empty() {
-        return Err(ApiError::NotFound("No memories found for analysis".to_string()));
+        return Err(ApiError::NotFound(
+            "No memories found for analysis".to_string(),
+        ));
     }
 
     // Анализируем паттерны
@@ -936,6 +964,42 @@ async fn orchestrator_status(State(state): State<ApiState>) -> impl IntoResponse
             "success": false,
         }))
     }
+}
+
+/// Централизованная валидация query параметра с защитой от DoS и инъекций
+///
+/// # Проверки
+/// - Не пустой после trim
+/// - Длина не более 1000 символов
+/// - Отсутствие опасных символов для предотвращения инъекций
+///
+/// # Examples
+/// ```
+/// assert!(validate_query("valid search").is_ok());
+/// assert!(validate_query("").is_err());
+/// assert!(validate_query(&"x".repeat(1001)).is_err());
+/// ```
+fn validate_query(query: &str) -> Result<(), ApiError> {
+    let trimmed = query.trim();
+
+    if trimmed.is_empty() {
+        return Err(ApiError::BadRequest("Query cannot be empty".to_string()));
+    }
+
+    if trimmed.len() > 1000 {
+        return Err(ApiError::BadRequest(
+            "Query too long (max 1000 chars)".to_string(),
+        ));
+    }
+
+    // Защита от потенциальных инъекций через опасные символы
+    if trimmed.contains(';') || trimmed.contains("--") || trimmed.contains("/*") {
+        return Err(ApiError::BadRequest(
+            "Invalid characters in query".to_string(),
+        ));
+    }
+
+    Ok(())
 }
 
 // ===== Вспомогательные функции =====
@@ -993,12 +1057,19 @@ pub async fn run_server(
     let addr = format!("{}:{}", config.host, config.port);
     let has_orchestrator = orchestrator.is_some();
     let router = create_router(memory_service, orchestrator, config);
-    
+
     info!("🚀 Starting AI Memory Service API on {}", addr);
-    info!("📡 Orchestrator: {}", if has_orchestrator { "GPT-5-nano enabled" } else { "disabled" });
-    
+    info!(
+        "📡 Orchestrator: {}",
+        if has_orchestrator {
+            "GPT-5-nano enabled"
+        } else {
+            "disabled"
+        }
+    );
+
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, router).await?;
-    
+
     Ok(())
 }
