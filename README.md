@@ -193,6 +193,45 @@ POST /api/v1/memory/search/advanced
 }
 ```
 
+### Maintenance Endpoints
+
+```bash
+# Trigger importance decay (single tick). Returns count of updated nodes
+POST /maintenance/decay
+{}
+
+# Emulate N daily decay ticks (virtual days). Returns ticks and total updates
+POST /maintenance/tick
+{
+  "ticks": 7
+}
+
+# Trigger duplicate consolidation (context/threshold/max_items)
+POST /maintenance/consolidate
+{
+  "context": "optional/context",
+  "similarity_threshold": 0.92,
+  "max_items": 120
+}
+
+# Aliases (versioned /api/v1 and compatibility routes)
+POST /api/v1/maintenance/decay                # alias
+POST /api/v1/maintenance/tick                 # alias
+POST /api/v1/maintenance/consolidate          # alias
+POST /api/memory/consolidate                  # alias to /maintenance/consolidate
+GET|POST /api/search                          # alias to /api/memory/search
+```
+
+### Compatibility & Stability
+
+- Aliases preserved for compatibility:
+  - `POST /memories`, `POST /api/memories`, `POST /api/memory` → store memory
+  - `POST /memories/search`, `POST /api/memories/search`, `POST /api/memory/search`, `GET /search` → search
+  - `POST /api/memory/consolidate` → alias to `/maintenance/consolidate`
+  - Versioned aliases: `/api/v1/memory`, `/api/v1/memory/search`, `/api/v1/maintenance/*`
+- Determinism: repeatable search ordering and stable assembled context hash under identical state.
+- Maintenance operations require explicit trigger and are idempotent-safe at API layer.
+
 ### Orchestrator Operations
 
 ```bash

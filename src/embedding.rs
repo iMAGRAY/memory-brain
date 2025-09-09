@@ -22,6 +22,8 @@ use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 
+use serde_json::Value as JsonValue; // for robust /stats parsing
+
 // Cache configuration constants
 const CACHE_TTL_SECONDS: u64 = 3600; // 1 hour
 const CACHE_KEY_PREFIX: &str = "emb";
@@ -108,6 +110,8 @@ pub struct EmbeddingService {
     // Concurrency control for parallel requests
     concurrency_semaphore: Arc<Semaphore>,
     max_concurrent_operations: usize,
+    // Actual embedding dimension detected from server or fallback to config
+    actual_dimension: usize,
 }
 
 /// Model information for compatibility
@@ -168,6 +172,80 @@ impl EmbeddingService {
                 ));
             }
         }
+
+        // Detect actual embedding dimension
+        let mut actual_dimension = config.embedding.default_dimension;
+        let stats_url = format!("{}/stats", server_url);
+        let mut detected_from = "config";
+
+        match client.get(&stats_url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                match resp.json::<JsonValue>().await {
+                    Ok(json) => {
+                        // Try multiple likely paths: "dimension", "embedding_dimension", "model.dimension"
+                        let dim = json.get("dimension")
+                            .and_then(|v| v.as_u64())
+                            .or_else(|| json.get("embedding_dimension").and_then(|v| v.as_u64()))
+                            .or_else(|| json.get("model").and_then(|m| m.get("dimension")).and_then(|v| v.as_u64()))
+                            .map(|v| v as usize);
+                        if let Some(d) = dim {
+                            actual_dimension = d;
+                            detected_from = "stats";
+                            info!("Detected embedding dimension from /stats: {}", actual_dimension);
+                        } else {
+                            warn!("No 'dimension' field found in /stats response; will probe via /embed");
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to parse /stats JSON: {}; will probe via /embed", e);
+                    }
+                }
+            }
+            Ok(resp) => {
+                warn!("Embedding server /stats returned non-success status: {}. Will probe via /embed.", resp.status());
+            }
+            Err(e) => {
+                warn!("Failed to call /stats: {}. Will probe via /embed.", e);
+            }
+        }
+
+        // If /stats didn't yield a dimension, probe with a single /embed call
+        if detected_from != "stats" {
+            let probe_url = format!("{}/embed", server_url);
+            let probe_req = EmbedRequest { text: "dimension probe".to_string() };
+            match client.post(&probe_url).json(&probe_req).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    match resp.json::<EmbedResponse>().await {
+                        Ok(r) => {
+                            // Basic sanity: make sure vector length matches reported dimension
+                            if r.embedding.len() == r.dimension && r.dimension > 0 && r.dimension <= MAX_EMBEDDING_DIMENSION_LIMIT {
+                                actual_dimension = r.dimension;
+                                detected_from = "embed";
+                                info!("Detected embedding dimension from /embed: {}", actual_dimension);
+                            } else {
+                                warn!(
+                                    "Probe /embed returned inconsistent dimension (len={} vs dimension={}); using config fallback {}",
+                                    r.embedding.len(),
+                                    r.dimension,
+                                    actual_dimension
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to parse /embed probe response: {}; using config fallback {}", e, actual_dimension);
+                        }
+                    }
+                }
+                Ok(resp) => {
+                    warn!("Probe /embed returned status {}. Using config fallback {}.", resp.status(), actual_dimension);
+                }
+                Err(e) => {
+                    warn!("Failed to call probe /embed: {}. Using config fallback {}.", e, actual_dimension);
+                }
+            }
+        }
+
+        info!("Embedding dimension ready: {} (source: {})", actual_dimension, detected_from);
         
         Ok(Self {
             client,
@@ -182,6 +260,7 @@ impl EmbeddingService {
             max_batch_size: config.performance.max_batch_size,
             concurrency_semaphore: Arc::new(Semaphore::new(max_concurrent_operations)),
             max_concurrent_operations,
+            actual_dimension,
         })
     }
     
@@ -415,7 +494,7 @@ impl EmbeddingService {
     pub fn get_model_info(&self) -> ModelInfo {
         ModelInfo {
             name: self.model_name.clone(),
-            dimensions: self.config.embedding.default_dimension,
+            dimensions: self.actual_dimension, // return detected/fallback actual dimension
             vocab_size: 256000, // EmbeddingGemma-300M vocab size
             max_sequence_length: self.config.embedding.max_sequence_length,
         }
@@ -463,7 +542,8 @@ mod tests {
             Ok(service) => {
                 let info = service.get_model_info();
                 assert_eq!(info.name, "embeddinggemma-300m");
-                assert_eq!(info.dimensions, 768);
+                // Dimension is detected from /stats or /embed, or falls back to config; just ensure it's sane
+                assert!(info.dimensions > 0 && info.dimensions <= 4096);
             }
             Err(e) => {
                 // Expected if server is not running

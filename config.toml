@@ -1,42 +1,42 @@
 # AI Memory Service Configuration
-# Human-inspired memory system for AI agents
+# Uses environment variables for sensitive data (see .env file)
 
 [server]
 host = "127.0.0.1"
 port = 8080
 workers = 4
 environment = "development"
-cors_origins = ["http://localhost:3000", "http://localhost:8080"]
+cors_origins = ["http://localhost:3000", "http://127.0.0.1:8888"]
 
 [storage]
-# Neo4j graph database settings
 neo4j_uri = "bolt://localhost:7687"
-neo4j_user = "neo4j" 
-neo4j_password = "password"  # Temporary for testing
-connection_pool_size = 10
+neo4j_user = "neo4j"
+# Password loaded from NEO4J_PASSWORD environment variable
+neo4j_password = ""
+connection_pool_size = 16
 
 [embedding]
-# EmbeddingGemma-300m SafeTensors model settings
 model_path = "./models/embeddinggemma-300m"
 tokenizer_path = "./models/embeddinggemma-300m/tokenizer.json"
-batch_size = 32
+batch_size = 128
 max_sequence_length = 2048
-# Оптимальные настройки согласно документации
-embedding_dimension = 512  # Optimal balance (768 для максимального качества, 256 для скорости)
-normalize_embeddings = true  # Критически важно для Matryoshka truncation
-precision = "float32"  # НЕ ИСПОЛЬЗУЙТЕ float16 - не поддерживается!
-use_specialized_prompts = true  # Критически важно для качества
+# embedding_dimension is set via Option<usize> in code defaults
+# Critical for proper vector similarity
+normalize_embeddings = true
+# Use float32 for best compatibility
+precision = "float32"
+# Enable specialized prompts for better quality
+use_specialized_prompts = true
 
 [cache]
-# Multi-level caching configuration
-l1_size = 1000        # Hot memories in memory
-l2_size = 10000       # Warm memories with TTL
-ttl_seconds = 3600    # 1 hour cache expiration
+l1_size = 1000
+l2_size = 10000
+ttl_seconds = 3600
 compression_enabled = true
 
 [brain]
-# AI brain for content analysis
 max_memories = 100000
-importance_threshold = 0.3
+importance_threshold = 0.1
 consolidation_interval = 300
 decay_rate = 0.01
+

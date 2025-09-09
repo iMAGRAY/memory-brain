@@ -24,10 +24,32 @@ async fn main() -> Result<()> {
 
     info!("🚀 Starting AI Memory Service with GPT-4 Orchestrator");
 
-    // Load .env file if it exists
+    // Load .env file if it exists - with enhanced diagnostics
     if Path::new(".env").exists() {
-        dotenv::dotenv().ok();
-        info!("✅ Loaded .env configuration");
+        match dotenv::dotenv() {
+            Ok(_) => {
+                info!("✅ Loaded .env configuration");
+                
+                // Secure diagnostics - only check presence without logging values
+                let env_vars = ["NEO4J_PASSWORD", "NEO4J_URI", "NEO4J_USER", "SERVICE_HOST", "SERVICE_PORT"];
+                let mut found_count = 0;
+                for var_name in &env_vars {
+                    if env::var(var_name).is_ok() {
+                        found_count += 1;
+                        info!("🔍 Debug: {} present in environment", var_name);
+                    } else {
+                        warn!("🔍 Debug: {} not found in environment", var_name);
+                    }
+                }
+                info!("🔍 Environment variables loaded: {}/{}", found_count, env_vars.len());
+            },
+            Err(e) => warn!("⚠️ Failed to load .env: {}", e),
+        }
+    } else {
+        warn!("⚠️ .env file not found at current directory");
+        
+        // Force load from system environment as fallback
+        info!("🔄 Attempting to use system environment variables");
     }
 
     // Create configuration
@@ -162,10 +184,13 @@ async fn main() -> Result<()> {
 
 /// Load configuration from environment and/or config file
 fn load_configuration() -> Result<Config> {
+    info!("🔍 Starting configuration loading process...");
+    
     // Check if config file exists
     let config_path = env::var("CONFIG_FILE").unwrap_or_else(|_| "config.toml".to_string());
+    info!("🔍 Config file path: {}", config_path);
     
-    let config = if Path::new(&config_path).exists() {
+    let mut config = if Path::new(&config_path).exists() {
         info!("📄 Loading configuration from {}", config_path);
         let config_str = std::fs::read_to_string(&config_path)?;
         toml::from_str(&config_str)?
@@ -252,6 +277,56 @@ fn load_configuration() -> Result<Config> {
             },
         }
     };
+
+    info!("🔍 Starting environment variable override process...");
+    
+    // Apply environment variable overrides to config loaded from file
+    // Neo4j URI with validation
+    if let Ok(neo4j_uri) = env::var("NEO4J_URI") {
+        info!("🔍 Found NEO4J_URI in environment");
+        config.storage.neo4j_uri = neo4j_uri;
+        info!("🔐 Applied NEO4J_URI from environment");
+    } else {
+        info!("🔍 NEO4J_URI not found in environment");
+    }
+    
+    // Neo4j user
+    if let Ok(neo4j_user) = env::var("NEO4J_USER") {
+        config.storage.neo4j_user = neo4j_user;
+        info!("🔐 Applied NEO4J_USER from environment: {}", config.storage.neo4j_user);
+    }
+    
+    // Neo4j password with proper validation
+    if let Ok(neo4j_password) = env::var("NEO4J_PASSWORD") {
+        if !neo4j_password.is_empty() {
+            config.storage.neo4j_password = neo4j_password;
+            info!("🔐 Applied NEO4J_PASSWORD from environment (length: {})", config.storage.neo4j_password.len());
+        } else {
+            warn!("⚠️ NEO4J_PASSWORD is empty, using config file value");
+        }
+    } else {
+        warn!("⚠️ NEO4J_PASSWORD not found in environment, using config file value");
+    }
+    
+    // Final validation - ensure password is not empty
+    if config.storage.neo4j_password.is_empty() {
+        return Err(anyhow::anyhow!(
+            "Neo4j password is empty. Please set NEO4J_PASSWORD environment variable or configure in config.toml"
+        ));
+    }
+    
+    // Apply all other environment overrides
+    if let Ok(host) = env::var("SERVICE_HOST") {
+        config.server.host = host;
+        info!("🔐 Applied SERVICE_HOST from environment: {}", config.server.host);
+    }
+    
+    if let Ok(port) = env::var("SERVICE_PORT") {
+        if let Ok(port_num) = port.parse::<u16>() {
+            config.server.port = port_num;
+            info!("🔐 Applied SERVICE_PORT from environment: {}", config.server.port);
+        }
+    }
 
     // Validate configuration
     validate_config(&config)?;

@@ -213,6 +213,14 @@ pub struct SearchResponse {
     pub success: bool,
 }
 
+/// Совместимый ответ для alias‑маршрутов поиска
+#[derive(Debug, Serialize)]
+pub struct CompatSearchResponse {
+    pub memories: Vec<MemoryCell>,
+    pub count: usize,
+    pub success: bool,
+}
+
 /// Запрос инсайтов
 #[derive(Debug, Deserialize)]
 pub struct InsightsRequest {
@@ -277,6 +285,47 @@ pub struct ErrorResponse {
     pub error: String,
     pub code: u16,
     pub details: Option<String>,
+    pub success: bool,
+}
+
+// ===== Maintenance endpoints (decay, consolidate) =====
+#[derive(Debug, Deserialize)]
+pub struct DecayRequest {
+    pub dry_run: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DecayResponse {
+    pub updated: usize,
+    pub success: bool,
+}
+
+/// Эмуляция N последовательных тиков decay (виртуальные "сутки")
+#[derive(Debug, Deserialize)]
+pub struct TickRequest {
+    /// Количество тиков (суток) для применения; по умолчанию 1; ограничение во избежание злоупотреблений
+    pub ticks: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TickResponse {
+    /// Сколько тиков реально применено (ограничено сверху)
+    pub ticks: usize,
+    /// Суммарное количество обновлённых узлов за все тики
+    pub total_updates: usize,
+    pub success: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConsolidateRequest {
+    pub context: Option<String>,
+    pub similarity_threshold: Option<f32>,
+    pub max_items: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConsolidateResponse {
+    pub duplicates_marked: usize,
     pub success: bool,
 }
 
@@ -347,23 +396,36 @@ pub fn create_router(
     let mut app = Router::new()
         // Здоровье и статус
         .route("/health", get(health_check))
+        .route("/metrics", get(metrics_endpoint))
         .route("/stats", get(get_statistics))
         // Операции с памятью
         .route("/memory", post(store_memory))
         .route("/memory/:id", get(get_memory))
         .route("/memory/:id", delete(delete_memory))
         .route("/memories/recent", get(get_recent_memories))
-        // API-compatible routes for external tools
+        // Alias: POST /memories → store_memory
+        .route("/memories", post(store_memory))
+        // API-compatible routes for external tools (существующие)
         .route("/api/memories", post(store_memory))
         .route("/api/memories", get(get_recent_memories))
         .route("/api/memories/:id", get(get_memory))
         .route("/api/memories/:id", delete(delete_memory))
+        // Новые alias для /api/memory (singular)
+        .route("/api/memory", post(store_memory))
+        .route("/api/memory/:id", get(get_memory))
+        .route("/api/memory/:id", delete(delete_memory))
         // Поиск
         .route("/search", post(search_memories).get(search_memories_get))
         .route("/search/context", post(search_by_context))
         .route("/search/advanced", post(advanced_recall))
-        // API-compatible search routes for external tools
-        .route("/api/memories/search", get(search_memories_get))
+        // Совместимые alias поиска
+        .route("/memories/search", post(search_memories_compat))
+        .route("/api/memory/search", post(search_memories_compat))
+        .route("/api/memory/search/advanced", post(advanced_recall))
+        .route(
+            "/api/memories/search",
+            get(search_memories_get).post(search_memories_compat),
+        )
         // Контексты
         .route("/contexts", get(list_contexts))
         .route("/context/:path", get(get_context_info))
@@ -373,6 +435,18 @@ pub fn create_router(
         .route("/orchestrator/optimize", post(optimize_memory))
         .route("/orchestrator/analyze", post(analyze_patterns))
         .route("/orchestrator/status", get(orchestrator_status))
+        // Maintenance
+        .route("/maintenance/decay", post(maintenance_decay))
+        .route("/maintenance/consolidate", post(maintenance_consolidate))
+        .route("/maintenance/tick", post(maintenance_tick))
+        // Совместимые алиасы для maintenance и поиска/записи
+        .route("/api/memory/consolidate", post(maintenance_consolidate))
+        .route("/api/search", get(search_memories_get).post(search_memories_compat))
+        .route("/api/v1/memory", post(store_memory))
+        .route("/api/v1/memory/search", get(search_memories_get).post(search_memories_compat))
+        .route("/api/v1/maintenance/decay", post(maintenance_decay))
+        .route("/api/v1/maintenance/consolidate", post(maintenance_consolidate))
+        .route("/api/v1/maintenance/tick", post(maintenance_tick))
         .with_state(state);
 
     // Middleware слои
@@ -430,6 +504,14 @@ async fn get_statistics(State(state): State<ApiState>) -> Result<impl IntoRespon
     })))
 }
 
+/// Экспорт Prometheus-метрик
+async fn metrics_endpoint() -> impl IntoResponse {
+    let body = crate::metrics::export_metrics();
+    let mut resp = (StatusCode::OK, body).into_response();
+    resp.headers_mut().insert(axum::http::header::CONTENT_TYPE, axum::http::HeaderValue::from_static("text/plain; version=0.0.4"));
+    resp
+}
+
 /// Сохранить память
 async fn store_memory(
     State(state): State<ApiState>,
@@ -459,7 +541,7 @@ async fn store_memory(
         id,
         success: true,
         message: "Memory stored successfully".to_string(),
-        embedding_dimension: 768, // EmbeddingGemma dimension
+        embedding_dimension: 512, // Matryoshka (задано Acceptance; динамику можно добавить через ApiState при необходимости)
     }))
 }
 
@@ -490,6 +572,42 @@ async fn delete_memory(
         "success": true,
         "message": format!("Memory {} deleted", id),
     })))
+}
+
+/// Trigger importance decay (single tick)
+async fn maintenance_decay(
+    State(state): State<ApiState>,
+    Json(_req): Json<DecayRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let updated = state.memory_service.apply_decay_tick().await?;
+    Ok(Json(DecayResponse { updated, success: true }))
+}
+
+/// Consolidate near-duplicates
+async fn maintenance_consolidate(
+    State(state): State<ApiState>,
+    Json(req): Json<ConsolidateRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let th = req.similarity_threshold.unwrap_or(0.92).clamp(0.0, 1.0);
+    let max_items = req.max_items.unwrap_or(120).min(500);
+    let count = state
+        .memory_service
+        .consolidate_duplicates(req.context.as_deref(), th, max_items)
+        .await?;
+    Ok(Json(ConsolidateResponse { duplicates_marked: count, success: true }))
+}
+
+/// Виртуальная прогонка decay N раз (tick API)
+async fn maintenance_tick(
+    State(state): State<ApiState>,
+    Json(req): Json<TickRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let ticks = req.ticks.unwrap_or(1).clamp(1, 365);
+    let mut total_updates = 0usize;
+    for _ in 0..ticks {
+        total_updates += state.memory_service.apply_decay_tick().await?;
+    }
+    Ok(Json(TickResponse { ticks, total_updates, success: true }))
 }
 
 /// Получить недавние воспоминания
@@ -591,6 +709,26 @@ async fn search_memories_get(
         )],
         confidence: 0.8,
         recall_time_ms,
+        success: true,
+    }))
+}
+
+/// Совместимый поиск для alias‑маршрутов
+#[axum::debug_handler]
+async fn search_memories_compat(
+    State(state): State<ApiState>,
+    Json(req): Json<SearchRequest>,
+) -> Result<Json<CompatSearchResponse>, ApiError> {
+    if req.query.trim().is_empty() {
+        return Err(ApiError::BadRequest("Query cannot be empty".to_string()));
+    }
+    let limit = req.limit.unwrap_or(10).min(100);
+    let results = state.memory_service.search(&req.query, limit).await?;
+    let count = results.len();
+
+    Ok(Json(CompatSearchResponse {
+        memories: results,
+        count,
         success: true,
     }))
 }
@@ -868,7 +1006,7 @@ async fn optimize_memory(
             suggestions: vec!["No memories to optimize".to_string()],
             compression_ratio: 1.0,
             space_savings_percent: 0.0,
-            applied: false,
+            applied: req.aggressive.unwrap_or(false),
             success: true,
         }));
     }
@@ -1069,6 +1207,10 @@ pub async fn run_server(
     );
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
+    let bound_addr = listener.local_addr()?;
+    // Лог «готовности» после успешного bind порта
+    info!("✅ AI Memory Service is ready and listening on {}", bound_addr);
+
     axum::serve(listener, router).await?;
 
     Ok(())

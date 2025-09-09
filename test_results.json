@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-09-09 08:38:40",
+  "health_checks": {
+    "memory_server": {
+      "status": 200,
+      "response_time_ms": 4079,
+      "healthy": true
+    },
+    "embedding_server": {
+      "status": 200,
+      "response_time_ms": 260,
+      "healthy": true
+    }
+  },
+  "search_performance": [
+    {
+      "query": "python programming",
+      "status": "success",
+      "response_time_ms": 20833,
+      "memories_found": 0,
+      "server_time_ms": 0
+    },
+    {
+      "query": "machine learning",
+      "status": "success",
+      "response_time_ms": 20457,
+      "memories_found": 0,
+      "server_time_ms": 0
+    },
+    {
+      "query": "neural networks",
+      "status": "success",
+      "response_time_ms": 20518,
+      "memories_found": 0,
+      "server_time_ms": 0
+    },
+    {
+      "query": "memory optimization",
+      "status": "success",
+      "response_time_ms": 20488,
+      "memories_found": 0,
+      "server_time_ms": 0
+    },
+    {
+      "query": "database queries",
+      "status": "success",
+      "response_time_ms": 20510,
+      "memories_found": 0,
+      "server_time_ms": 0
+    }
+  ],
+  "system_stats": {
+    "error": "HTTP 500"
+  },
+  "performance_metrics": {
+    "total_queries": 5,
+    "successful_queries": 5,
+    "success_rate": 100.0,
+    "avg_response_time_ms": 20561.2,
+    "min_response_time_ms": 20457,
+    "max_response_time_ms": 20833,
+    "avg_memories_found": 0.0,
+    "total_memories_found": 0
+  }
+}

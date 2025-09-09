@@ -95,6 +95,7 @@ impl MemoryService {
     }
 
     /// Store a new memory in the system
+    #[tracing::instrument(skip(self, content, context_hint))]
     pub async fn store_memory(
         &self,
         content: String,
@@ -111,10 +112,12 @@ impl MemoryService {
         }
 
         // Generate embedding for the content (using Query type for consistency with search)
+        let t0 = Instant::now();
         let embedding = self
             .embedding_service
             .embed(&content, crate::embedding::TaskType::Query)
             .await?;
+        crate::metrics::record_embedding_latency("gemma-300m", t0.elapsed().as_secs_f64());
 
         // Analyze content with AI brain
         let analysis = self
@@ -154,6 +157,30 @@ impl MemoryService {
         // Cache the memory
         self.cache.put_memory(memory_cell.clone()).await;
 
+        // Enrich context graph with lightweight RELATED_TO links (co-occurrence)
+        // Link the new memory with a few recent memories from the same context.
+        if !memory_cell.context_path.is_empty() {
+            let ctx = memory_cell.context_path.clone();
+            // Fetch a small window of memories from the same context
+            let mut recent_in_ctx = self
+                .graph_storage
+                .get_memories_in_context(&ctx, 6)
+                .await
+                .unwrap_or_default();
+            // Keep a few most recent and distinct
+            recent_in_ctx.retain(|m| m.id != memory_cell.id);
+            recent_in_ctx.sort_by(|a, b| b.last_accessed.cmp(&a.last_accessed));
+            recent_in_ctx.truncate(3);
+
+            // Create RELATED_TO links with base weight
+            for m in recent_in_ctx {
+                let _ = self
+                    .graph_storage
+                    .create_related_link(&memory_cell.id, &m.id, 1.0)
+                    .await;
+            }
+        }
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.total_memories += 1;
@@ -165,11 +192,13 @@ impl MemoryService {
             "Memory stored successfully in {}ms: {}",
             elapsed, memory_cell.id
         );
+        crate::metrics::record_memory_op("store", true);
 
         Ok(memory_cell.id)
     }
 
     /// Recall memories based on a query
+    #[tracing::instrument(skip(self, query))]
     pub async fn recall_memory(&self, query: MemoryQuery) -> MemoryResult<RecalledMemory> {
         let start_time = Instant::now();
         let query_id = Uuid::new_v4();
@@ -184,10 +213,12 @@ impl MemoryService {
         }
 
         // Generate query embedding
+        let tq0 = Instant::now();
         let query_embedding = self
             .embedding_service
             .embed(&query.text, crate::embedding::TaskType::Query)
             .await?;
+        crate::metrics::record_embedding_latency("gemma-300m", tq0.elapsed().as_secs_f64());
 
         // Layer 1: Semantic search - fast associative retrieval
         let semantic_results = self
@@ -239,6 +270,10 @@ impl MemoryService {
             .collect();
 
         let recall_time_ms = start_time.elapsed().as_millis() as u64;
+        crate::metrics::record_recall_latency(
+            if query.include_related { "advanced" } else { "basic" },
+            (recall_time_ms as f64) / 1000.0,
+        );
 
         let recalled = RecalledMemory {
             query_id,
@@ -277,6 +312,69 @@ impl MemoryService {
                 recall_time_ms,
                 discovered_contexts: processed.suggestions,
             })
+    }
+
+    /// Apply one decay tick to memory importance across storage
+    pub async fn apply_decay_tick(&self) -> MemoryResult<usize> {
+        let rate = self.config.brain.decay_rate;
+        let min_threshold = self.config.brain.importance_threshold;
+        let updated = self
+            .graph_storage
+            .apply_decay(rate, min_threshold)
+            .await?;
+        Ok(updated)
+    }
+
+    /// Consolidate near-duplicates within a context (lightweight)
+    /// Uses cosine similarity in memory to mark duplicates and reduce importance of the duplicate.
+    pub async fn consolidate_duplicates(
+        &self,
+        context_path: Option<&str>,
+        similarity_threshold: f32,
+        max_items: usize,
+    ) -> MemoryResult<usize> {
+        use crate::simd_search::cosine_similarity_simd;
+        let mut total_marked = 0usize;
+
+        // Choose a scope: given context or top few contexts via list_contexts
+        let contexts = if let Some(ctx) = context_path {
+            vec![ctx.to_string()]
+        } else {
+            self.graph_storage.list_contexts().await?.into_iter().take(3).collect()
+        };
+
+        for ctx in contexts {
+            let mut mems = self
+                .graph_storage
+                .get_memories_in_context(&ctx, max_items)
+                .await
+                .unwrap_or_default();
+            // Pairwise compare (bounded)
+            for i in 0..mems.len() {
+                for j in (i + 1)..mems.len() {
+                    let s = cosine_similarity_simd(&mems[i].embedding, &mems[j].embedding);
+                    if s >= similarity_threshold {
+                        // choose master by higher importance
+                        let (master, duplicate) = if mems[i].importance >= mems[j].importance {
+                            (&mems[i], &mems[j])
+                        } else {
+                            (&mems[j], &mems[i])
+                        };
+                        let reduced = (duplicate.importance * 0.5).max(self.config.brain.importance_threshold);
+                        let _ = self
+                            .graph_storage
+                            .mark_duplicate_of(&duplicate.id, &master.id, Some(reduced))
+                            .await;
+                        total_marked += 1;
+                        if total_marked >= 50 { // hard cap per call
+                            return Ok(total_marked);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(total_marked)
     }
 
     /// Get a specific memory by ID
@@ -325,6 +423,11 @@ impl MemoryService {
         let storage_stats = self.graph_storage.get_stats().await?;
         stats.total_memories = storage_stats.total_memories;
         stats.total_contexts = storage_stats.total_contexts;
+
+        // Compute active memories strictly above threshold
+        let thr = self.config.brain.importance_threshold;
+        let active = self.graph_storage.get_active_count(thr).await?;
+        stats.active_memories = active;
 
         Ok(stats)
     }

@@ -666,6 +666,7 @@ impl GraphStorage {
         Ok(MemoryStats {
             total_memories,
             total_contexts,
+            active_memories: total_memories,
             memory_by_type,
             top_contexts,
             recent_queries: 0,
@@ -1090,6 +1091,118 @@ impl GraphStorage {
         Ok(memories)
     }
 
+    /// Create or strengthen RELATED_TO link between two memories
+    pub async fn create_related_link(
+        &self,
+        a: &Uuid,
+        b: &Uuid,
+        weight: f32,
+    ) -> MemoryResult<()> {
+        if a == b {
+            return Ok(());
+        }
+
+        // Direction normalization: smaller UUID string goes first to avoid duplicates
+        let (from_id, to_id) = {
+            let sa = a.to_string();
+            let sb = b.to_string();
+            if sa <= sb { (sa, sb) } else { (sb, sa) }
+        };
+
+        let q = query(
+            r#"
+            MATCH (a:Memory {id: $from}), (b:Memory {id: $to})
+            MERGE (a)-[r:RELATED_TO]->(b)
+            ON CREATE SET r.weight = $w, r.created_at = timestamp()
+            ON MATCH SET r.weight = (coalesce(r.weight, 0.0) + $w) / 2.0, r.updated_at = timestamp()
+            "#
+        )
+        .param("from", from_id)
+        .param("to", to_id)
+        .param("w", weight as f64);
+
+        self.graph
+            .run(q)
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Failed to create RELATED_TO link: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Apply global importance decay
+    pub async fn apply_decay(&self, decay_rate: f32, min_threshold: f32) -> MemoryResult<usize> {
+        let q = query(
+            r#"
+            MATCH (m:Memory)
+            WITH m, m.importance AS imp
+            SET m.importance = CASE WHEN imp * (1.0 - $rate) < $min THEN $min ELSE imp * (1.0 - $rate) END
+            RETURN count(m) AS updated
+            "#
+        )
+        .param("rate", decay_rate as f64)
+        .param("min", min_threshold as f64);
+
+        let mut res = self
+            .graph
+            .execute(q)
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Failed to apply decay: {}", e)))?;
+
+        let mut updated = 0usize;
+        if let Ok(Some(row)) = res.next().await {
+            updated = row.get::<i64>("updated").unwrap_or(0) as usize;
+        }
+        Ok(updated)
+    }
+
+    /// Mark one memory as duplicate of another and adjust importance of the duplicate
+    pub async fn mark_duplicate_of(
+        &self,
+        duplicate: &Uuid,
+        master: &Uuid,
+        reduce_to: Option<f32>,
+    ) -> MemoryResult<()> {
+        let q = query(
+            r#"
+            MATCH (d:Memory {id: $dup}), (m:Memory {id: $mas})
+            MERGE (d)-[r:DUPLICATE_OF]->(m)
+            ON CREATE SET r.created_at = timestamp()
+            ON MATCH SET r.updated_at = timestamp()
+            "#
+        )
+        .param("dup", duplicate.to_string())
+        .param("mas", master.to_string());
+
+        self.graph
+            .run(q)
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Failed to mark duplicate: {}", e)))?;
+
+        if let Some(new_imp) = reduce_to {
+            self.update_memory_importance(duplicate, new_imp).await?;
+        }
+        Ok(())
+    }
+
+    /// Update importance field for a memory
+    pub async fn update_memory_importance(&self, id: &Uuid, importance: f32) -> MemoryResult<()> {
+        let q = query(
+            r#"
+            MATCH (m:Memory {id: $id})
+            SET m.importance = $imp
+            RETURN m.id AS id
+            "#
+        )
+        .param("id", id.to_string())
+        .param("imp", importance as f64);
+
+        self.graph
+            .execute(q)
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Failed to update importance: {}", e)))?;
+        Ok(())
+    }
+
     /// Get a specific memory by ID
     pub async fn get_memory(&self, id: &Uuid) -> MemoryResult<MemoryCell> {
         let query = query(
@@ -1244,7 +1357,7 @@ impl GraphStorage {
         self.node_to_memory(node).await
     }
 
-    /// Get storage statistics
+    /// Get storage statistics (totals only)
     pub async fn get_stats(&self) -> MemoryResult<StorageStats> {
         let _permit = self
             .connection_semaphore
@@ -1279,7 +1392,33 @@ impl GraphStorage {
         Ok(StorageStats {
             total_memories,
             total_contexts,
+            active_memories: 0,
         })
+    }
+
+    /// Count active memories strictly above a given importance threshold
+    pub async fn get_active_count(&self, threshold: f32) -> MemoryResult<usize> {
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
+
+        let mut q = self
+            .graph
+            .execute(
+                query("MATCH (m:Memory) WHERE coalesce(m.importance, 0.0) > $thr RETURN count(m) as active")
+                    .param("thr", threshold as f64),
+            )
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Active count query failed: {}", e)))?;
+
+        let active = if let Ok(Some(row)) = q.next().await {
+            row.get::<i64>("active").unwrap_or(0) as usize
+        } else {
+            0
+        };
+        Ok(active)
     }
 }
 

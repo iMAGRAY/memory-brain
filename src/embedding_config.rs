@@ -374,7 +374,7 @@ impl Default for EmbeddingConfig {
                 min_model_size: 1_000_000, // 1MB
             },
             embedding: EmbeddingSettings {
-                default_dimension: 768,
+                default_dimension: 512,
                 matryoshka_dimensions: vec![768, 512, 256, 128],
                 max_sequence_length: 2048,
                 vocab_size: 256000,
@@ -416,7 +416,7 @@ mod tests {
     fn test_default_config() {
         let config = EmbeddingConfig::default();
         assert_eq!(config.model.name, "embeddinggemma-300m");
-        assert_eq!(config.embedding.default_dimension, 768);
+        assert_eq!(config.embedding.default_dimension, 512);
         assert_eq!(config.performance.torch_dtype, "bfloat16");
     }
     

@@ -461,6 +461,8 @@ pub struct MemoryStats {
     pub total_memories: usize,
     /// Number of contexts
     pub total_contexts: usize,
+    /// Number of active memories (importance strictly greater than threshold)
+    pub active_memories: usize,
     /// Memory usage by type
     pub memory_by_type: HashMap<String, usize>,
     /// Most active contexts
@@ -482,6 +484,8 @@ pub struct StorageStats {
     pub total_memories: usize,
     /// Total number of contexts in storage  
     pub total_contexts: usize,
+    /// Total number of active memories (> importance threshold) — optional, may be filled by service
+    pub active_memories: usize,
 }
 
 /// История изменений предпочтений пользователя
@@ -952,6 +956,7 @@ impl Default for MemoryStats {
         Self {
             total_memories: 0,
             total_contexts: 0,
+            active_memories: 0,
             memory_by_type: HashMap::new(),
             top_contexts: Vec::new(),
             recent_queries: 0,

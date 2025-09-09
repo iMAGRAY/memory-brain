@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-09-09T11:13:25.415867",
+  "summary": {
+    "total": 9,
+    "passed": 2,
+    "failed": 7,
+    "success_rate": 22.22222222222222
+  },
+  "details": [
+    {
+      "component": "embedding",
+      "test": "health_check",
+      "status": "PASS",
+      "details": "Model: C:\\Models\\ai-memory-service\\models\\embeddinggemma-300m",
+      "timestamp": 0.26626038551330566
+    },
+    {
+      "component": "embedding",
+      "test": "single_embed",
+      "status": "FAIL",
+      "details": "Status: 400",
+      "timestamp": 0.266664981842041
+    },
+    {
+      "component": "embedding",
+      "test": "batch_embed",
+      "status": "FAIL",
+      "details": "Status: 400",
+      "timestamp": 0.2674131393432617
+    },
+    {
+      "component": "embedding",
+      "test": "similarity",
+      "status": "FAIL",
+      "details": "Status: 400",
+      "timestamp": 0.5232939720153809
+    },
+    {
+      "component": "memory",
+      "test": "health_check",
+      "status": "FAIL",
+      "details": "Cannot connect to host localhost:3030 ssl:default [\u0423\u0434\u0430\u043b\u0435\u043d\u043d\u044b\u0439 \u043a\u043e\u043c\u043f\u044c\u044e\u0442\u0435\u0440 \u043e\u0442\u043a\u043b\u043e\u043d\u0438\u043b \u044d\u0442\u043e \u0441\u0435\u0442\u0435\u0432\u043e\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435]",
+      "timestamp": 2.833340883255005
+    },
+    {
+      "component": "rust",
+      "test": "memory-server_binary",
+      "status": "PASS",
+      "details": "Binary exists",
+      "timestamp": 2.8334317207336426
+    },
+    {
+      "component": "rust",
+      "test": "orchestrator_binary",
+      "status": "FAIL",
+      "details": "Binary not found",
+      "timestamp": 2.8334546089172363
+    },
+    {
+      "component": "rust",
+      "test": "memory_organizer_binary",
+      "status": "FAIL",
+      "details": "Binary not found",
+      "timestamp": 2.833465814590454
+    },
+    {
+      "component": "integration",
+      "test": "embed_store",
+      "status": "FAIL",
+      "details": "Embed failed: 400",
+      "timestamp": 3.098473072052002
+    }
+  ],
+  "duration": 3.0987770557403564
+}

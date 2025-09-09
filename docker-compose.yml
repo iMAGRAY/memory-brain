@@ -100,7 +100,6 @@ services:
     volumes:
       # SECURITY: Read-only model access
       - ${MODELS_PATH:?Error - MODELS_PATH environment variable is required}:/app/models:ro
-      - embedding_cache:/app/cache
       - embedding_logs:/app/logs
     networks:
       - ai-memory-network
@@ -187,7 +186,6 @@ services:
       # Configuration and data persistence
       - memory_data:/app/data
       - memory_logs:/app/logs
-      - memory_cache:/app/cache
       - ./config:/app/config:ro
     networks:
       - ai-memory-network

@@ -120,11 +120,6 @@ OUTPUT EXACTLY AS SHOWN BELOW:
 
 
 
-CONVERSATION CONTEXT:
-conversation:
-
-
-
 PROJECT CONTEXT:
 PROJECT_STRUCTURE:
   /CLAUDE.md
@@ -136,10 +131,15 @@ PROJECT_STRUCTURE:
   /FINAL_CODE_VERIFICATION_REPORT.md
   /FINAL_STATUS_REPORT.md
   /FINAL_STATUS_REPORT_UPDATED.md
+  /FINAL_SYSTEM_STATUS_REPORT.md
+  /FINAL_SYSTEM_STATUS_REPORT_UPDATED.md
   /FORENSIC_INVESTIGATION_FINAL_REPORT_X200000.md
+  /JUPYTER_FINAL_STATUS.md
+  /JUPYTER_SETUP_REPORT.md
   /LEGACY_CLEANUP_REPORT.md
   /MIGRATION_REPORT.md
   /ONNX_RUNTIME_SETUP.md
+  /PROJECT_STATUS_2025_09_09.md
   /PROJECT_STATUS_FINAL.md
   /PROJECT_STATUS_UPDATED.md
   /QUALITY_PROGRESS_REPORT.md
@@ -151,13 +151,16 @@ PROJECT_STRUCTURE:
   /SECURITY_FIXES_REPORT.md
   /SYSTEM_QUALITY_FINAL_REPORT.md
   /SYSTEM_RECONSTRUCTION_REPORT.md
+  /VERIFIED_JUPYTER_STATUS.md
   /check_ort_version.rs
   /check_path.ps1
   /clean_path_duplicates.ps1
   /clear_memories.py
   /clear_neo4j.py
   /comprehensive_system_audit.py
+  /comprehensive_test.py
   /config.toml
+  /config_codex_backup.toml
   /corrected_system_test.py
   /definitive_stress_test.py
   /docker-compose.override.yml
@@ -175,20 +178,27 @@ PROJECT_STRUCTURE:
   /install.ps1
   /kill_all_processes.bat
   /memory_accuracy_results_20250908_181611.json
+  /mock_embedding_server.py
+  /mock_server.js
+  /monitor_jupyter_service.ps1
+  /notebook_test_report.json
   /quick-start.ps1
   /quick_diagnostic.py
+  /quick_system_test.py
   /real_memory_accuracy_test.py
   /real_memory_quality_test.py
   /requirements.txt
   /run.bat
   /run_simple_test.bat
   /run_tests.bat
+  /setup_jupyter_service.bat
   /setup_neo4j_native.ps1
   /setup_python_dll.ps1
   /simple_memory_test.py
   /simple_search_test.py
   /start.ps1
   /start.sh
+  /start_jupyter_global.bat
   /system_audit_report.json
   /system_quality_report.md
   /tasktype_consistency_test_1757357046.json
@@ -205,11 +215,14 @@ PROJECT_STRUCTURE:
   /test_gpt5_orchestrator.py
   /test_gpt5_quality.py
   /test_improved_server.py
+  /test_jupyter_kernels.py
   /test_memory_quality.py
   /test_memory_search.py
+  /test_notebook_improvements.py
   /test_parallel.ps1
   /test_parallel.py
   /test_python_direct.py
+  /test_results.json
   /test_search_fix.py
   /test_simple_embed.py
   /test_tasktype_fix.py
@@ -241,6 +254,33 @@ PROJECT_STRUCTURE:
     config.json
   /models/embeddinggemma-300m/3_Dense/
     config.json
+  /nssm-2.24/src/
+    account.cpp
+    account.h
+    console.cpp
+    console.h
+    env.cpp
+    env.h
+    event.cpp
+    event.h
+    gui.cpp
+    gui.h
+    imports.cpp
+    imports.h
+    io.cpp
+    io.h
+    nssm.cpp
+    nssm.h
+    process.cpp
+    process.h
+    registry.cpp
+    registry.h
+    resource.h
+    service.cpp
+    service.h
+    settings.cpp
+    settings.h
+    version.cmd
   /reports/
     FINAL_IMPLEMENTATION_STATUS.md
     IMPLEMENTATION_REPORT.md
@@ -253,6 +293,7 @@ PROJECT_STRUCTURE:
     download_models.ps1
     download_models.sh
     download_onnx_runtime.ps1
+    playwright_visit_google.js
     quick-start.sh
     run_tests.ps1
     setup-docker.sh
@@ -293,26 +334,34 @@ PROJECT_STRUCTURE:
     test_config.rs
 
 PROJECT_METRICS:
-  total_files: 150
-  total_dirs: 19
-  total_loc: 2459666
+  total_files: 195
+  total_dirs: 28
+  total_loc: 2467709
   languages:
-    - json: 19 files, 2431832 LOC
+    - json: 21 files, 2431914 LOC
     - rs: 35 files, 11748 LOC
-    - py: 33 files, 6689 LOC
-    - md: 32 files, 5386 LOC
-    - ps1: 14 files, 2367 LOC
+    - py: 38 files, 7642 LOC
+    - md: 38 files, 6133 LOC
+    - cpp: 12 files, 5046 LOC
+    - ps1: 15 files, 2722 LOC
     - sh: 4 files, 924 LOC
-    - yml: 2 files, 403 LOC
-    - toml: 3 files, 192 LOC
-    - bat: 5 files, 125 LOC
-QUALITY: complexity:2.0, test_coverage:28%, docs:21%
-KEY_FILES:src/simd_search.rs,benches/memory_benchmarks.rs,src/shutdown.rs,src/api.rs,src/mcp_server.rs
+    - h: 13 files, 553 LOC
+    - yml: 2 files, 401 LOC
+    - toml: 4 files, 263 LOC
+    - bat: 7 files, 224 LOC
+    - js: 2 files, 100 LOC
+    - cmd: 1 files, 39 LOC
+QUALITY: complexity:1.9, test_coverage:25%, docs:19%
+KEY_FILES:src/memory.rs,nssm-2.24/src/account.cpp,nssm-2.24/src/nssm.cpp,Cargo.toml,src/memory_optimizer.rs
 
+INCREMENTAL[MOD:hook-input-debug.json:30119b]
 
 ## PROJECT DEPENDENCIES ANALYSIS
 Total: 47 dependencies (6 dev, 41 production)
 ✅ All dependencies appear up-to-date
+
+### cargo Dependencies (38)
+✅ 38 dependencies up-to-date
 
 ### pip Dependencies (9)
 ✅ **Up-to-date:**
@@ -326,110 +375,466 @@ Total: 47 dependencies (6 dev, 41 production)
   • pytest: 7.0.0
   • pytest-asyncio: 0.21.0
 
-### cargo Dependencies (38)
-✅ 38 dependencies up-to-date
-
 
 
 🔴 **КРИТИЧНО: Обнаружены дубликаты/конфликты файлов**
 
-📝 **SimilarName** (cargo)
-  → ОСНОВНОЙ .\Cargo.lock | 98935B | 3927L | fb3dba0d
-     .\Cargo.toml | 2060B | 106L | 89c494a7
+🔁 **ExactDuplicate** (Content hash: 4a62b68a)
+  → ОСНОВНОЙ .\Untitled3.ipynb | 72B | 6L | 4a62b68a
+     .\Untitled2.ipynb | 72B | 6L | 4a62b68a
+     .\Untitled1.ipynb | 72B | 6L | 4a62b68a
+     .\Untitled.ipynb | 72B | 6L | 4a62b68a
+  💡 Удалить дубликаты, оставить один файл
+
+📝 **SimilarName** (src::console)
+  → ОСНОВНОЙ .\nssm-2.24\src\console.cpp | 5637B | 175L | 716f31e1
+     .\nssm-2.24\src\console.h | 105B | 7L | f0f05bac
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (model)
-  → ОСНОВНОЙ .\models\embeddinggemma-300m\3_Dense\model.safetensors | 9437272B | 34313L | ffb6cc51
-     .\models\embeddinggemma-300m\2_Dense\model.safetensors | 9437272B | 33599L | c327f2ac
+📝 **SimilarName** (src::imports)
+  → ОСНОВНОЙ .\nssm-2.24\src\imports.cpp | 3059B | 92L | 8dfce860
+     .\nssm-2.24\src\imports.h | 881B | 25L | db720126
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (forensic_inestigation_x)
-  → ОСНОВНОЙ .\forensic_investigation_x200000.py | 33188B | 708L | bda6bb65
-     .\forensic_investigation_x200000.log | 6930B | 67L | 78313bf6
+📝 **SimilarName** (src::env)
+  → ОСНОВНОЙ .\nssm-2.24\src\env.cpp | 4540B | 173L | cbbf1d43
+     .\nssm-2.24\src\env.h | 329B | 13L | 61f3dc85
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (config)
-  → ОСНОВНОЙ .\src\config.rs | 9752B | 313L | 05f3eafd
-     .\models\embeddinggemma-300m\config.json | 1488B | 61L | 8f863f76
-     .\config.toml | 1465B | 42L | 61b528eb
-     .\models\embeddinggemma-300m\1_Pooling\config.json | 312B | 10L | 35bbd47d
-     .\models\embeddinggemma-300m\2_Dense\config.json | 134B | 6L | 0661e5e0
-     .\models\embeddinggemma-300m\3_Dense\config.json | 134B | 6L | 8c4575c4
+📝 **SimilarName** (src::gui)
+  → ОСНОВНОЙ .\nssm-2.24\src\gui.cpp | 49516B | 1176L | eacd9efb
+     .\nssm-2.24\src\gui.h | 405B | 18L | 8a5a6eab
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (readme)
-  → ОСНОВНОЙ .\models\embeddinggemma-300m\README.md | 16656B | 445L | 8da616cc
-     .\README.md | 8786B | 293L | c3992944
-     .\docker\README.md | 7529B | 265L | 43fab760
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (start)
-  → ОСНОВНОЙ .\start.ps1 | 9655B | 288L | b709d1b1
-     .\start.sh | 6681B | 199L | 665fa707
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (download_models)
-  → ОСНОВНОЙ .\scripts\download_models.sh | 7874B | 256L | 821ce477
-     .\scripts\download_models.ps1 | 5327B | 151L | 5b7c85a6
-  💡 Объединить изменения в один файл
-
-⚠️ **VersionConflict** (download_onnxruntime)
-  → ОСНОВНОЙ .\download_onnxruntime_v122.ps1 | 6037B | 166L | 79e2016a
-     .\download_onnxruntime.ps1 | 1155B | 33L | c1980501
-  💡 Объединить изменения в один файл
-
-📝 **SimilarName** (test_parallel)
+📝 **SimilarName** (root::test_parallel)
   → ОСНОВНОЙ .\test_parallel.py | 15827B | 328L | e21a1156
      .\test_parallel.ps1 | 8713B | 232L | f375bfea
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (tasktype_consistency_test)
-  → ОСНОВНОЙ .\tasktype_consistency_test_1757359672.json | 3526B | 123L | 036f7467
-     .\tasktype_consistency_test_1757357046.json | 3526B | 123L | 2e7e735a
-     .\tasktype_consistency_test_1757357161.json | 3525B | 123L | bd7ae2dc
-     .\tasktype_consistency_test_1757360630.json | 3335B | 118L | 2ab795e4
+📝 **SimilarName** (src::process)
+  → ОСНОВНОЙ .\nssm-2.24\src\process.cpp | 10745B | 308L | d2d6fa5e
+     .\nssm-2.24\src\process.h | 635B | 21L | 272b4495
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (run_tests)
-  → ОСНОВНОЙ .\scripts\run_tests.ps1 | 8622B | 288L | 8c1c8bb5
-     .\run_tests.bat | 324B | 7L | 5c0688a2
+📝 **SimilarName** (scripts::download_models)
+  → ОСНОВНОЙ .\scripts\download_models.sh | 7874B | 256L | 821ce477
+     .\scripts\download_models.ps1 | 5327B | 151L | 5b7c85a6
   💡 Объединить изменения в один файл
 
-📝 **SimilarName** (quick-start)
-  → ОСНОВНОЙ .\quick-start.ps1 | 12863B | 365L | ab9a1d49
-     .\scripts\quick-start.sh | 10503B | 328L | 95088180
+📝 **SimilarName** (src::registry)
+  → ОСНОВНОЙ .\nssm-2.24\src\registry.cpp | 30316B | 714L | 8735af22
+     .\nssm-2.24\src\registry.h | 2919B | 58L | 9ee3e228
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (root::start)
+  → ОСНОВНОЙ .\start.ps1 | 9655B | 288L | b709d1b1
+     .\start.sh | 6681B | 199L | 665fa707
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (root::forensic_investigation_x200000)
+  → ОСНОВНОЙ .\forensic_investigation_x200000.py | 33188B | 708L | bda6bb65
+     .\forensic_investigation_x200000.log | 6930B | 66L | 78313bf6
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (src::account)
+  → ОСНОВНОЙ .\nssm-2.24\src\account.cpp | 11351B | 346L | 661a92dd
+     .\nssm-2.24\src\account.h | 904B | 24L | 154941ef
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (src::service)
+  → ОСНОВНОЙ .\nssm-2.24\src\service.cpp | 71167B | 1976L | 0be1aeb4
+     .\nssm-2.24\src\service.h | 5346B | 146L | 8adebe37
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (src::event)
+  → ОСНОВНОЙ .\nssm-2.24\src\event.cpp | 3744B | 111L | 2554b741
+     .\nssm-2.24\src\event.h | 284B | 10L | 2925727f
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (src::io)
+  → ОСНОВНОЙ .\nssm-2.24\src\io.cpp | 21612B | 560L | 9bf02e5a
+     .\nssm-2.24\src\io.h | 1387B | 36L | 324018ef
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (src::settings)
+  → ОСНОВНОЙ .\nssm-2.24\src\settings.cpp | 41110B | 1061L | c3b31df1
+     .\nssm-2.24\src\settings.h | 1556B | 47L | 07a1689b
+  💡 Объединить изменения в один файл
+
+📝 **SimilarName** (src::nssm)
+  → ОСНОВНОЙ .\nssm-2.24\src\nssm.rc | 64808B | 688L | bd4d81e6
+     .\nssm-2.24\src\nssm.ico | 32040B | 154L | af2fa509
+     .\nssm-2.24\src\nssm.vcproj | 17272B | 793L | 7b6d8619
+     .\nssm-2.24\src\nssm.cpp | 6994B | 187L | 90144249
+     .\nssm-2.24\src\nssm.h | 4161B | 136L | aee6f546
+     .\nssm-2.24\src\nssm.sln | 1243B | 26L | f9294df1
   💡 Объединить изменения в один файл
 
 
 ## PROJECT-WIDE AST ANALYSIS
-- Files analyzed: 33
-- Total issues found: 11
-- Critical issues: 11
+- Files analyzed: 137
+- Total issues found: 159
+- Critical issues: 15
+- Skipped (too large): 2
+- Skipped (errors): 0
 
 ### Critical Issues in Project:
-1. .\clear_neo4j.py: Hardcoded credentials in assignment (line 14)
-2. .\embedding_server.py: Hardcoded credentials in assignment (line 58)
-3. .\forensic_investigation_x200000.py: Hardcoded credential detected in string (line 234)
-4. .\real_memory_quality_test.py: Hardcoded credential detected in string (line 32)
-5. .\real_memory_quality_test.py: Hardcoded credential detected in string (line 61)
-... and 6 more critical issues
+1. .\.claude_project_cache.json: Potential hardcoded credential in JSON config - use environment variables (line 2944)
+2. .\.claude_project_cache.json: Potential hardcoded credential in JSON config - use environment variables (line 3034)
+3. .\.claude_project_cache.json: Potential hardcoded credential in JSON config - use environment variables (line 3223)
+4. .\clear_neo4j.py: Hardcoded credentials in assignment (line 14)
+5. .\embedding_server.py: Hardcoded credentials in assignment (line 58)
+... and 10 more critical issues
 
 ### Files with Issues:
+- `.\.claude_project_cache.json`: 3 issues
+- `.\benches\dummy.rs`: 1 issues
+- `.\benches\memory_benchmarks.rs`: 7 issues
+- `.\build.rs`: 1 issues
 - `.\clear_neo4j.py`: 1 issues
+- `.\config.toml`: 2 issues
+- `.\docker-compose.yml`: 4 issues
 - `.\embedding_server.py`: 1 issues
 - `.\forensic_investigation_x200000.py`: 1 issues
-- `.\real_memory_quality_test.py`: 2 issues
-- `.\test_embedding_server.py`: 1 issues
-- `.\test_gpt5_orchestrator.py`: 5 issues
+- `.\hook-input-debug.json`: 19 issues
+... and 29 more files with issues
 
 
 
 CODE CHANGES (diff format):
---- a/C:\Models\ai-memory-service\src\storage.rs
-+++ b/C:\Models\ai-memory-service\src\storage.rs
-@@ -1,1 +1,1 @@
--        let threshold = similarity_threshold.unwrap_or(0.3); // Default to 0.3 if not specified
-+        let threshold = similarity_threshold.unwrap_or(0.1); // Default to 0.1 if not specified
+--- C:\Models\ai-memory-service\comprehensive_test.py
++++ C:\Models\ai-memory-service\comprehensive_test.py (modified)
+@@ -0,0 +1,328 @@
+1 + #!/usr/bin/env python3
+2 + """
+3 + Comprehensive test suite for AI Memory Service
+4 + Tests all components and their integration
+5 + """
+6 + 
+7 + import json
+8 + import time
+9 + import asyncio
+10 + import aiohttp
+11 + import sys
+12 + import os
+13 + from datetime import datetime
+14 + from typing import Dict, List, Any
+15 + import numpy as np
+16 + 
+17 + # Test results collector
+18 + class TestResults:
+19 +     def __init__(self):
+20 +         self.results = []
+21 +         self.start_time = time.time()
+22 +         
+23 +     def add(self, component: str, test: str, status: str, details: str = ""):
+24 +         self.results.append({
+25 +             "component": component,
+26 +             "test": test,
+27 +             "status": status,
+28 +             "details": details,
+29 +             "timestamp": time.time() - self.start_time
+30 +         })
+31 +         
+32 +     def summary(self):
+33 +         total = len(self.results)
+34 +         passed = sum(1 for r in self.results if r["status"] == "PASS")
+35 +         failed = sum(1 for r in self.results if r["status"] == "FAIL")
+36 +         return {
+37 +             "total": total,
+38 +             "passed": passed,
+39 +             "failed": failed,
+40 +             "success_rate": (passed / total * 100) if total > 0 else 0
+41 +         }
+42 + 
+43 + # Test functions
+44 + async def test_embedding_server(results: TestResults):
+45 +     """Test embedding server functionality"""
+46 +     print("\n=== Testing Embedding Server ===")
+47 +     
+48 +     async with aiohttp.ClientSession() as session:
+49 +         # 1. Health check
+50 +         try:
+51 +             async with session.get("http://localhost:8090/health") as resp:
+52 +                 if resp.status == 200:
+53 +                     data = await resp.json()
+54 +                     results.add("embedding", "health_check", "PASS", f"Model: {data.get('model', 'unknown')}")
+55 +                     print("✓ Health check passed")
+56 +                 else:
+57 +                     results.add("embedding", "health_check", "FAIL", f"Status: {resp.status}")
+58 +                     print(f"✗ Health check failed: {resp.status}")
+59 +         except Exception as e:
+60 +             results.add("embedding", "health_check", "FAIL", str(e))
+61 +             print(f"✗ Health check error: {e}")
+62 +             
+63 +         # 2. Single embedding
+64 +         try:
+65 +             payload = {
+66 +                 "texts": ["Hello world"],
+67 +                 "task_type": "document"
+68 +             }
+69 +             async with session.post("http://localhost:8090/embed", json=payload) as resp:
+70 +                 if resp.status == 200:
+71 +                     data = await resp.json()
+72 +                     embeddings = data.get("embeddings", [])
+73 +                     if embeddings and len(embeddings[0]) == 512:
+74 +                         results.add("embedding", "single_embed", "PASS", "512-dim vector")
+75 +                         print("✓ Single embedding passed")
+76 +                     else:
+77 +                         results.add("embedding", "single_embed", "FAIL", f"Invalid shape: {len(embeddings[0]) if embeddings else 0}")
+78 +                         print(f"✗ Invalid embedding shape")
+79 +                 else:
+80 +                     results.add("embedding", "single_embed", "FAIL", f"Status: {resp.status}")
+81 +                     print(f"✗ Single embedding failed: {resp.status}")
+82 +         except Exception as e:
+83 +             results.add("embedding", "single_embed", "FAIL", str(e))
+84 +             print(f"✗ Single embedding error: {e}")
+85 +             
+86 +         # 3. Batch embedding
+87 +         try:
+88 +             payload = {
+89 +                 "texts": ["First text", "Second text", "Third text"],
+90 +                 "task_type": "query"
+91 +             }
+92 +             async with session.post("http://localhost:8090/embed", json=payload) as resp:
+93 +                 if resp.status == 200:
+94 +                     data = await resp.json()
+95 +                     embeddings = data.get("embeddings", [])
+96 +                     if len(embeddings) == 3:
+97 +                         results.add("embedding", "batch_embed", "PASS", "3 embeddings")
+98 +                         print("✓ Batch embedding passed")
+99 +                     else:
+100 +                         results.add("embedding", "batch_embed", "FAIL", f"Got {len(embeddings)} embeddings")
+101 +                         print(f"✗ Batch embedding count mismatch")
+102 +                 else:
+103 +                     results.add("embedding", "batch_embed", "FAIL", f"Status: {resp.status}")
+104 +                     print(f"✗ Batch embedding failed: {resp.status}")
+105 +         except Exception as e:
+106 +             results.add("embedding", "batch_embed", "FAIL", str(e))
+107 +             print(f"✗ Batch embedding error: {e}")
+108 +             
+109 +         # 4. Similarity test
+110 +         try:
+111 +             payload = {
+112 +                 "texts": ["cat", "dog", "airplane"],
+113 +                 "task_type": "document"
+114 +             }
+115 +             async with session.post("http://localhost:8090/embed", json=payload) as resp:
+116 +                 if resp.status == 200:
+117 +                     data = await resp.json()
+118 +                     embeddings = data.get("embeddings", [])
+119 +                     if len(embeddings) == 3:
+120 +                         # Calculate cosine similarities
+121 +                         cat = np.array(embeddings[0])
+122 +                         dog = np.array(embeddings[1])
+123 +                         plane = np.array(embeddings[2])
+124 +                         
+125 +                         sim_cat_dog = np.dot(cat, dog) / (np.linalg.norm(cat) * np.linalg.norm(dog))
+126 +                         sim_cat_plane = np.dot(cat, plane) / (np.linalg.norm(cat) * np.linalg.norm(plane))
+127 +                         
+128 +                         # Animals should be more similar than animal-vehicle
+129 +                         if sim_cat_dog > sim_cat_plane:
+130 +                             results.add("embedding", "similarity", "PASS", f"cat-dog: {sim_cat_dog:.3f}, cat-plane: {sim_cat_plane:.3f}")
+131 +                             print(f"✓ Similarity test passed (cat-dog: {sim_cat_dog:.3f} > cat-plane: {sim_cat_plane:.3f})")
+132 +                         else:
+133 +                             results.add("embedding", "similarity", "FAIL", "Unexpected similarities")
+134 +                             print("✗ Similarity test failed")
+135 +                     else:
+136 +                         results.add("embedding", "similarity", "FAIL", "Invalid embeddings")
+137 +                         print("✗ Similarity test: invalid embeddings")
+138 +                 else:
+139 +                     results.add("embedding", "similarity", "FAIL", f"Status: {resp.status}")
+140 +                     print(f"✗ Similarity test failed: {resp.status}")
+141 +         except Exception as e:
+142 +             results.add("embedding", "similarity", "FAIL", str(e))
+143 +             print(f"✗ Similarity test error: {e}")
+144 + 
+145 + async def test_memory_service(results: TestResults):
+146 +     """Test memory service functionality"""
+147 +     print("\n=== Testing Memory Service ===")
+148 +     
+149 +     async with aiohttp.ClientSession() as session:
+150 +         # 1. Health check
+151 +         try:
+152 +             async with session.get("http://localhost:3030/health") as resp:
+153 +                 if resp.status == 200:
+154 +                     results.add("memory", "health_check", "PASS")
+155 +                     print("✓ Memory service health check passed")
+156 +                 else:
+157 +                     results.add("memory", "health_check", "FAIL", f"Status: {resp.status}")
+158 +                     print(f"✗ Memory service not available: {resp.status}")
+159 +                     return
+160 +         except Exception as e:
+161 +             results.add("memory", "health_check", "FAIL", str(e))
+162 +             print(f"✗ Memory service not running: {e}")
+163 +             return
+164 +             
+165 +         # 2. Store memory
+166 +         test_memory = {
+167 +             "content": f"Test memory created at {datetime.now().isoformat()}",
+168 +             "metadata": {
+169 +                 "type": "test",
+170 +                 "importance": 0.8
+171 +             }
+172 +         }
+173 +         
+174 +         try:
+175 +             async with session.post("http://localhost:3030/api/memory", json=test_memory) as resp:
+176 +                 if resp.status in [200, 201]:
+177 +                     data = await resp.json()
+178 +                     memory_id = data.get("id")
+179 +                     results.add("memory", "store", "PASS", f"ID: {memory_id}")
+180 +                     print(f"✓ Memory stored: {memory_id}")
+181 +                 else:
+182 +                     results.add("memory", "store", "FAIL", f"Status: {resp.status}")
+183 +                     print(f"✗ Failed to store memory: {resp.status}")
+184 +                     return
+185 +         except Exception as e:
+186 +             results.add("memory", "store", "FAIL", str(e))
+187 +             print(f"✗ Store memory error: {e}")
+188 +             return
+189 +             
+190 +         # 3. Search memories
+191 +         try:
+192 +             search_query = {
+193 +                 "query": "test memory",
+194 +                 "limit": 10
+195 +             }
+196 +             async with session.post("http://localhost:3030/api/memory/search", json=search_query) as resp:
+197 +                 if resp.status == 200:
+198 +                     data = await resp.json()
+199 +                     memories = data.get("memories", [])
+200 +                     results.add("memory", "search", "PASS", f"Found {len(memories)} memories")
+201 +                     print(f"✓ Search passed: found {len(memories)} memories")
+202 +                 else:
+203 +                     results.add("memory", "search", "FAIL", f"Status: {resp.status}")
+204 +                     print(f"✗ Search failed: {resp.status}")
+205 +         except Exception as e:
+206 +             results.add("memory", "search", "FAIL", str(e))
+207 +             print(f"✗ Search error: {e}")
+208 + 
+209 + async def test_rust_services(results: TestResults):
+210 +     """Test Rust-based services"""
+211 +     print("\n=== Testing Rust Services ===")
+212 +     
+213 +     # Check if Rust binaries exist
+214 +     binaries = [
+215 +         ("memory-server", "target/release/memory-server.exe"),
+216 +         ("orchestrator", "target/release/orchestrator.exe"),
+217 +         ("memory_organizer", "target/release/memory_organizer.exe")
+218 +     ]
+219 +     
+220 +     for name, path in binaries:
+221 +         if os.path.exists(path):
+222 +             results.add("rust", f"{name}_binary", "PASS", "Binary exists")
+223 +             print(f"✓ {name} binary found")
+224 +         else:
+225 +             results.add("rust", f"{name}_binary", "FAIL", "Binary not found")
+226 +             print(f"✗ {name} binary not found at {path}")
+227 + 
+228 + async def test_integrations(results: TestResults):
+229 +     """Test component integrations"""
+230 +     print("\n=== Testing Integrations ===")
+231 +     
+232 +     async with aiohttp.ClientSession() as session:
+233 +         # Test embedding + memory integration
+234 +         try:
+235 +             # First embed a text
+236 +             embed_payload = {
+237 +                 "texts": ["Integration test document"],
+238 +                 "task_type": "document"
+239 +             }
+240 +             async with session.post("http://localhost:8090/embed", json=embed_payload) as resp:
+241 +                 if resp.status == 200:
+242 +                     embed_data = await resp.json()
+243 +                     embedding = embed_data.get("embeddings", [[]])[0]
+244 +                     
+245 +                     # Store with embedding
+246 +                     memory_payload = {
+247 +                         "content": "Integration test memory",
+248 +                         "embedding": embedding,
+249 +                         "metadata": {"test": "integration"}
+250 +                     }
+251 +                     
+252 +                     async with session.post("http://localhost:3030/api/memory", json=memory_payload) as mem_resp:
+253 +                         if mem_resp.status in [200, 201]:
+254 +                             results.add("integration", "embed_store", "PASS")
+255 +                             print("✓ Embedding + storage integration passed")
+256 +                         else:
+257 +                             results.add("integration", "embed_store", "FAIL", f"Store failed: {mem_resp.status}")
+258 +                             print(f"✗ Failed to store embedded memory: {mem_resp.status}")
+259 +                 else:
+260 +                     results.add("integration", "embed_store", "FAIL", f"Embed failed: {resp.status}")
+261 +                     print(f"✗ Embedding failed: {resp.status}")
+262 +         except Exception as e:
+263 +             results.add("integration", "embed_store", "FAIL", str(e))
+264 +             print(f"✗ Integration test error: {e}")
+265 + 
+266 + async def main():
+267 +     """Run all tests"""
+268 +     print("=" * 60)
+269 +     print("AI MEMORY SERVICE - COMPREHENSIVE TEST SUITE")
+270 +     print("=" * 60)
+271 +     
+272 +     results = TestResults()
+273 +     
+274 +     # Run all test suites
+275 +     await test_embedding_server(results)
+276 +     await test_memory_service(results)
+277 +     await test_rust_services(results)
+278 +     await test_integrations(results)
+279 +     
+280 +     # Generate report
+281 +     print("\n" + "=" * 60)
+282 +     print("TEST RESULTS SUMMARY")
+283 +     print("=" * 60)
+284 +     
+285 +     summary = results.summary()
+286 +     print(f"Total tests: {summary['total']}")
+287 +     print(f"Passed: {summary['passed']}")
+288 +     print(f"Failed: {summary['failed']}")
+289 +     print(f"Success rate: {summary['success_rate']:.1f}%")
+290 +     
+291 +     # Save detailed report
+292 +     report = {
+293 +         "timestamp": datetime.now().isoformat(),
+294 +         "summary": summary,
+295 +         "details": results.results,
+296 +         "duration": time.time() - results.start_time
+297 +     }
+298 +     
+299 +     with open("comprehensive_test_results.json", "w") as f:
+300 +         json.dump(report, f, indent=2)
+301 +     
+302 +     print(f"\nDetailed report saved to comprehensive_test_results.json")
+303 +     
+304 +     # Component status
+305 +     print("\n" + "=" * 60)
+306 +     print("COMPONENT STATUS")
+307 +     print("=" * 60)
+308 +     
+309 +     components = {}
+310 +     for result in results.results:
+311 +         comp = result["component"]
+312 +         if comp not in components:
+313 +             components[comp] = {"passed": 0, "failed": 0}
+314 +         if result["status"] == "PASS":
+315 +             components[comp]["passed"] += 1
+316 +         else:
+317 +             components[comp]["failed"] += 1
+318 +     
+319 +     for comp, stats in components.items():
+320 +         total = stats["passed"] + stats["failed"]
+321 +         status = "✓ WORKING" if stats["failed"] == 0 else "✗ ISSUES" if stats["passed"] > 0 else "✗ FAILED"
+322 +         print(f"{comp.upper()}: {status} ({stats['passed']}/{total} tests passed)")
+323 +     
+324 +     return summary["success_rate"] >= 70  # Consider 70% as minimum acceptable
+325 + 
+326 + if __name__ == "__main__":
+327 +     success = asyncio.run(main())
+328 +     sys.exit(0 if success else 1)
+
+
 
 
 
