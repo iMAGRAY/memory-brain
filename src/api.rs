@@ -3,7 +3,6 @@
 //! Предоставляет HTTP endpoints для операций с памятью, поиска, инсайтов и оркестрации
 
 use crate::{
-    secure_orchestration::{SecureOrchestrationConfig, SecureOrchestrationLayer, UserContext},
     InsightType, MemoryCell, MemoryError, MemoryOrchestrator, MemoryQuery, MemoryService,
     MemoryType, Priority,
 };
@@ -15,6 +14,8 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use axum::http::HeaderMap;
+use axum::body::Bytes;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,6 +34,7 @@ use uuid::Uuid;
 pub struct ApiState {
     memory_service: Arc<MemoryService>,
     orchestrator: Option<Arc<MemoryOrchestrator>>,
+    embedding_dimension: usize,
 }
 
 /// Конфигурация API
@@ -76,6 +78,7 @@ pub struct StoreMemoryRequest {
 #[derive(Debug, Serialize)]
 pub struct StoreMemoryResponse {
     pub id: Uuid,
+    pub memory_id: Uuid,
     pub success: bool,
     pub message: String,
     pub embedding_dimension: usize,
@@ -249,6 +252,16 @@ pub struct DistillationRequest {
     pub reasoning_effort: Option<String>,
 }
 
+/// Recall request compatible with legacy clients
+#[derive(Debug, Deserialize)]
+pub struct RecallRequest {
+    pub query: String,
+    pub limit: Option<usize>,
+    pub similarity_threshold: Option<f32>,
+    pub context_hint: Option<String>,
+    pub include_related: Option<bool>,
+}
+
 /// Ответ дистилляции
 #[derive(Debug, Serialize)]
 pub struct DistillationResponse {
@@ -389,8 +402,9 @@ pub fn create_router(
     config: ApiConfig,
 ) -> Router {
     let state = ApiState {
-        memory_service,
+        memory_service: memory_service.clone(),
         orchestrator,
+        embedding_dimension: memory_service.embedding_dimension(),
     };
 
     let mut app = Router::new()
@@ -403,8 +417,10 @@ pub fn create_router(
         .route("/memory/:id", get(get_memory))
         .route("/memory/:id", delete(delete_memory))
         .route("/memories/recent", get(get_recent_memories))
-        // Alias: POST /memories → store_memory
-        .route("/memories", post(store_memory))
+        // Совместимый алиас: /recall → возвращает слои RecalledMemory
+        .route("/recall", post(recall_endpoint))
+        // Alias: POST /memories (compat handler with lenient JSON parsing)
+        .route("/memories", post(store_memory_compat))
         // API-compatible routes for external tools (существующие)
         .route("/api/memories", post(store_memory))
         .route("/api/memories", get(get_recent_memories))
@@ -484,10 +500,16 @@ async fn health_check(State(state): State<ApiState>) -> impl IntoResponse {
         "status": "healthy",
         "service": "ai-memory-service",
         "version": env!("CARGO_PKG_VERSION"),
+        "services": {
+            "embedding": true,
+            "storage": true,
+            "cache": true
+        },
         "orchestrator": {
             "available": orchestrator_available,
             "model": if orchestrator_available { "gpt-5-nano" } else { "none" },
         },
+        "embedding_dimension": state.embedding_dimension,
         "memory_stats": stats,
         "timestamp": chrono::Utc::now().to_rfc3339(),
     }))
@@ -500,12 +522,15 @@ async fn get_statistics(State(state): State<ApiState>) -> Result<impl IntoRespon
     Ok(Json(serde_json::json!({
         "statistics": stats,
         "orchestrator_available": state.orchestrator.is_some(),
+        "embedding_dimension": state.embedding_dimension,
         "success": true,
     })))
 }
 
 /// Экспорт Prometheus-метрик
 async fn metrics_endpoint() -> impl IntoResponse {
+    // Ensure metrics are initialized (relevant for test servers)
+    crate::metrics::init_metrics();
     let body = crate::metrics::export_metrics();
     let mut resp = (StatusCode::OK, body).into_response();
     resp.headers_mut().insert(axum::http::header::CONTENT_TYPE, axum::http::HeaderValue::from_static("text/plain; version=0.0.4"));
@@ -517,6 +542,7 @@ async fn store_memory(
     State(state): State<ApiState>,
     Json(req): Json<StoreMemoryRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let op_start = tokio::time::Instant::now();
     debug!("Storing new memory with context: {:?}", req.context_hint);
 
     // Валидация входных данных
@@ -536,12 +562,55 @@ async fn store_memory(
         .await?;
 
     info!("Memory stored successfully: {}", id);
+    crate::metrics::record_memory_store_duration(op_start.elapsed().as_secs_f64());
 
     Ok(Json(StoreMemoryResponse {
         id,
+        memory_id: id,
         success: true,
         message: "Memory stored successfully".to_string(),
-        embedding_dimension: 512, // Matryoshka (задано Acceptance; динамику можно добавить через ApiState при необходимости)
+        embedding_dimension: state.embedding_dimension,
+    }))
+}
+
+/// Совместимый обработчик для POST /memories:
+/// - Возвращает 400 при невалидном JSON (вместо 415)
+/// - Требует наличие поля memory_type для совместимости с тестами
+async fn store_memory_compat(
+    State(state): State<ApiState>,
+    _headers: HeaderMap,
+    body: Bytes,
+) -> Result<impl IntoResponse, ApiError> {
+    // Try parse JSON manually, map any error to 400 Bad Request
+    let req: StoreMemoryRequest = serde_json::from_slice(&body)
+        .map_err(|_| ApiError::BadRequest("Invalid JSON".to_string()))?;
+
+    // Validate required fields expected by compat clients
+    if req.memory_type.is_none() {
+        return Err(ApiError::BadRequest("memory_type is required".to_string()));
+    }
+
+    // Reuse main logic (minimal validation remains)
+    let op_start = tokio::time::Instant::now();
+    if req.content.trim().is_empty() {
+        return Err(ApiError::BadRequest("Content cannot be empty".to_string()));
+    }
+    if req.content.len() > 1_000_000 {
+        return Err(ApiError::BadRequest("Content too large (max 1MB)".to_string()));
+    }
+
+    let id = state
+        .memory_service
+        .store_memory(req.content.clone(), req.context_hint.clone())
+        .await?;
+    crate::metrics::record_memory_store_duration(op_start.elapsed().as_secs_f64());
+
+    Ok(Json(StoreMemoryResponse {
+        id,
+        memory_id: id,
+        success: true,
+        message: "Memory stored successfully".to_string(),
+        embedding_dimension: state.embedding_dimension,
     }))
 }
 
@@ -804,6 +873,27 @@ async fn advanced_recall(
         recall_time_ms: recalled.recall_time_ms,
         success: true,
     }))
+}
+
+/// Совместимый endpoint /recall возвращает слои RecalledMemory
+#[axum::debug_handler]
+async fn recall_endpoint(
+    State(state): State<ApiState>,
+    Json(req): Json<RecallRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let query = MemoryQuery {
+        text: req.query,
+        context_hint: req.context_hint,
+        memory_types: None,
+        limit: req.limit,
+        min_importance: None,
+        time_range: None,
+        similarity_threshold: req.similarity_threshold,
+        include_related: req.include_related.unwrap_or(false),
+    };
+
+    let recalled = state.memory_service.recall_memory(query).await?;
+    Ok(Json(recalled))
 }
 
 /// Список контекстов

@@ -1196,8 +1196,9 @@ impl GraphStorage {
         .param("id", id.to_string())
         .param("imp", importance as f64);
 
-        self.graph
-            .execute(q)
+        let _ = self
+            .graph
+            .run(q)
             .await
             .map_err(|e| MemoryError::Storage(format!("Failed to update importance: {}", e)))?;
         Ok(())
@@ -1397,6 +1398,7 @@ impl GraphStorage {
     }
 
     /// Count active memories strictly above a given importance threshold
+    /// Excludes memories marked as duplicates via DUPLICATE_OF.
     pub async fn get_active_count(&self, threshold: f32) -> MemoryResult<usize> {
         let _permit = self
             .connection_semaphore
@@ -1407,8 +1409,10 @@ impl GraphStorage {
         let mut q = self
             .graph
             .execute(
-                query("MATCH (m:Memory) WHERE coalesce(m.importance, 0.0) > $thr RETURN count(m) as active")
-                    .param("thr", threshold as f64),
+                query(
+                    "MATCH (m:Memory)\n                     WHERE coalesce(m.importance, 0.0) > $thr\n                     AND NOT (m)-[:DUPLICATE_OF]->(:Memory)\n                     RETURN count(m) as active"
+                )
+                .param("thr", threshold as f64),
             )
             .await
             .map_err(|e| MemoryError::Storage(format!("Active count query failed: {}", e)))?;
@@ -1519,6 +1523,7 @@ impl VectorIndex {
     }
 
     /// Get total number of memories in the index
+    #[allow(dead_code)]
     fn memory_count(&self) -> usize {
         self.embeddings.len()
     }
@@ -1526,6 +1531,7 @@ impl VectorIndex {
     /// Comprehensive validation of index consistency
     ///
     /// Verifies that all indices are synchronized and contain consistent data
+    #[allow(dead_code)]
     fn validate_consistency(&self) -> Result<(), String> {
         let embedding_count = self.embeddings.len();
 
@@ -1609,6 +1615,7 @@ impl VectorIndex {
     }
 
     /// Get memory statistics for monitoring
+    #[allow(dead_code)]
     fn get_index_stats(&self) -> HashMap<String, usize> {
         let mut stats = HashMap::new();
         stats.insert("total_memories".to_string(), self.embeddings.len());
@@ -1618,6 +1625,7 @@ impl VectorIndex {
     }
 
     /// Compact the index by removing empty entries and optimizing memory usage
+    #[allow(dead_code)]
     fn compact(&mut self) {
         // Remove empty context entries
         self.context_index.retain(|_, ids| !ids.is_empty());

@@ -18,6 +18,7 @@ pub struct CpuFeatures {
 }
 
 impl CpuFeatures {
+    #[allow(dead_code)]
     const fn new() -> Self {
         CpuFeatures {
             has_avx2: false,

@@ -66,6 +66,7 @@ pub struct ShutdownCoordinator {
     
     /// Configuration
     global_timeout: Duration,
+    #[allow(dead_code)]
     force_kill_timeout: Duration,
 }
 

@@ -94,6 +94,12 @@ impl MemoryService {
         })
     }
 
+    /// Returns the target embedding dimension configured for Matryoshka alignment.
+    /// Falls back to 512 if not specified.
+    pub fn embedding_dimension(&self) -> usize {
+        self.config.embedding.embedding_dimension.unwrap_or(512)
+    }
+
     /// Store a new memory in the system
     #[tracing::instrument(skip(self, content, context_hint))]
     pub async fn store_memory(
@@ -113,10 +119,16 @@ impl MemoryService {
 
         // Generate embedding for the content (using Query type for consistency with search)
         let t0 = Instant::now();
-        let embedding = self
+        // Generate base embedding (model-native dimension, e.g., 768)
+        let base_embedding = self
             .embedding_service
             .embed(&content, crate::embedding::TaskType::Query)
             .await?;
+        // Matryoshka: truncate to configured target dimension (default 512) for consistency
+        let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+        let embedding = self
+            .embedding_service
+            .truncate_to_dimension(&base_embedding, target_dim)?;
         crate::metrics::record_embedding_latency("gemma-300m", t0.elapsed().as_secs_f64());
 
         // Analyze content with AI brain
@@ -214,10 +226,15 @@ impl MemoryService {
 
         // Generate query embedding
         let tq0 = Instant::now();
-        let query_embedding = self
+        // Generate and align query embedding to the same target dimension (Matryoshka)
+        let base_query_embedding = self
             .embedding_service
             .embed(&query.text, crate::embedding::TaskType::Query)
             .await?;
+        let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+        let query_embedding = self
+            .embedding_service
+            .truncate_to_dimension(&base_query_embedding, target_dim)?;
         crate::metrics::record_embedding_latency("gemma-300m", tq0.elapsed().as_secs_f64());
 
         // Layer 1: Semantic search - fast associative retrieval
@@ -344,7 +361,7 @@ impl MemoryService {
         };
 
         for ctx in contexts {
-            let mut mems = self
+            let mems = self
                 .graph_storage
                 .get_memories_in_context(&ctx, max_items)
                 .await
@@ -496,13 +513,17 @@ impl MemoryService {
         // If query is provided, filter by semantic similarity
         if let Some(query_text) = query {
             // Generate embedding for the query
-            let query_embedding = self
+            let base_query_embedding = self
                 .embedding_service
                 .embed(query_text, crate::embedding::TaskType::Query)
                 .await
                 .map_err(|e| {
                     MemoryError::Embedding(format!("Failed to generate query embedding: {}", e))
                 })?;
+            let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+            let query_embedding = self
+                .embedding_service
+                .truncate_to_dimension(&base_query_embedding, target_dim)?;
 
             // Calculate similarity scores with memories
             let mut scored_memories: Vec<(f32, MemoryCell)> = memories

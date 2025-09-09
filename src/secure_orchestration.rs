@@ -5,14 +5,13 @@
 
 use crate::memory::MemoryService;
 use crate::orchestrator::MemoryOrchestrator;
-use crate::types::{InsightType, MemoryCell, MemoryQuery, MemoryType, RecalledMemory};
+use crate::types::{InsightType, MemoryCell, MemoryType};
 use anyhow::{anyhow, Result};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::debug;
 use uuid::Uuid;
 
 // Boost coefficients for re-ranking
@@ -244,6 +243,7 @@ impl SecureOrchestrationLayer {
     }
 
     /// Minimize data before sending to orchestrator
+    #[allow(dead_code)]
     fn minimize_for_orchestrator(&self, memories: &[MemoryCell]) -> Result<String> {
         let mut context = String::new();
         let mut total_size = 0;
@@ -427,6 +427,7 @@ impl SecureOrchestrationLayer {
     }
 
     /// Truncate content to specified length
+    #[allow(dead_code)]
     fn truncate_content(&self, content: &str, max_len: usize) -> String {
         if content.len() <= max_len {
             content.to_string()

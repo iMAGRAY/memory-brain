@@ -3,6 +3,7 @@ use std::env;
 
 // Constants for allowed library directories
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code)]
 const UNIX_LIB_DIRS: &[&str] = &["/usr/lib", "/usr/local/lib", "/opt"];
 
 
@@ -72,6 +73,7 @@ fn main() {
 }
 
 /// Validates that the path is safe and exists within allowed base directories
+#[allow(dead_code)]
 fn validate_path(path: &str) -> bool {
     // Security: prevent path traversal attacks (including encoded variants)
     // For build scripts, environment variables should contain clean paths
@@ -122,6 +124,7 @@ fn validate_path(path: &str) -> bool {
 }
 
 /// Helper function to safely add and canonicalize a directory path
+#[allow(dead_code)]
 fn add_directory_if_valid(dirs: &mut Vec<PathBuf>, path: PathBuf, description: &str) {
     if let Ok(metadata) = path.metadata() {
         if metadata.is_dir() {
@@ -162,6 +165,7 @@ fn add_directory_if_valid(dirs: &mut Vec<PathBuf>, path: PathBuf, description: &
 }
 
 /// Returns allowed base directories for ONNX Runtime libraries
+#[allow(dead_code)]
 fn get_allowed_lib_directories() -> Vec<PathBuf> {
     let mut allowed_dirs = Vec::new();
     
@@ -250,6 +254,7 @@ fn get_allowed_lib_directories() -> Vec<PathBuf> {
 
 
 /// Creates models directory safely with race condition protection
+#[allow(dead_code)]
 fn create_models_dir() {
     let models_dir = Path::new("models");
     
@@ -283,12 +288,13 @@ fn create_models_dir() {
 }
 
 /// Configure PyO3 Python integration
+#[allow(dead_code)]
 fn configure_pyo3() {
     // Tell cargo to rerun this build script if PyO3 environment variables change
     println!("cargo:rerun-if-env-changed=PYO3_PYTHON");
     println!("cargo:rerun-if-env-changed=PYTHONHOME");
     
-    let python_home = env::var("PYTHONHOME")
+    let _python_home = env::var("PYTHONHOME")
         .unwrap_or_else(|_| "C:\\Users\\1\\AppData\\Local\\Programs\\Python\\Python313".to_string());
     
     // Configure Windows Python linking

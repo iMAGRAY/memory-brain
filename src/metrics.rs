@@ -3,8 +3,8 @@
 //! Provides Prometheus-compatible metrics for monitoring service health and performance.
 
 use prometheus::{
-    register_counter_vec, register_gauge_vec, register_histogram_vec,
-    CounterVec, GaugeVec, HistogramVec, TextEncoder, Encoder,
+    register_counter_vec, register_gauge_vec, register_histogram_vec, register_histogram,
+    CounterVec, GaugeVec, HistogramVec, Histogram, TextEncoder, Encoder,
 };
 use lazy_static::lazy_static;
 
@@ -52,12 +52,32 @@ lazy_static! {
         &["model"],
         vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
     ).unwrap();
+
+    /// Memory store duration histogram (compat name expected by some tests)
+    pub static ref MEMORY_STORE_DURATION: Histogram = register_histogram!(
+        "memory_store_duration_seconds",
+        "Memory store duration in seconds"
+    ).unwrap();
     
     /// Active connections gauge
     pub static ref ACTIVE_CONNECTIONS: GaugeVec = register_gauge_vec!(
         "active_connections",
         "Number of active connections",
         &["connection_type"]
+    ).unwrap();
+
+    /// Current embedding dimension gauge (labeled by source: autodetect|config)
+    pub static ref EMBEDDING_DIMENSION_GAUGE: GaugeVec = register_gauge_vec!(
+        "embedding_dimension",
+        "Current embedding dimension used by the service",
+        &["source"]
+    ).unwrap();
+
+    /// Autodetect result counter (result: success|failure|disabled)
+    pub static ref EMBEDDING_AUTODETECT_COUNTER: CounterVec = register_counter_vec!(
+        "embedding_autodetect_total",
+        "Autodetect outcomes for embedding dimension",
+        &["result"]
     ).unwrap();
 }
 
@@ -102,11 +122,30 @@ pub fn record_embedding_latency(model: &str, duration: f64) {
         .observe(duration);
 }
 
+/// Record memory store duration
+pub fn record_memory_store_duration(duration: f64) {
+    MEMORY_STORE_DURATION.observe(duration);
+}
+
 /// Update active connections
 pub fn update_active_connections(conn_type: &str, count: f64) {
     ACTIVE_CONNECTIONS
         .with_label_values(&[conn_type])
         .set(count);
+}
+
+/// Set current embedding dimension gauge with a source label
+pub fn set_embedding_dimension(source: &str, dim: usize) {
+    EMBEDDING_DIMENSION_GAUGE
+        .with_label_values(&[source])
+        .set(dim as f64);
+}
+
+/// Record autodetect result
+pub fn record_autodetect_result(result: &str) {
+    EMBEDDING_AUTODETECT_COUNTER
+        .with_label_values(&[result])
+        .inc();
 }
 
 /// Export metrics in Prometheus format
@@ -128,6 +167,9 @@ pub fn init_metrics() {
     let _ = &*STORAGE_SIZE;
     let _ = &*EMBEDDING_LATENCY;
     let _ = &*ACTIVE_CONNECTIONS;
+    let _ = &*EMBEDDING_DIMENSION_GAUGE;
+    let _ = &*EMBEDDING_AUTODETECT_COUNTER;
+    let _ = &*MEMORY_STORE_DURATION;
 }
 
 #[cfg(test)]

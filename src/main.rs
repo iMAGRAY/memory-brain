@@ -78,7 +78,8 @@ fn autodetect_embedding_dimension_from_server() -> Option<usize> {
 
     // Кандидатные эндпоинты, где может быть размерность
     let candidates = [
-        "/dimensions",
+        "/stats",      // contains default_dimension, matryoshka_dimensions
+        "/dimensions", // hypothetical
         "/health",
         "/info",
         "/config",
@@ -132,35 +133,51 @@ fn autodetect_embedding_dimension_from_server() -> Option<usize> {
         };
 
         if let Ok(json) = serde_json::from_str::<Json>(body) {
-            // Ищем поле размерности среди нескольких возможных ключей
-            let try_keys = [
-                "embedding_dimension",
-                "dimension",
-                "dim",
-                "embedding_dim",
-                "dims",
-                "size",
-            ];
-            for k in try_keys {
-                if let Some(v) = json.get(k) {
-                    if let Some(n) = v.as_u64() {
-                        return Some(n as usize);
-                    }
-                    // Если массив размерностей
-                    if let Some(arr) = v.as_array() {
-                        if let Some(n) = arr.first().and_then(|x| x.as_u64()) {
-                            return Some(n as usize);
-                        }
-                    }
-                }
-            }
-            // Иногда сервисы возвращают пример векторa: {"example_embedding":[...]}
-            if let Some(arr) = json.get("example_embedding").and_then(|v| v.as_array()) {
-                return Some(arr.len());
+            if let Some(n) = parse_embedding_dimension_from_json(&json) {
+                return Some(n);
             }
         }
     }
 
+    None
+}
+
+/// Выделяет размерность эмбеддинга из JSON, отдаваемого embedding-сервером (/stats, /info, и т.п.).
+/// Поддерживает ключи: default_dimension, embedding_dimension, dimension, dim, embedding_dim, dims[], size,
+/// а также пример: {"example_embedding":[..]}.
+pub(crate) fn parse_embedding_dimension_from_json(json: &Json) -> Option<usize> {
+    // Прямые числовые ключи
+    let try_keys = [
+        "default_dimension",
+        "embedding_dimension",
+        "dimension",
+        "dim",
+        "embedding_dim",
+        "size",
+    ];
+    for k in try_keys {
+        if let Some(v) = json.get(k) {
+            if let Some(n) = v.as_u64() {
+                return Some(n as usize);
+            }
+            if let Some(arr) = v.as_array() {
+                if let Some(n) = arr.first().and_then(|x| x.as_u64()) {
+                    return Some(n as usize);
+                }
+            }
+        }
+    }
+    // Вариант, где ключ содержит массив поддерживаемых размерностей
+    if let Some(arr) = json.get("matryoshka_dimensions").and_then(|v| v.as_array()) {
+        // Берём первую (наибольшую) как дефолт — если список убывающий
+        if let Some(n) = arr.first().and_then(|x| x.as_u64()) {
+            return Some(n as usize);
+        }
+    }
+    // Пример вектора
+    if let Some(arr) = json.get("example_embedding").and_then(|v| v.as_array()) {
+        return Some(arr.len());
+    }
     None
 }
 
@@ -191,19 +208,32 @@ async fn main() -> Result<()> {
             if dim > 0 {
                 info!("📐 Resolved embedding dimension from embedding server: {}", dim);
                 config.embedding.embedding_dimension = Some(dim);
+                ai_memory_service::metrics::set_embedding_dimension("autodetect", dim);
+                ai_memory_service::metrics::record_autodetect_result("success");
             } else {
                 warn!("📐 Embedding autodetect returned non-positive value, keeping config value {:?}", config.embedding.embedding_dimension);
+                ai_memory_service::metrics::record_autodetect_result("failure");
             }
         } else {
             info!(
                 "📐 Embedding autodetect skipped or failed, using config value {:?}",
                 config.embedding.embedding_dimension
             );
+            ai_memory_service::metrics::record_autodetect_result("failure");
+            ai_memory_service::metrics::set_embedding_dimension(
+                "config",
+                config.embedding.embedding_dimension.unwrap_or(512),
+            );
         }
     } else {
         info!(
             "📐 Embedding autodetect disabled, using config value {:?}",
             config.embedding.embedding_dimension
+        );
+        ai_memory_service::metrics::record_autodetect_result("disabled");
+        ai_memory_service::metrics::set_embedding_dimension(
+            "config",
+            config.embedding.embedding_dimension.unwrap_or(512),
         );
     }
     
@@ -455,6 +485,29 @@ async fn main() -> Result<()> {
 
     info!("👋 AI Memory Service stopped");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_default_dimension_key() {
+        let j: Json = serde_json::json!({"default_dimension": 512});
+        assert_eq!(parse_embedding_dimension_from_json(&j), Some(512));
+    }
+
+    #[test]
+    fn parse_matryoshka_dimensions_array() {
+        let j: Json = serde_json::json!({"matryoshka_dimensions": [768,512,256,128]});
+        assert_eq!(parse_embedding_dimension_from_json(&j), Some(768));
+    }
+
+    #[test]
+    fn parse_example_embedding_len() {
+        let j: Json = serde_json::json!({"example_embedding": [0.1,0.2,0.3,0.4]});
+        assert_eq!(parse_embedding_dimension_from_json(&j), Some(4));
+    }
 }
 
 /// Load configuration from environment and/or config file

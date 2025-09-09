@@ -1023,6 +1023,7 @@ impl McpServer {
         cache.insert(key.to_string(), results.to_vec());
     }
 
+    #[allow(dead_code)]
     async fn update_stats(&self, success: bool) {
         let mut stats = self.stats.write().await;
         stats.total_requests += 1;
@@ -1075,7 +1076,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mcp_server_creation() {
-        // Test would require mock MemoryService
+        // Integration test would require real MemoryService (no mocks)
         // For now, just test config creation
         let config = McpServerConfig::default();
         assert_eq!(config.name, "ai-memory-service");

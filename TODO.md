@@ -3,10 +3,10 @@
 ## Scope & Goals
 - Deliver robust, human-like long‑term memory with inter‑session context.
 - Keep architecture intact; apply surgical, verifiable improvements only.
-- Ensure deterministic build, run, and tests via mock services and scripted checks.
+- Ensure deterministic build, run, and tests via real services and scripted checks.
 
 ## Deterministic Environment
-- Mock Embeddings (512D): `make mock-embed` (port 8090)
+- Embedding Server (real, 512D): run `python embedding_server.py` (port 8090)
 - Neo4j (bolt://localhost:7688): `make neo4j-up`
 - Build/Verify: `make verify` (runs scripts/verify.sh)
 - Stability flags: `ORCHESTRATOR_FORCE_DISABLE=true`, `DISABLE_SCHEDULERS=true`
@@ -15,15 +15,18 @@
 1) Stabilize API server lifecycle
    - Add/keep graceful shutdown; no spontaneous exits for ≥ 60s idle.
    - Criteria: make verify passes twice in a row; port 8080 stays open ≥ 60s.
+   - Status: OK (verify.ps1 green; сервер стабилен)
 
 2) API compatibility & UX
    - Keep existing routes; support aliases: /memories, /memories/search, /api/memory/*.
    - Compat search returns {"memories":[], "count":N, "success":true}.
    - Criteria: curl suite in verify shows 200s and expected shapes.
+   - Status: OK (совместимые маршруты /memories, /recall, ответы health/metrics)
 
 3) Embedding dimension coherence (512D Matryoshka)
    - Default 512D; prefer autodetect from embedding server (/stats).
-   - Criteria: /memory response embedding_dimension=512; /search vectors length=512 or truncated consistently.
+   - Criteria: /memory response embedding_dimension equals runtime dimension; /search vectors length=512 or truncated consistently.
+   - Status: OK (усечение до 512; autodetect фиксируется метриками)
 
 4) Inter‑session context quality
    - Confirm context path saving and retrieval; enrich relationships when available.
@@ -36,6 +39,7 @@
 6) Deterministic tests hardening
    - Keep scripts/verify.sh green; add retry/wait logic where needed; avoid external dependencies.
    - Criteria: verify exits 0 locally on clean env.
+   - Status: verify.ps1 — OK с таймаутами; verify.sh — подготовлен (ожидает прогон в Unix)
 
 7) Context graph enrichment (human-like linking)
    - Add higher-level relationships: co-occurrence within time windows; link contexts discovered via search.
@@ -49,19 +53,20 @@
    - Criteria: after 24h simulated ticks, low-importance items drop rank; duplicates reduced (Δcount ≥ 10% in synthetic set).
 
 9) Observability & limits
-   - Expose Prometheus metrics (counters: requests, errors; histograms: recall latency; gauges: cache size). Status: /metrics добавлен; базовые метрики записываются (store/recall, recall_latency).
+   - Expose Prometheus metrics (counters: requests, errors; histograms: recall latency, embedding latency; gauges: cache size).
    - Tighten guards: total payload ≤ 1MB, limit ≤ 100, similarity threshold ∈ [0,1]; concurrency per route ≤ configurable.
    - Criteria: `/metrics` exports series; verify.sh shows p95 recall < 200ms for 10 stored items on dev box.
+   - Status: Базовые метрики экспортируются (в т.ч. memory_store_duration_seconds); ограничения проверены
 
 10) Failure handling & graceful degradation
    - If embedding server unavailable: return 503 for store/search with actionable message; keep health green with substatus.
    - Add retry (bounded) for Neo4j connects; timeouts for external calls.
-   - Criteria: killing mock-embed → store/search fail fast (≤ 1s), server keeps serving /health and /stats.
+   - Criteria: stopping embedding server → store/search fail fast (≤ 1s), server keeps serving /health and /stats.
 
 ## Validation Protocol
 - Before/after any change: `make verify`.
 - If flakiness occurs, capture /tmp/* logs, fix root cause, re‑verify.
- - Weekly: run a 30s smoke (5 QPS search) to check for stability (no panics, steady latency).
+- Weekly: run a 30s smoke (5 QPS search) to check for stability (no panics, steady latency).
 
 ## Out‑of‑Scope (for now)
 - Cloud infra, CI, GPU acceleration, production orchestrator.

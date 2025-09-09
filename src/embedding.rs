@@ -89,6 +89,7 @@ struct EmbedResponse {
 
 /// Response structure for batch text embedding
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct EmbedBatchResponse {
     embeddings: Vec<Vec<f32>>,
     count: usize,
@@ -104,11 +105,14 @@ pub struct EmbeddingService {
     embedding_cache: Arc<dashmap::DashMap<String, (Arc<Vec<f32>>, u64)>>, // (embedding, timestamp)
     use_instructions: bool,
     matryoshka_dims: Vec<usize>, // Supported dimensions: [768, 512, 256, 128]
+    #[allow(dead_code)]
     embedding_timeout: Duration,
+    #[allow(dead_code)]
     max_text_length: usize,
     max_batch_size: usize,
     // Concurrency control for parallel requests
     concurrency_semaphore: Arc<Semaphore>,
+    #[allow(dead_code)]
     max_concurrent_operations: usize,
     // Actual embedding dimension detected from server or fallback to config
     actual_dimension: usize,
