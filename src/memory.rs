@@ -192,7 +192,11 @@ impl MemoryService {
         // Layer 1: Semantic search - fast associative retrieval
         let semantic_results = self
             .graph_storage
-            .vector_search(&query_embedding, query.limit.unwrap_or(20))
+            .vector_search(
+                &query_embedding,
+                query.limit.unwrap_or(20),
+                query.similarity_threshold,
+            )
             .await?;
 
         // Layer 2: Contextual search - explore related memories
@@ -335,7 +339,7 @@ impl MemoryService {
             limit: Some(limit),
             min_importance: Some(0.01),
             time_range: None,
-            similarity_threshold: Some(0.05), // Lowered back from 0.15 to restore search functionality
+            similarity_threshold: Some(0.20), // Lower threshold for 512D space
             include_related: false,
         };
 

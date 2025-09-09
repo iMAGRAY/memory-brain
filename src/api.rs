@@ -952,7 +952,7 @@ async fn orchestrator_status(State(state): State<ApiState>) -> impl IntoResponse
             },
             "config": {
                 "max_input_tokens": 400000,
-                "max_output_tokens": 12000,
+                "max_output_tokens": 20000,
                 "reasoning_effort_levels": ["minimal", "low", "medium", "high"],
             },
             "success": true,

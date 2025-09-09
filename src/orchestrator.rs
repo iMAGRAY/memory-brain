@@ -40,7 +40,7 @@ impl Default for OrchestratorConfig {
             api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
             model: "gpt-5-nano".to_string(), // Используем GPT-5-nano как требуется
             max_input_tokens: 400000,        // GPT-5-nano поддерживает 400K входного контекста
-            max_output_tokens: 12000,        // Увеличиваем для GPT-5-nano (до 128K возможно)
+            max_output_tokens: 20000,        // Увеличиваем для GPT-5-nano для полного вывода
             temperature: 1.0,                // GPT-5 не поддерживает изменение, только 1.0
             timeout_seconds: 120,
         }

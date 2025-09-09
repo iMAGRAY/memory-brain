@@ -255,7 +255,7 @@ impl Default for ApiConfig {
             api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
             model: "gpt-5-nano".to_string(),
             max_input_tokens: 400000,
-            max_completion_tokens: 12000,
+            max_completion_tokens: 20000,
             reasoning_effort: "medium".to_string(),
             timeout_seconds: 120,
             retry: RetryConfig::default(),

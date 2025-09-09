@@ -1,20 +1,20 @@
 //! Storage layer for memory persistence and vector operations
-//! 
+//!
 //! This module handles Neo4j graph database operations, vector indexing,
 //! and memory persistence with efficient retrieval capabilities.
 
-use crate::types::*;
 use crate::simd_search::cosine_similarity_simd;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use crate::types::*;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use bincode;
 use chrono::{DateTime, Utc};
-use neo4rs::{Graph, Node, query};
+use neo4rs::{query, Graph, Node};
 use parking_lot::RwLock;
 use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 /// Graph storage backend using Neo4j
@@ -25,7 +25,7 @@ pub struct GraphStorage {
 }
 
 /// In-memory vector index for fast similarity search
-/// 
+///
 /// Maintains multiple indices for efficient memory retrieval:
 /// - `embeddings`: Main storage for vector embeddings
 /// - `context_index`: Groups memories by context path
@@ -77,10 +77,16 @@ impl GraphStorage {
 
     /// Initialize Neo4j schema and constraints
     async fn initialize_schema(&self) -> MemoryResult<()> {
-        let _permit = self.connection_semaphore.acquire().await
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
-        let mut txn = self.graph.start_txn().await
+        let mut txn = self
+            .graph
+            .start_txn()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Transaction start failed: {}", e)))?;
 
         let schema_queries = vec![
@@ -94,11 +100,13 @@ impl GraphStorage {
         ];
 
         for query_str in schema_queries {
-            txn.run(query(query_str)).await
+            txn.run(query(query_str))
+                .await
                 .map_err(|e| MemoryError::Storage(format!("Schema creation failed: {}", e)))?;
         }
 
-        txn.commit().await
+        txn.commit()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Schema commit failed: {}", e)))?;
 
         Ok(())
@@ -107,13 +115,21 @@ impl GraphStorage {
     /// Store a memory cell in the graph database
     pub async fn store_memory(&self, memory: &MemoryCell) -> MemoryResult<()> {
         if memory.embedding.is_empty() {
-            return Err(MemoryError::Storage("Memory embedding cannot be empty".to_string()));
+            return Err(MemoryError::Storage(
+                "Memory embedding cannot be empty".to_string(),
+            ));
         }
 
-        let _permit = self.connection_semaphore.acquire().await
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
-        let mut txn = self.graph.start_txn().await
+        let mut txn = self
+            .graph
+            .start_txn()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Transaction start failed: {}", e)))?;
 
         // Serialize embedding as base64 for storage
@@ -140,7 +156,7 @@ impl GraphStorage {
                  m.last_accessed = $last_accessed,
                  m.context_path = $context_path,
                  m.metadata = $metadata,
-                 m.embedding = $embedding"
+                 m.embedding = $embedding",
         )
         .param("id", memory.id.to_string())
         .param("content", memory.content.clone())
@@ -155,7 +171,8 @@ impl GraphStorage {
         .param("metadata", metadata_json)
         .param("embedding", embedding_b64);
 
-        txn.run(memory_query).await
+        txn.run(memory_query)
+            .await
             .map_err(|e| MemoryError::Storage(format!("Memory storage failed: {}", e)))?;
 
         let context_query = query(
@@ -172,13 +189,14 @@ impl GraphStorage {
                          c.last_activity = $now
              WITH c
              MATCH (m:Memory {id: $memory_id})
-             MERGE (m)-[:IN_CONTEXT]->(c)"
+             MERGE (m)-[:IN_CONTEXT]->(c)",
         )
         .param("context_path", memory.context_path.as_str())
         .param("memory_id", memory.id.to_string())
         .param("now", Utc::now().timestamp());
 
-        txn.run(context_query).await
+        txn.run(context_query)
+            .await
             .map_err(|e| MemoryError::Storage(format!("Context storage failed: {}", e)))?;
 
         for tag in &memory.tags {
@@ -186,20 +204,27 @@ impl GraphStorage {
                 "MERGE (t:Tag {name: $tag})
                  WITH t
                  MATCH (m:Memory {id: $memory_id})
-                 MERGE (m)-[:TAGGED_WITH]->(t)"
+                 MERGE (m)-[:TAGGED_WITH]->(t)",
             )
             .param("tag", tag.as_str())
             .param("memory_id", memory.id.to_string());
 
-            txn.run(tag_query).await
+            txn.run(tag_query)
+                .await
                 .map_err(|e| MemoryError::Storage(format!("Tag relationship failed: {}", e)))?;
         }
 
-        txn.commit().await
+        txn.commit()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Transaction commit failed: {}", e)))?;
 
-        self.update_vector_index(memory.id, &memory.embedding, &memory.context_path, 
-                                 &format!("{:?}", memory.memory_type), memory.importance)?;
+        self.update_vector_index(
+            memory.id,
+            &memory.embedding,
+            &memory.context_path,
+            &format!("{:?}", memory.memory_type),
+            memory.importance,
+        )?;
 
         Ok(())
     }
@@ -210,16 +235,19 @@ impl GraphStorage {
             return Ok(Vec::new());
         }
 
-        let _permit = self.connection_semaphore.acquire().await
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
         let id_strings: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-        
-        let mut query_result = self.graph.execute(
-            query("MATCH (m:Memory) WHERE m.id IN $ids RETURN m")
-                .param("ids", id_strings)
-        ).await
-        .map_err(|e| MemoryError::Storage(format!("Memory retrieval failed: {}", e)))?;
+
+        let mut query_result = self
+            .graph
+            .execute(query("MATCH (m:Memory) WHERE m.id IN $ids RETURN m").param("ids", id_strings))
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Memory retrieval failed: {}", e)))?;
 
         let mut memories = Vec::new();
         while let Ok(Some(row)) = query_result.next().await {
@@ -243,14 +271,17 @@ impl GraphStorage {
         memory_type_filter: Option<&str>,
     ) -> MemoryResult<Vec<SimilarityMatch>> {
         if query_embedding.is_empty() {
-            return Err(MemoryError::Storage("Query embedding cannot be empty".to_string()));
+            return Err(MemoryError::Storage(
+                "Query embedding cannot be empty".to_string(),
+            ));
         }
 
         let index = self.vector_index.read();
-        
+
         // Get filtered candidate IDs efficiently
-        let candidate_ids = self.get_filtered_candidates(&index, context_filter, memory_type_filter);
-        
+        let candidate_ids =
+            self.get_filtered_candidates(&index, context_filter, memory_type_filter);
+
         if candidate_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -260,14 +291,28 @@ impl GraphStorage {
 
         // Use parallel processing for large candidate sets
         if candidate_ids.len() > 1000 {
-            self.compute_similarities_parallel(query_embedding, &candidate_ids, threshold, &index, &mut similarities)?;
+            self.compute_similarities_parallel(
+                query_embedding,
+                &candidate_ids,
+                threshold,
+                &index,
+                &mut similarities,
+            )?;
         } else {
-            self.compute_similarities_sequential(query_embedding, &candidate_ids, threshold, &index, &mut similarities)?;
+            self.compute_similarities_sequential(
+                query_embedding,
+                &candidate_ids,
+                threshold,
+                &index,
+                &mut similarities,
+            )?;
         }
 
         // Sort by similarity descending and return top results
         similarities.sort_unstable_by(|a, b| {
-            b.similarity.partial_cmp(&a.similarity).unwrap_or(std::cmp::Ordering::Equal)
+            b.similarity
+                .partial_cmp(&a.similarity)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
         similarities.truncate(limit);
 
@@ -286,32 +331,29 @@ impl GraphStorage {
             (Some(context), Some(mem_type)) => {
                 // Efficient intersection using smaller set for lookup
                 let (lookup_ids, filter_ids) = self.get_filter_sets(index, context, mem_type);
-                
-                filter_ids.iter()
+
+                filter_ids
+                    .iter()
                     .filter(|&&id| lookup_ids.contains(&id))
                     .copied()
                     .collect()
             }
-            (Some(context), None) => {
-                self.get_indexed_ids(&index.context_index, context, "context")
-            }
+            (Some(context), None) => self.get_indexed_ids(&index.context_index, context, "context"),
             (None, Some(mem_type)) => {
                 self.get_indexed_ids(&index.type_index, mem_type, "memory type")
             }
-            (None, None) => {
-                index.embeddings.keys().copied().collect()
-            }
+            (None, None) => index.embeddings.keys().copied().collect(),
         }
     }
 
     /// Optimize intersection by choosing smaller set for HashSet creation
-    /// 
+    ///
     /// Performance optimization strategy:
     /// 1. Create HashSet from the smaller collection for faster lookups
     /// 2. Iterate through the larger collection to minimize HashSet size
     /// 3. Intersection complexity: O(min(m,n)) space + O(max(m,n)) time
     /// 4. Without optimization: O(m) space + O(n) time where m might be >> n
-    /// 
+    ///
     /// Example: If context has 1000 memories and type has 10 memories,
     /// create HashSet(10) and iterate Vec(1000) instead of HashSet(1000)
     fn get_filter_sets<'a>(
@@ -322,7 +364,7 @@ impl GraphStorage {
     ) -> (std::collections::HashSet<Uuid>, &'a [Uuid]) {
         let context_ids = index.context_index.get(context);
         let type_ids = index.type_index.get(mem_type);
-        
+
         match (context_ids, type_ids) {
             (Some(ctx_ids), Some(type_ids)) => {
                 // Optimization: Use smaller collection for HashSet creation
@@ -342,14 +384,18 @@ impl GraphStorage {
                 (std::collections::HashSet::new(), type_ids.as_slice())
             }
             (None, None) => {
-                tracing::debug!("Neither context '{}' nor memory type '{}' found in index", context, mem_type);
+                tracing::debug!(
+                    "Neither context '{}' nor memory type '{}' found in index",
+                    context,
+                    mem_type
+                );
                 (std::collections::HashSet::new(), &[])
             }
         }
     }
 
     /// Get IDs from index with zero-copy optimization for single filters
-    /// 
+    ///
     /// Performance note: For single filters, we still need to clone the Vec
     /// because the caller expects ownership. In future optimizations, this
     /// could return a Cow<[Uuid]> to avoid cloning when possible.
@@ -362,7 +408,12 @@ impl GraphStorage {
         match index_map.get(key) {
             Some(ids) => {
                 // TODO: Consider returning Cow<[Uuid]> to avoid cloning in read-only scenarios
-                tracing::trace!("Found {} {} memories for key '{}'", ids.len(), index_type, key);
+                tracing::trace!(
+                    "Found {} {} memories for key '{}'",
+                    ids.len(),
+                    index_type,
+                    key
+                );
                 ids.clone()
             }
             None => {
@@ -382,9 +433,9 @@ impl GraphStorage {
         similarities: &mut Vec<SimilarityMatch>,
     ) -> MemoryResult<()> {
         for &memory_id in candidate_ids {
-            if let Some(similarity_match) = self.compute_single_similarity(
-                query_embedding, memory_id, threshold, index
-            )? {
+            if let Some(similarity_match) =
+                self.compute_single_similarity(query_embedding, memory_id, threshold, index)?
+            {
                 similarities.push(similarity_match);
             }
         }
@@ -400,10 +451,15 @@ impl GraphStorage {
         index: &VectorIndex,
         similarities: &mut Vec<SimilarityMatch>,
     ) -> MemoryResult<()> {
-        
         // Note: This would need proper cloning of index data for parallel processing
         // For now, fall back to sequential processing to avoid borrowing issues
-        self.compute_similarities_sequential(query_embedding, candidate_ids, threshold, index, similarities)
+        self.compute_similarities_sequential(
+            query_embedding,
+            candidate_ids,
+            threshold,
+            index,
+            similarities,
+        )
     }
 
     /// Compute similarity for a single memory with proper error handling
@@ -414,25 +470,32 @@ impl GraphStorage {
         threshold: f32,
         index: &VectorIndex,
     ) -> MemoryResult<Option<SimilarityMatch>> {
-        let embedding = index.embeddings.get(&memory_id)
-            .ok_or_else(|| MemoryError::Storage(format!("Embedding not found for memory {}", memory_id)))?;
+        let embedding = index.embeddings.get(&memory_id).ok_or_else(|| {
+            MemoryError::Storage(format!("Embedding not found for memory {}", memory_id))
+        })?;
 
         // Validate embedding dimensions
         if embedding.len() != query_embedding.len() {
             return Err(MemoryError::Storage(format!(
                 "Embedding dimension mismatch: query={}, stored={} for memory {}",
-                query_embedding.len(), embedding.len(), memory_id
+                query_embedding.len(),
+                embedding.len(),
+                memory_id
             )));
         }
 
         let similarity = cosine_similarity_simd(query_embedding, embedding);
-        
+
         if similarity >= threshold {
-            let context_path = index.memory_context_map.get(&memory_id)
+            let context_path = index
+                .memory_context_map
+                .get(&memory_id)
                 .cloned()
                 .unwrap_or_else(|| {
                     // Fallback to expensive lookup if not in optimized map
-                    index.context_index.iter()
+                    index
+                        .context_index
+                        .iter()
                         .find(|(_, ids)| ids.contains(&memory_id))
                         .map(|(path, _)| path.clone())
                         .unwrap_or_default()
@@ -449,8 +512,15 @@ impl GraphStorage {
     }
 
     /// Get memories by context path
-    pub async fn get_memories_in_context_with_option(&self, context_path: &str, limit: Option<usize>) -> MemoryResult<Vec<MemoryCell>> {
-        let _permit = self.connection_semaphore.acquire().await
+    pub async fn get_memories_in_context_with_option(
+        &self,
+        context_path: &str,
+        limit: Option<usize>,
+    ) -> MemoryResult<Vec<MemoryCell>> {
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
         let query_str = if let Some(limit_val) = limit {
@@ -461,13 +531,15 @@ impl GraphStorage {
             )
         } else {
             "MATCH (m:Memory)-[:IN_CONTEXT]->(c:Context {path: $context_path})
-             RETURN m ORDER BY m.importance DESC, m.last_accessed DESC".to_string()
+             RETURN m ORDER BY m.importance DESC, m.last_accessed DESC"
+                .to_string()
         };
 
-        let mut query_result = self.graph.execute(
-            query(&query_str).param("context_path", context_path)
-        ).await
-        .map_err(|e| MemoryError::Storage(format!("Context query failed: {}", e)))?;
+        let mut query_result = self
+            .graph
+            .execute(query(&query_str).param("context_path", context_path))
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Context query failed: {}", e)))?;
 
         let mut memories = Vec::new();
         while let Ok(Some(row)) = query_result.next().await {
@@ -483,33 +555,44 @@ impl GraphStorage {
 
     /// Update memory access statistics
     pub async fn update_access_stats(&self, memory_id: Uuid) -> MemoryResult<()> {
-        let _permit = self.connection_semaphore.acquire().await
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
-        let mut query_result = self.graph.execute(
-            query(
-                "MATCH (m:Memory {id: $id})
+        let mut query_result = self
+            .graph
+            .execute(
+                query(
+                    "MATCH (m:Memory {id: $id})
                  SET m.access_frequency = m.access_frequency + 1,
                      m.last_accessed = $now
-                 RETURN m.context_path"
+                 RETURN m.context_path",
+                )
+                .param("id", memory_id.to_string())
+                .param("now", Utc::now().timestamp()),
             )
-            .param("id", memory_id.to_string())
-            .param("now", Utc::now().timestamp())
-        ).await
-        .map_err(|e| MemoryError::Storage(format!("Access update failed: {}", e)))?;
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Access update failed: {}", e)))?;
 
         if let Ok(Some(row)) = query_result.next().await {
             if let Ok(context_path) = row.get::<String>("m.context_path") {
-                let _result = self.graph.execute(
-                    query(
-                        "MATCH (c:Context {path: $context_path})
+                let _result = self
+                    .graph
+                    .execute(
+                        query(
+                            "MATCH (c:Context {path: $context_path})
                          SET c.activity_level = c.activity_level + 0.1,
-                             c.last_activity = $now"
+                             c.last_activity = $now",
+                        )
+                        .param("context_path", context_path)
+                        .param("now", Utc::now().timestamp()),
                     )
-                    .param("context_path", context_path)
-                    .param("now", Utc::now().timestamp())
-                ).await
-                .map_err(|e| MemoryError::Storage(format!("Context activity update failed: {}", e)))?;
+                    .await
+                    .map_err(|e| {
+                        MemoryError::Storage(format!("Context activity update failed: {}", e))
+                    })?;
             }
         }
 
@@ -518,35 +601,49 @@ impl GraphStorage {
 
     /// Get memory statistics
     pub async fn get_memory_stats(&self) -> MemoryResult<MemoryStats> {
-        let _permit = self.connection_semaphore.acquire().await
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
-        let mut total_query = self.graph.execute(query("MATCH (m:Memory) RETURN count(m) as total")).await
+        let mut total_query = self
+            .graph
+            .execute(query("MATCH (m:Memory) RETURN count(m) as total"))
+            .await
             .map_err(|e| MemoryError::Storage(format!("Stats query failed: {}", e)))?;
-        
+
         let total_memories = if let Ok(Some(row)) = total_query.next().await {
             row.get::<i64>("total").unwrap_or(0) as usize
         } else {
             0
         };
 
-        let mut contexts_query = self.graph.execute(query("MATCH (c:Context) RETURN count(c) as total")).await
+        let mut contexts_query = self
+            .graph
+            .execute(query("MATCH (c:Context) RETURN count(c) as total"))
+            .await
             .map_err(|e| MemoryError::Storage(format!("Context stats failed: {}", e)))?;
-        
+
         let total_contexts = if let Ok(Some(row)) = contexts_query.next().await {
             row.get::<i64>("total").unwrap_or(0) as usize
         } else {
             0
         };
 
-        let mut type_query = self.graph.execute(
-            query("MATCH (m:Memory) RETURN m.memory_type, count(*) as count")
-        ).await
-        .map_err(|e| MemoryError::Storage(format!("Type stats failed: {}", e)))?;
+        let mut type_query = self
+            .graph
+            .execute(query(
+                "MATCH (m:Memory) RETURN m.memory_type, count(*) as count",
+            ))
+            .await
+            .map_err(|e| MemoryError::Storage(format!("Type stats failed: {}", e)))?;
 
         let mut memory_by_type = HashMap::new();
         while let Ok(Some(row)) = type_query.next().await {
-            if let (Ok(mem_type), Ok(count)) = (row.get::<String>("m.memory_type"), row.get::<i64>("count")) {
+            if let (Ok(mem_type), Ok(count)) =
+                (row.get::<String>("m.memory_type"), row.get::<i64>("count"))
+            {
                 memory_by_type.insert(mem_type, count as usize);
             }
         }
@@ -558,7 +655,10 @@ impl GraphStorage {
 
         let mut top_contexts = Vec::new();
         while let Ok(Some(row)) = top_contexts_query.next().await {
-            if let (Ok(path), Ok(count)) = (row.get::<String>("c.path"), row.get::<i64>("c.memory_count")) {
+            if let (Ok(path), Ok(count)) = (
+                row.get::<String>("c.path"),
+                row.get::<i64>("c.memory_count"),
+            ) {
                 top_contexts.push((path, count as usize));
             }
         }
@@ -578,8 +678,11 @@ impl GraphStorage {
     /// Rebuild vector index from database
     async fn rebuild_vector_index(&self) -> MemoryResult<()> {
         info!("🔄 Rebuilding vector index from Neo4j...");
-        
-        let _permit = self.connection_semaphore.acquire().await
+
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
         let mut new_index = VectorIndex::new();
@@ -592,19 +695,31 @@ impl GraphStorage {
         .map_err(|e| MemoryError::Storage(format!("Index rebuild failed: {}", e)))?;
 
         while let Ok(Some(row)) = query_result.next().await {
-            if let (Ok(id_str), Ok(context_path), Ok(memory_type), Ok(importance), Ok(embedding_b64)) = (
+            if let (
+                Ok(id_str),
+                Ok(context_path),
+                Ok(memory_type),
+                Ok(importance),
+                Ok(embedding_b64),
+            ) = (
                 row.get::<String>("m.id"),
                 row.get::<String>("m.context_path"),
                 row.get::<String>("m.memory_type"),
                 row.get::<f64>("m.importance"),
-                row.get::<String>("m.embedding")
+                row.get::<String>("m.embedding"),
             ) {
                 if let Ok(memory_id) = Uuid::parse_str(&id_str) {
                     if let Ok(embedding_bytes) = BASE64.decode(&embedding_b64) {
                         if let Ok(embedding) = bincode::deserialize::<Vec<f32>>(&embedding_bytes) {
-                            new_index.add_memory(memory_id, embedding, context_path, memory_type, importance as f32);
+                            new_index.add_memory(
+                                memory_id,
+                                embedding,
+                                context_path,
+                                memory_type,
+                                importance as f32,
+                            );
                             processed_count += 1;
-                            
+
                             // Log progress every 100 memories
                             if processed_count % 100 == 0 {
                                 info!("📊 Processed {} memories...", processed_count);
@@ -614,7 +729,10 @@ impl GraphStorage {
                             error_count += 1;
                         }
                     } else {
-                        error!("❌ Failed to decode base64 embedding for memory: {}", id_str);
+                        error!(
+                            "❌ Failed to decode base64 embedding for memory: {}",
+                            id_str
+                        );
                         error_count += 1;
                     }
                 } else {
@@ -629,13 +747,16 @@ impl GraphStorage {
 
         // Replace the old index with the new one
         *self.vector_index.write() = new_index;
-        
-        info!("✅ Vector index rebuilt successfully: {} memories processed, {} errors", processed_count, error_count);
-        
+
+        info!(
+            "✅ Vector index rebuilt successfully: {} memories processed, {} errors",
+            processed_count, error_count
+        );
+
         if error_count > 0 {
             warn!("⚠️ Encountered {} errors during index rebuild", error_count);
         }
-        
+
         Ok(())
     }
 
@@ -648,62 +769,75 @@ impl GraphStorage {
         importance: f32,
     ) -> MemoryResult<()> {
         let mut index = self.vector_index.write();
-        index.add_memory(memory_id, embedding.to_vec(), context_path.to_string(), memory_type.to_string(), importance);
+        index.add_memory(
+            memory_id,
+            embedding.to_vec(),
+            context_path.to_string(),
+            memory_type.to_string(),
+            importance,
+        );
         Ok(())
     }
 
     async fn node_to_memory(&self, node: Node) -> MemoryResult<MemoryCell> {
-        let id = Uuid::parse_str(&node.get::<String>("id")
-            .map_err(|e| MemoryError::Storage(format!("Invalid memory ID: {}", e)))?)
-            .map_err(|e| MemoryError::Storage(format!("UUID parse error: {}", e)))?;
+        let id = Uuid::parse_str(
+            &node
+                .get::<String>("id")
+                .map_err(|e| MemoryError::Storage(format!("Invalid memory ID: {}", e)))?,
+        )
+        .map_err(|e| MemoryError::Storage(format!("UUID parse error: {}", e)))?;
 
-        let content = node.get::<String>("content")
+        let content = node
+            .get::<String>("content")
             .map_err(|e| MemoryError::Storage(format!("Missing content: {}", e)))?;
 
         // Handle optional fields with proper validation
-        let summary = node.get::<String>("summary")
-            .unwrap_or_else(|_| {
-                tracing::debug!("Summary not found for memory {}, using empty string", id);
-                String::new()
-            });
+        let summary = node.get::<String>("summary").unwrap_or_else(|_| {
+            tracing::debug!("Summary not found for memory {}, using empty string", id);
+            String::new()
+        });
 
-        let tags = node.get::<Vec<String>>("tags")
-            .unwrap_or_else(|_| {
-                tracing::debug!("Tags not found for memory {}, using empty vector", id);
-                Vec::new()
-            });
+        let tags = node.get::<Vec<String>>("tags").unwrap_or_else(|_| {
+            tracing::debug!("Tags not found for memory {}, using empty vector", id);
+            Vec::new()
+        });
 
-        let context_path = node.get::<String>("context_path")
-            .unwrap_or_else(|_| {
-                tracing::warn!("Context path not found for memory {}, using default", id);
-                "unknown".to_string()
-            });
+        let context_path = node.get::<String>("context_path").unwrap_or_else(|_| {
+            tracing::warn!("Context path not found for memory {}, using default", id);
+            "unknown".to_string()
+        });
 
         // Handle timestamps with validation
-        let created_timestamp = node.get::<i64>("created_at")
-            .unwrap_or_else(|_| {
-                tracing::warn!("Created timestamp not found for memory {}, using current time", id);
-                Utc::now().timestamp()
-            });
+        let created_timestamp = node.get::<i64>("created_at").unwrap_or_else(|_| {
+            tracing::warn!(
+                "Created timestamp not found for memory {}, using current time",
+                id
+            );
+            Utc::now().timestamp()
+        });
 
-        let accessed_timestamp = node.get::<i64>("last_accessed")
-            .unwrap_or_else(|_| {
-                tracing::debug!("Last accessed timestamp not found for memory {}, using created time", id);
-                created_timestamp
-            });
+        let accessed_timestamp = node.get::<i64>("last_accessed").unwrap_or_else(|_| {
+            tracing::debug!(
+                "Last accessed timestamp not found for memory {}, using created time",
+                id
+            );
+            created_timestamp
+        });
 
         let created_at = self.parse_timestamp_safe(created_timestamp, "created_at", id)?;
         let last_accessed = self.parse_timestamp_safe(accessed_timestamp, "last_accessed", id)?;
 
         // Handle numeric fields with validation
-        let importance = node.get::<f64>("importance")
+        let importance = node
+            .get::<f64>("importance")
             .unwrap_or_else(|_| {
                 tracing::debug!("Importance not found for memory {}, using default 0.5", id);
                 0.5
             })
             .clamp(0.0, 1.0) as f32;
 
-        let access_frequency = node.get::<i64>("access_frequency")
+        let access_frequency = node
+            .get::<i64>("access_frequency")
             .unwrap_or_else(|_| {
                 tracing::debug!("Access frequency not found for memory {}, using 0", id);
                 0
@@ -711,32 +845,37 @@ impl GraphStorage {
             .max(0) as u32;
 
         // Handle metadata with proper JSON validation
-        let metadata_str = node.get::<String>("metadata")
-            .unwrap_or_else(|_| {
-                tracing::debug!("Metadata not found for memory {}, using empty object", id);
-                "{}".to_string()
-            });
+        let metadata_str = node.get::<String>("metadata").unwrap_or_else(|_| {
+            tracing::debug!("Metadata not found for memory {}, using empty object", id);
+            "{}".to_string()
+        });
 
-        let metadata = serde_json::from_str(&metadata_str)
-            .map_err(|e| {
-                MemoryError::Storage(format!("Invalid metadata JSON for memory {}: {}", id, e))
-            })?;
+        let metadata = serde_json::from_str(&metadata_str).map_err(|e| {
+            MemoryError::Storage(format!("Invalid metadata JSON for memory {}: {}", id, e))
+        })?;
 
         // Parse memory type from stored string with comprehensive validation
-        let memory_type_str = node.get::<String>("memory_type")
-            .map_err(|_e| MemoryError::Storage(format!("Memory type field missing for memory: database integrity error")))?;
+        let memory_type_str = node.get::<String>("memory_type").map_err(|_e| {
+            MemoryError::Storage(format!(
+                "Memory type field missing for memory: database integrity error"
+            ))
+        })?;
 
         // Security: Limit memory type string size to prevent abuse
         if memory_type_str.len() > 1024 {
-            return Err(MemoryError::Storage("Memory type string exceeds maximum allowed length".to_string()));
+            return Err(MemoryError::Storage(
+                "Memory type string exceeds maximum allowed length".to_string(),
+            ));
         }
 
-        let memory_type = MemoryType::from_storage_string(&memory_type_str)
-            .map_err(|_| MemoryError::Storage("Invalid memory type format in database".to_string()))?;
+        let memory_type = MemoryType::from_storage_string(&memory_type_str).map_err(|_| {
+            MemoryError::Storage("Invalid memory type format in database".to_string())
+        })?;
 
         // Validate memory type data integrity
-        memory_type.validate()
-            .map_err(|_| MemoryError::Storage("Memory type failed validation checks".to_string()))?;
+        memory_type.validate().map_err(|_| {
+            MemoryError::Storage("Memory type failed validation checks".to_string())
+        })?;
 
         // Parse embedding with strict security and size limits
         let embedding = self.parse_embedding_secure(&node, id)?;
@@ -761,50 +900,54 @@ impl GraphStorage {
     fn parse_embedding_secure(&self, node: &Node, memory_id: Uuid) -> MemoryResult<Vec<f32>> {
         // Security limits for embeddings
         const MAX_EMBEDDING_B64_SIZE: usize = 50 * 1024; // 50KB base64 limit
-        const MAX_EMBEDDING_DIMENSIONS: usize = 4096;    // Reasonable dimension limit
+        const MAX_EMBEDDING_DIMENSIONS: usize = 4096; // Reasonable dimension limit
         const MAX_EMBEDDING_BYTES: usize = MAX_EMBEDDING_DIMENSIONS * 4; // f32 = 4 bytes
-        
-        let embedding_b64 = node.get::<String>("embedding")
-            .map_err(|_| {
-                tracing::warn!("No embedding field found for memory {}", memory_id);
-                MemoryError::Storage("Embedding field missing from database record".to_string())
-            })?;
+
+        let embedding_b64 = node.get::<String>("embedding").map_err(|_| {
+            tracing::warn!("No embedding field found for memory {}", memory_id);
+            MemoryError::Storage("Embedding field missing from database record".to_string())
+        })?;
 
         // Security: Prevent DoS via oversized base64 strings
         if embedding_b64.len() > MAX_EMBEDDING_B64_SIZE {
             return Err(MemoryError::Storage(format!(
-                "Embedding data too large: {} bytes (max: {})", 
-                embedding_b64.len(), MAX_EMBEDDING_B64_SIZE
+                "Embedding data too large: {} bytes (max: {})",
+                embedding_b64.len(),
+                MAX_EMBEDDING_B64_SIZE
             )));
         }
 
         // Decode base64 with size validation
-        let embedding_bytes = BASE64.decode(&embedding_b64)
-            .map_err(|e| {
-                tracing::error!("Base64 decode failed for memory {}: {}", memory_id, e);
-                MemoryError::Storage("Invalid base64 encoding in embedding data".to_string())
-            })?;
+        let embedding_bytes = BASE64.decode(&embedding_b64).map_err(|e| {
+            tracing::error!("Base64 decode failed for memory {}: {}", memory_id, e);
+            MemoryError::Storage("Invalid base64 encoding in embedding data".to_string())
+        })?;
 
         // Security: Validate decoded size before deserialization
         if embedding_bytes.len() > MAX_EMBEDDING_BYTES {
             return Err(MemoryError::Storage(format!(
                 "Decoded embedding too large: {} bytes (max: {})",
-                embedding_bytes.len(), MAX_EMBEDDING_BYTES
+                embedding_bytes.len(),
+                MAX_EMBEDDING_BYTES
             )));
         }
 
         // Safe deserialization with bounds checking
-        let embedding: Vec<f32> = bincode::deserialize(&embedding_bytes)
-            .map_err(|e| {
-                tracing::error!("Embedding deserialization failed for memory {}: {}", memory_id, e);
-                MemoryError::Storage("Corrupted embedding data in database".to_string())
-            })?;
+        let embedding: Vec<f32> = bincode::deserialize(&embedding_bytes).map_err(|e| {
+            tracing::error!(
+                "Embedding deserialization failed for memory {}: {}",
+                memory_id,
+                e
+            );
+            MemoryError::Storage("Corrupted embedding data in database".to_string())
+        })?;
 
         // Validate embedding dimensions and data quality
         if embedding.len() > MAX_EMBEDDING_DIMENSIONS {
             return Err(MemoryError::Storage(format!(
                 "Embedding has too many dimensions: {} (max: {})",
-                embedding.len(), MAX_EMBEDDING_DIMENSIONS
+                embedding.len(),
+                MAX_EMBEDDING_DIMENSIONS
             )));
         }
 
@@ -814,33 +957,53 @@ impl GraphStorage {
         }
 
         // Validate embedding values for sanity
-        let invalid_count = embedding.iter()
+        let invalid_count = embedding
+            .iter()
             .filter(|&&val| val.is_nan() || val.is_infinite())
             .count();
-            
+
         if invalid_count > 0 {
-            tracing::warn!("Embedding contains {} invalid values for memory {}", invalid_count, memory_id);
+            tracing::warn!(
+                "Embedding contains {} invalid values for memory {}",
+                invalid_count,
+                memory_id
+            );
             // Could choose to reject or sanitize - for now, warn but accept
         }
 
         // Check for suspicious patterns that might indicate attack vectors
         let zero_count = embedding.iter().filter(|&&val| val == 0.0).count();
         if zero_count == embedding.len() && embedding.len() > 10 {
-            tracing::warn!("Embedding is all zeros for memory {} - potential data corruption", memory_id);
+            tracing::warn!(
+                "Embedding is all zeros for memory {} - potential data corruption",
+                memory_id
+            );
         }
 
-        tracing::trace!("Successfully parsed embedding with {} dimensions for memory {}", 
-                       embedding.len(), memory_id);
+        tracing::trace!(
+            "Successfully parsed embedding with {} dimensions for memory {}",
+            embedding.len(),
+            memory_id
+        );
         Ok(embedding)
     }
 
     /// Helper to parse timestamps with validation
-    fn parse_timestamp_safe(&self, timestamp: i64, field_name: &str, memory_id: Uuid) -> MemoryResult<DateTime<Utc>> {
-        chrono::DateTime::from_timestamp(timestamp, 0)
-            .ok_or_else(|| {
-                tracing::error!("Invalid {} timestamp {} for memory {}", field_name, timestamp, memory_id);
-                MemoryError::Storage(format!("Invalid {} timestamp in database", field_name))
-            })
+    fn parse_timestamp_safe(
+        &self,
+        timestamp: i64,
+        field_name: &str,
+        memory_id: Uuid,
+    ) -> MemoryResult<DateTime<Utc>> {
+        chrono::DateTime::from_timestamp(timestamp, 0).ok_or_else(|| {
+            tracing::error!(
+                "Invalid {} timestamp {} for memory {}",
+                field_name,
+                timestamp,
+                memory_id
+            );
+            MemoryError::Storage(format!("Invalid {} timestamp in database", field_name))
+        })
     }
 
     /// Perform vector similarity search
@@ -848,35 +1011,50 @@ impl GraphStorage {
         &self,
         query_embedding: &[f32],
         limit: usize,
+        similarity_threshold: Option<f32>,
     ) -> MemoryResult<Vec<MemoryCell>> {
         use super::simd_search::cosine_similarity_simd;
-        
+
+        let threshold = similarity_threshold.unwrap_or(0.1); // Default to 0.1 if not specified
+        tracing::debug!("Vector search with threshold: {}", threshold);
+
         // Collect similarities first, then drop the lock
         let similarities = {
             let vector_index = self.vector_index.read();
             let mut similarities = Vec::new();
-            
+
             // Calculate similarities for all embeddings
             for (id, embedding) in &vector_index.embeddings {
                 let similarity = cosine_similarity_simd(embedding, query_embedding);
-                similarities.push((*id, similarity));
+                // CRITICAL: Only include results ABOVE threshold
+                if similarity >= threshold {
+                    similarities.push((*id, similarity));
+                    tracing::debug!("Memory {} has similarity: {}", id, similarity);
+                }
             }
-            
+
+            tracing::info!(
+                "Found {} memories above threshold {}",
+                similarities.len(),
+                threshold
+            );
             similarities
         }; // Lock is dropped here
-        
+
         // Sort by similarity descending
         let mut sorted_similarities = similarities;
-        sorted_similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+        sorted_similarities
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
         // Get top results
         let mut results = Vec::new();
-        for (id, _) in sorted_similarities.iter().take(limit) {
+        for (id, similarity) in sorted_similarities.iter().take(limit) {
+            tracing::debug!("Returning memory {} with similarity {}", id, similarity);
             if let Ok(memory) = self.get_memory(id).await {
                 results.push(memory);
             }
         }
-        
+
         Ok(results)
     }
 
@@ -892,21 +1070,23 @@ impl GraphStorage {
             RETURN related
             ORDER BY related.importance DESC
             LIMIT $limit
-            "#
+            "#,
         )
         .param("id", memory_id.to_string())
         .param("limit", limit as i64);
-        
-        let mut result = self.graph.execute(query).await
-            .map_err(|e| MemoryError::Storage(format!("Failed to find related memories: {}", e)))?;
-        
+
+        let mut result =
+            self.graph.execute(query).await.map_err(|e| {
+                MemoryError::Storage(format!("Failed to find related memories: {}", e))
+            })?;
+
         let mut memories = Vec::new();
         while let Ok(Some(row)) = result.next().await {
             if let Ok(memory) = self.parse_memory_from_row(&row).await {
                 memories.push(memory);
             }
         }
-        
+
         Ok(memories)
     }
 
@@ -916,13 +1096,16 @@ impl GraphStorage {
             r#"
             MATCH (m:Memory {id: $id})
             RETURN m
-            "#
+            "#,
         )
         .param("id", id.to_string());
-        
-        let mut result = self.graph.execute(query).await
+
+        let mut result = self
+            .graph
+            .execute(query)
+            .await
             .map_err(|e| MemoryError::Storage(format!("Failed to get memory: {}", e)))?;
-        
+
         if let Ok(Some(row)) = result.next().await {
             self.parse_memory_from_row(&row).await
         } else {
@@ -936,17 +1119,19 @@ impl GraphStorage {
             r#"
             MATCH (m:Memory {id: $id})
             DETACH DELETE m
-            "#
+            "#,
         )
         .param("id", id.to_string());
-        
-        self.graph.run(query).await
+
+        self.graph
+            .run(query)
+            .await
             .map_err(|e| MemoryError::Storage(format!("Failed to delete memory: {}", e)))?;
-        
+
         // Remove from vector index
         let mut vector_index = self.vector_index.write();
         vector_index.remove_memory(*id);
-        
+
         Ok(())
     }
 
@@ -957,19 +1142,22 @@ impl GraphStorage {
             MATCH (c:Context)
             RETURN c.path as path
             ORDER BY c.path
-            "#
+            "#,
         );
-        
-        let mut result = self.graph.execute(query).await
+
+        let mut result = self
+            .graph
+            .execute(query)
+            .await
             .map_err(|e| MemoryError::Storage(format!("Failed to list contexts: {}", e)))?;
-        
+
         let mut contexts = Vec::new();
         while let Ok(Some(row)) = result.next().await {
             if let Ok(path) = row.get::<String>("path") {
                 contexts.push(path);
             }
         }
-        
+
         Ok(contexts)
     }
 
@@ -980,20 +1168,23 @@ impl GraphStorage {
             MATCH (c:Context {path: $path})
             OPTIONAL MATCH (c)<-[:IN_CONTEXT]-(m:Memory)
             RETURN c, count(m) as memory_count
-            "#
+            "#,
         )
         .param("path", path);
-        
-        let mut result = self.graph.execute(query).await
+
+        let mut result = self
+            .graph
+            .execute(query)
+            .await
             .map_err(|e| MemoryError::Storage(format!("Failed to get context: {}", e)))?;
-        
+
         if let Ok(Some(row)) = result.next().await {
-            let node: neo4rs::Node = row.get("c")
+            let node: neo4rs::Node = row
+                .get("c")
                 .map_err(|e| MemoryError::Storage(format!("Failed to get context node: {}", e)))?;
-            
-            let memory_count: i64 = row.get("memory_count")
-                .unwrap_or(0);
-            
+
+            let memory_count: i64 = row.get("memory_count").unwrap_or(0);
+
             Ok(MemoryContext {
                 path: node.get::<String>("path").unwrap_or_default(),
                 name: node.get::<String>("name").unwrap_or_default(),
@@ -1023,51 +1214,62 @@ impl GraphStorage {
             RETURN m
             ORDER BY m.importance DESC, m.created_at DESC
             LIMIT $limit
-            "#
+            "#,
         )
         .param("context_path", context_path)
         .param("limit", limit as i64);
-        
-        let mut result = self.graph.execute(query).await
-            .map_err(|e| MemoryError::Storage(format!("Failed to get memories in context: {}", e)))?;
-        
+
+        let mut result = self.graph.execute(query).await.map_err(|e| {
+            MemoryError::Storage(format!("Failed to get memories in context: {}", e))
+        })?;
+
         let mut memories = Vec::new();
         while let Ok(Some(row)) = result.next().await {
             if let Ok(memory) = self.parse_memory_from_row(&row).await {
                 memories.push(memory);
             }
         }
-        
+
         Ok(memories)
     }
 
     /// Parse memory from Neo4j query row
-    /// 
+    ///
     /// Extracts a memory node from a query result row and converts it to a MemoryCell
     async fn parse_memory_from_row(&self, row: &neo4rs::Row) -> MemoryResult<MemoryCell> {
-        let node: Node = row.get("m")
-            .map_err(|e| MemoryError::Storage(format!("Failed to get memory node from row: {}", e)))?;
-        
+        let node: Node = row.get("m").map_err(|e| {
+            MemoryError::Storage(format!("Failed to get memory node from row: {}", e))
+        })?;
+
         self.node_to_memory(node).await
     }
 
     /// Get storage statistics
     pub async fn get_stats(&self) -> MemoryResult<StorageStats> {
-        let _permit = self.connection_semaphore.acquire().await
+        let _permit = self
+            .connection_semaphore
+            .acquire()
+            .await
             .map_err(|e| MemoryError::Storage(format!("Connection pool error: {}", e)))?;
 
-        let mut total_query = self.graph.execute(query("MATCH (m:Memory) RETURN count(m) as total")).await
+        let mut total_query = self
+            .graph
+            .execute(query("MATCH (m:Memory) RETURN count(m) as total"))
+            .await
             .map_err(|e| MemoryError::Storage(format!("Stats query failed: {}", e)))?;
-        
+
         let total_memories = if let Ok(Some(row)) = total_query.next().await {
             row.get::<i64>("total").unwrap_or(0) as usize
         } else {
             0
         };
 
-        let mut contexts_query = self.graph.execute(query("MATCH (c:Context) RETURN count(c) as total")).await
+        let mut contexts_query = self
+            .graph
+            .execute(query("MATCH (c:Context) RETURN count(c) as total"))
+            .await
             .map_err(|e| MemoryError::Storage(format!("Context stats failed: {}", e)))?;
-        
+
         let total_contexts = if let Ok(Some(row)) = contexts_query.next().await {
             row.get::<i64>("total").unwrap_or(0) as usize
         } else {
@@ -1095,42 +1297,61 @@ impl VectorIndex {
     }
 
     /// Add a memory to all relevant indices
-    /// 
+    ///
     /// Maintains consistency across all index structures:
     /// - Stores embedding vector
     /// - Updates context and type groupings
     /// - Maintains sorted importance index
     /// - Updates reverse lookup maps
-    fn add_memory(&mut self, id: Uuid, embedding: Vec<f32>, context_path: String, memory_type: String, importance: f32) {
+    fn add_memory(
+        &mut self,
+        id: Uuid,
+        embedding: Vec<f32>,
+        context_path: String,
+        memory_type: String,
+        importance: f32,
+    ) {
         // Store embedding vector
         self.embeddings.insert(id, embedding);
-        
+
         // Add to context index for context-based filtering
-        self.context_index.entry(context_path.clone()).or_default().push(id);
-        
+        self.context_index
+            .entry(context_path.clone())
+            .or_default()
+            .push(id);
+
         // Add to type index for type-based filtering
-        self.type_index.entry(memory_type.clone()).or_default().push(id);
-        
+        self.type_index
+            .entry(memory_type.clone())
+            .or_default()
+            .push(id);
+
         // Add to importance index (maintain descending order for ranking)
-        let pos = self.importance_index.binary_search_by(|(_, existing_importance)| {
-            // Sort descending: higher importance comes first
-            // Compare importance with existing, then reverse for descending order
-            importance.partial_cmp(existing_importance).unwrap_or(std::cmp::Ordering::Equal).reverse()
-        }).unwrap_or_else(|pos| pos);
+        let pos = self
+            .importance_index
+            .binary_search_by(|(_, existing_importance)| {
+                // Sort descending: higher importance comes first
+                // Compare importance with existing, then reverse for descending order
+                importance
+                    .partial_cmp(existing_importance)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .reverse()
+            })
+            .unwrap_or_else(|pos| pos);
         self.importance_index.insert(pos, (id, importance));
-        
+
         // Store reverse mappings for efficient lookups during similarity search
         self.memory_context_map.insert(id, context_path);
         self.memory_type_map.insert(id, memory_type);
     }
 
     /// Remove memory from all indices efficiently
-    /// 
+    ///
     /// Uses reverse mappings to avoid expensive iterations
     fn remove_memory(&mut self, id: Uuid) {
         // Remove primary embedding
         self.embeddings.remove(&id);
-        
+
         // Remove from context index using reverse mapping
         if let Some(context_path) = self.memory_context_map.remove(&id) {
             if let Some(context_ids) = self.context_index.get_mut(&context_path) {
@@ -1141,7 +1362,7 @@ impl VectorIndex {
                 }
             }
         }
-        
+
         // Remove from type index using reverse mapping (O(1) instead of O(n))
         if let Some(memory_type) = self.memory_type_map.remove(&id) {
             if let Some(type_ids) = self.type_index.get_mut(&memory_type) {
@@ -1152,9 +1373,10 @@ impl VectorIndex {
                 }
             }
         }
-        
+
         // Remove from importance index
-        self.importance_index.retain(|(memory_id, _)| *memory_id != id);
+        self.importance_index
+            .retain(|(memory_id, _)| *memory_id != id);
     }
 
     /// Get total number of memories in the index
@@ -1163,11 +1385,11 @@ impl VectorIndex {
     }
 
     /// Comprehensive validation of index consistency
-    /// 
+    ///
     /// Verifies that all indices are synchronized and contain consistent data
     fn validate_consistency(&self) -> Result<(), String> {
         let embedding_count = self.embeddings.len();
-        
+
         // Check size consistency across all maps
         if self.memory_context_map.len() != embedding_count {
             return Err(format!(
@@ -1176,7 +1398,7 @@ impl VectorIndex {
                 embedding_count
             ));
         }
-        
+
         if self.memory_type_map.len() != embedding_count {
             return Err(format!(
                 "Type map size {} doesn't match embeddings size {}",
@@ -1201,7 +1423,7 @@ impl VectorIndex {
                 return Err(format!("Orphaned entry in context map: {}", id));
             }
         }
-        
+
         for &id in self.memory_type_map.keys() {
             if !self.embeddings.contains_key(&id) {
                 return Err(format!("Orphaned entry in type map: {}", id));
@@ -1211,14 +1433,14 @@ impl VectorIndex {
         // Validate forward indices contain all memories
         let context_memory_count: usize = self.context_index.values().map(|v| v.len()).sum();
         let type_memory_count: usize = self.type_index.values().map(|v| v.len()).sum();
-        
+
         if context_memory_count != embedding_count {
             return Err(format!(
                 "Context index contains {} memories but should contain {}",
                 context_memory_count, embedding_count
             ));
         }
-        
+
         if type_memory_count != embedding_count {
             return Err(format!(
                 "Type index contains {} memories but should contain {}",
@@ -1237,8 +1459,10 @@ impl VectorIndex {
 
         // Check importance index is properly sorted (descending)
         for i in 1..self.importance_index.len() {
-            if self.importance_index[i-1].1 < self.importance_index[i].1 {
-                return Err("Importance index is not properly sorted in descending order".to_string());
+            if self.importance_index[i - 1].1 < self.importance_index[i].1 {
+                return Err(
+                    "Importance index is not properly sorted in descending order".to_string(),
+                );
             }
         }
 
@@ -1258,10 +1482,10 @@ impl VectorIndex {
     fn compact(&mut self) {
         // Remove empty context entries
         self.context_index.retain(|_, ids| !ids.is_empty());
-        
-        // Remove empty type entries  
+
+        // Remove empty type entries
         self.type_index.retain(|_, ids| !ids.is_empty());
-        
+
         // Shrink vectors to fit actual content
         self.importance_index.shrink_to_fit();
         for ids in self.context_index.values_mut() {
@@ -1272,4 +1496,3 @@ impl VectorIndex {
         }
     }
 }
-

@@ -57,7 +57,7 @@ class EmbeddingService:
     # Максимальный контекст модели
     MAX_CONTEXT_TOKENS = 2048
     
-    def __init__(self, model_path: str, max_workers: int = 4, default_dimension: int = 768, cache_size: int = 1000):
+    def __init__(self, model_path: str, max_workers: int = 4, default_dimension: int = 512, cache_size: int = 1000):
         """
         Инициализация optimized EmbeddingGemma service
         
