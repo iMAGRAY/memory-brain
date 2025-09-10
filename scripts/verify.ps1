@@ -6,6 +6,18 @@ Write-Host '== AI Memory Service: Deterministic Verification (Windows) ==' -Fore
 
 Set-Location (Join-Path $PSScriptRoot '..')
 
+# Global timeout guard (seconds)
+$GLOBAL_TIMEOUT_SEC = [int]([Environment]::GetEnvironmentVariable('VERIFY_TIMEOUT_SEC'))
+if (-not $GLOBAL_TIMEOUT_SEC -or $GLOBAL_TIMEOUT_SEC -le 0) { $GLOBAL_TIMEOUT_SEC = 600 }
+$__verifyStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+function Assert-GlobalTimeout {
+  if ($__verifyStopwatch.Elapsed.TotalSeconds -ge $GLOBAL_TIMEOUT_SEC) {
+    Write-Host ("Global timeout reached ({0}s). Aborting verify." -f $GLOBAL_TIMEOUT_SEC) -ForegroundColor Red
+    try { if ($proc -and $proc.Id) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } } catch {}
+    exit 124
+  }
+}
+
 # 1) Ensure embedding server on :8090 (prefer REAL server, not mocks)
 Write-Host '[1/6] Ensuring embedding server on :8090'
 $embedUrl = $env:EMBEDDING_SERVER_URL
@@ -27,7 +39,9 @@ if (-not $tcp) {
     throw 'embedding_server.py not found and :8090 not listening. Please start real embedding server or set EMBEDDING_SERVER_URL.'
   }
 }
-try { (Invoke-WebRequest -UseBasicParsing ($embedUrl.TrimEnd('/') + '/health')).Content | Write-Output } catch { throw 'Embedding server not responding' }
+Assert-GlobalTimeout
+Assert-GlobalTimeout
+try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 ($embedUrl.TrimEnd('/') + '/health')).Content | Write-Output } catch { throw 'Embedding server not responding' }
 
 # 2) Ensure neo4j-test container
 Write-Host '[2/6] Ensuring neo4j-test container'
@@ -40,6 +54,7 @@ if (-not $neo) {
 
 # 3) Build service (release)
 Write-Host '[3/6] Building (release)'
+Assert-GlobalTimeout
 cargo build --release | Out-Null
 
 # 4) Start memory-server
@@ -62,8 +77,9 @@ Write-Host ("PID={0}" -f $proc.Id)
 # 5) Wait for health up to 30s
 $ready = $false
 for ($i=0; $i -lt 30; $i++) {
+  Assert-GlobalTimeout
   try {
-    $null = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/health'
+    $null = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 'http://127.0.0.1:8080/health'
     $ready = $true
     break
   } catch { Start-Sleep -Seconds 1 }
@@ -76,51 +92,63 @@ if (-not $ready) {
 
 # 6) API checks
 Write-Host 'HEALTH:' -ForegroundColor Yellow
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/health').Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/health').Content | Write-Output
 
 Write-Host 'STORE:' -ForegroundColor Yellow
-$store = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/memory' -Method Post -ContentType 'application/json' -Body '{"content":"Deterministic test memory FINAL","context_hint":"tests/deterministic"}'
+Assert-GlobalTimeout
+$store = Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/memory' -Method Post -ContentType 'application/json' -Body '{"content":"Deterministic test memory FINAL","context_hint":"tests/deterministic"}'
 $store.Content | Write-Output
 
 Write-Host 'SEARCH (primary):' -ForegroundColor Yellow
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/search' -Method Post -ContentType 'application/json' -Body '{"query":"Deterministic test memory FINAL","limit":5}').Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/search' -Method Post -ContentType 'application/json' -Body '{"query":"Deterministic test memory FINAL","limit":5}').Content | Write-Output
 
 Write-Host 'SEARCH (compat):' -ForegroundColor Yellow
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/memories/search' -Method Post -ContentType 'application/json' -Body '{"query":"Deterministic test memory FINAL","limit":5}').Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/memories/search' -Method Post -ContentType 'application/json' -Body '{"query":"Deterministic test memory FINAL","limit":5}').Content | Write-Output
 
 Write-Host 'RECENT:' -ForegroundColor Yellow
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/memories/recent?limit=5').Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/memories/recent?limit=5').Content | Write-Output
 
 Write-Host 'CONTEXTS:' -ForegroundColor Yellow
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/contexts').Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/contexts').Content | Write-Output
 
 Write-Host 'STATS:' -ForegroundColor Yellow
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/stats').Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/stats').Content | Write-Output
 
 # 7) Synthetic test: 50 similar fragments -> consolidate -> tick -> stats should show fewer active
 Write-Host '[7/6] Synthetic test (50 items + consolidate + tick)' -ForegroundColor Cyan
 
 # Seed 50 similar items
 for ($i=1; $i -le 50; $i++) {
+  if (($i % 10) -eq 0) { Assert-GlobalTimeout }
   $body = @{ content = "Synthetic repeated content number $i about deterministic consolidation test"; context_hint = "tests/synthetic" } | ConvertTo-Json -Compress
   $null = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/memory' -Method Post -ContentType 'application/json' -Body $body
 }
 
 # Stats before
-$statsBefore = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/stats' | Select-Object -ExpandProperty Content | ConvertFrom-Json
+Assert-GlobalTimeout
+$statsBefore = Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/stats' | Select-Object -ExpandProperty Content | ConvertFrom-Json
 $before = [int]$statsBefore.statistics.active_memories
 Write-Host ("Active before: {0}" -f $before)
 
 # Consolidate
 $consBody = @{ context = 'tests/synthetic'; similarity_threshold = 0.92; max_items = 120 } | ConvertTo-Json -Compress
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/maintenance/consolidate' -Method Post -ContentType 'application/json' -Body $consBody).Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/maintenance/consolidate' -Method Post -ContentType 'application/json' -Body $consBody).Content | Write-Output
 
 # Tick (virtual days)
 $tickBody = @{ ticks = 5 } | ConvertTo-Json -Compress
-(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/maintenance/tick' -Method Post -ContentType 'application/json' -Body $tickBody).Content | Write-Output
+Assert-GlobalTimeout
+(Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/maintenance/tick' -Method Post -ContentType 'application/json' -Body $tickBody).Content | Write-Output
 
 # Stats after
-$statsAfter = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8080/stats' | Select-Object -ExpandProperty Content | ConvertFrom-Json
+Assert-GlobalTimeout
+$statsAfter = Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 'http://127.0.0.1:8080/stats' | Select-Object -ExpandProperty Content | ConvertFrom-Json
 $after = [int]$statsAfter.statistics.active_memories
 Write-Host ("Active after:  {0}" -f $after)
 
@@ -130,6 +158,29 @@ if ($after -lt $before) {
   Write-Host ("ERROR: Active memories did not decrease (before={0}, after={1})" -f $before, $after) -ForegroundColor Red
   Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
   exit 3
+}
+
+try {
+  $MIN_P5 = if ($env:MIN_P5) { [double]$env:MIN_P5 } else { 0.95 }
+  $MIN_MRR = if ($env:MIN_MRR) { [double]$env:MIN_MRR } else { 0.95 }
+  $MIN_NDCG = if ($env:MIN_NDCG) { [double]$env:MIN_NDCG } else { 0.95 }
+  Write-Host "[7.1/6] Quality evaluation with strict gates (P5=$MIN_P5, MRR=$MIN_MRR, nDCG=$MIN_NDCG)" -ForegroundColor Yellow
+  $args = @(
+    'scripts/quality_eval.py', '--host','127.0.0.1','--port','8080','--k','5',
+    '--dataset','datasets/quality/dataset.json','--relevance','content',
+    '--out','reports/quality_report.json', '--min-p5',"$MIN_P5",'--min-mrr',"$MIN_MRR",'--min-ndcg',"$MIN_NDCG"
+  )
+  $p = Start-Process -FilePath python -ArgumentList $args -NoNewWindow -PassThru
+  $p.WaitForExit()
+  if ($p.ExitCode -ne 0) {
+    Write-Host "ERROR: Quality gates failed" -ForegroundColor Red
+    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    exit 4
+  }
+} catch {
+  Write-Host "Quality eval failed: $($_.Exception.Message)" -ForegroundColor Red
+  Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+  exit 4
 }
 
 Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue

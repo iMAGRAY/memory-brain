@@ -140,7 +140,7 @@ impl AIBrain {
     fn generate_summary(&self, content: &str) -> String {
         // Simple implementation - in production would use LLM
         let words: Vec<&str> = content.split_whitespace().collect();
-        let summary_len = (words.len() / 10).max(10).min(50);
+        let summary_len = (words.len() / 10).clamp(10, 50);
         words[..summary_len.min(words.len())].join(" ") + "..."
     }
 
@@ -260,7 +260,7 @@ impl AIBrain {
         // Simple pattern matching (in production would use NER model)
         for word in content.split_whitespace() {
             // Check for capitalized words (potential names/places)
-            if word.chars().next().map_or(false, |c| c.is_uppercase()) {
+            if word.chars().next().is_some_and(|c| c.is_uppercase()) {
                 let entity_type = if word.ends_with("Inc.") || word.ends_with("Corp.") {
                     EntityType::Organization
                 } else if word.parse::<f64>().is_ok() {
@@ -331,7 +331,7 @@ impl AIBrain {
         }
 
         // Clamp score
-        score = score.max(-1.0).min(1.0);
+        score = score.clamp(-1.0, 1.0);
 
         // Detect emotions
         let mut emotions = Vec::new();

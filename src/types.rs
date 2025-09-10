@@ -375,6 +375,21 @@ pub struct RecalledMemory {
     pub discovered_contexts: Vec<String>,
 }
 
+// ===== Analytics & Metrics Types =====
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GraphMetrics {
+    pub total_memories: usize,
+    pub total_contexts: usize,
+    pub avg_related_degree: f64,
+    pub connected_ratio: f64,
+    pub contexts_entropy: f64,
+    pub two_hop_expansion: f64,
+    pub avg_closure: f64,
+    pub avg_shortest_path: f64,
+}
+
+
 /// Analysis result from AI brain processing content
 /// 
 /// When storing new memories, the AI brain analyzes content
@@ -679,11 +694,7 @@ impl Default for MemoryQuery {
     }
 }
 
-impl Default for Priority {
-    fn default() -> Self {
-        Priority::Medium
-    }
-}
+// Default for Priority handled explicitly by callers where needed; enum defined once below.
 
 impl MemoryCell {
     /// Create a new memory cell with default values
@@ -748,7 +759,7 @@ impl MemoryContext {
 
     /// Update context activity
     pub fn update_activity(&mut self, delta: f32) {
-        self.activity_level = (self.activity_level + delta).max(0.0).min(1.0);
+        self.activity_level = (self.activity_level + delta).clamp(0.0, 1.0);
         self.last_activity = Utc::now();
     }
 }

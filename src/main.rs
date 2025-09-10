@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::env;
 use std::path::Path;
 use tracing::{info, warn, error};
-use tracing_subscriber;
+// tracing_subscriber is used via fully qualified path; no need to import as a single item
 use anyhow::Result;
 use tokio::signal;
 use tokio::time::{sleep, Duration};
@@ -245,6 +245,8 @@ async fn main() -> Result<()> {
     info!("✅ Memory Service initialized (embedding_dimension={})",
         config.embedding.embedding_dimension.unwrap_or(512)
     );
+    // Update metrics: embedding service availability and dimension source
+    ai_memory_service::metrics::set_service_available("embedding", memory_service.embedding_available());
 
     // Флаг принудительного отключения оркестратора
     let orchestrator_force_disabled = env_flag("ORCHESTRATOR_FORCE_DISABLE", false);
@@ -399,7 +401,7 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         // Если бинды происходят на 0.0.0.0 или ::, пробуем локалхосты
         let mut candidates: Vec<String> = vec![host_for_wait.clone()];
-        if host_for_wait == "0.0.0.0" || host_for_wait == "127.0.0.1" || host_for_wait == "" || host_for_wait == "*" {
+        if host_for_wait == "0.0.0.0" || host_for_wait == "127.0.0.1" || host_for_wait.is_empty() || host_for_wait == "*" {
             candidates.push("127.0.0.1".to_string());
             candidates.push("localhost".to_string());
         }

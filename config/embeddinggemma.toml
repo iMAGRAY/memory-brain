@@ -30,8 +30,8 @@ required_files = [
 min_model_size = 1000000  # 1MB minimum
 
 [embedding]
-# Embedding dimensions
-default_dimension = 768
+# Embedding dimensions (Matryoshka: 768 native, service uses 512 by default)
+default_dimension = 512
 matryoshka_dimensions = [768, 512, 256, 128]
 
 # Context settings

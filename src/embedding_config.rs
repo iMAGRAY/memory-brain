@@ -11,7 +11,7 @@ use tracing::{debug, info, warn};
 static HOME_DIR_CACHE: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 fn get_home_dir() -> Option<PathBuf> {
-    HOME_DIR_CACHE.get_or_init(|| dirs::home_dir()).clone()
+    HOME_DIR_CACHE.get_or_init(dirs::home_dir).clone()
 }
 
 /// EmbeddingGemma model configuration
@@ -167,10 +167,10 @@ impl EmbeddingConfig {
         
         // Add configured paths
         for path_str in &self.model.local_search_paths {
-            let path = if path_str.starts_with("~/") {
+            let path = if let Some(stripped) = path_str.strip_prefix("~/") {
                 // Expand home directory using cached value
                 if let Some(home) = get_home_dir() {
-                    home.join(&path_str[2..])
+                    home.join(stripped)
                 } else {
                     continue; // Skip invalid path
                 }

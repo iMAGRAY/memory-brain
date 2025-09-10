@@ -1,4 +1,4 @@
-# plan.md — текущий план внедрения maintenance и алиасов
+# plan.md — актуальный план (реальные эмбеддинги, качество, maintenance)
 
 - [x] Реализовать POST /maintenance/decay (возвращает количество обновлённых узлов)
 - [x] Реализовать POST /maintenance/consolidate (context/similarity_threshold/max_items)
@@ -11,3 +11,11 @@
 - [x] Согласовать 512D Matryoshka (усечение векторов в store/search)
 - [x] Протестировать совместимость curl‑скриптами и e2e‑сценариями (скрипты/scripts/verify.sh)
 - [x] Оценить стабильность (детерминизм поиска, повторяемость hash) на 10 повторов
+- [x] Убрать любые зависимости от mock‑эмбеддинга; запускать локальный embedding_server.py на :8091 в verify
+- [x] Встроить quality_eval (P@5, MRR, nDCG) и зафиксировать минимальные пороги
+- [x] Гибридное ранжирование (вектор + TF‑IDF) для устойчивости при слабых векторах
+
+Дополнительно (live‑метрики):
+- [x] Добавить scripts/metrics_collector.py (стрим /metrics + /stats → JSONL)
+- [x] Добавить scripts/quality_stream.py (периодическая оценка P@k/MRR/nDCG)
+- [x] Интегрировать опциональный запуск коллекторов в verify (ENABLE_METRICS_STREAM=1)

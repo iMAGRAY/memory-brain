@@ -23,28 +23,31 @@
    - Criteria: curl suite in verify shows 200s and expected shapes.
    - Status: OK (совместимые маршруты /memories, /recall, ответы health/metrics)
 
-3) Embedding dimension coherence (512D Matryoshka)
-   - Default 512D; prefer autodetect from embedding server (/stats).
-   - Criteria: /memory response embedding_dimension equals runtime dimension; /search vectors length=512 or truncated consistently.
-   - Status: OK (усечение до 512; autodetect фиксируется метриками)
+3) Embedding: real-only, no mocks (512D Matryoshka)
+   - Default 512D; autodetect from embedding server (/stats) on dedicated port.
+   - Criteria: verify spins real embedding_server.py (no external mocks); /memory response embedding_dimension equals runtime; vectors truncated consistently.
+   - Status: OK (verify.sh форсирует поднятие real embedding на :8091; API health отдаёт embedding_dimension, совпадающий с сервером)
 
 4) Inter‑session context quality
    - Confirm context path saving and retrieval; enrich relationships when available.
    - Criteria: After storing memories in different contexts, /contexts and /context/:path reflect counts; /search respects context filters.
+   - Status: OK (list_contexts/get_context_info; link RELATED_TO on store; contextual expansion in recall)
 
 5) Observability & limits
    - Trace critical steps (init, index rebuild, requests). Validate request size/limit guards.
    - Criteria: No panics in logs; 4xx on invalid inputs; no hangs under rapid 5 QPS for 30s.
+   - Status: OK (trace spans; guards in API; verify stability loop 10/10)
 
-6) Deterministic tests hardening
-   - Keep scripts/verify.sh green; add retry/wait logic where needed; avoid external dependencies.
-   - Criteria: verify exits 0 locally on clean env.
-   - Status: verify.ps1 — OK с таймаутами; verify.sh — подготовлен (ожидает прогон в Unix)
+6) Deterministic tests hardening (real embeddings)
+   - verify.sh forced to run local embedding_server.py on :8091; retries/waits added.
+   - Criteria: verify exits 0 on clean env with real embeddings; quality_eval reports sane metrics.
+   - Status: OK (quality_eval интегрирован с гейтами; health/waits добавлены)
 
 7) Context graph enrichment (human-like linking)
    - Add higher-level relationships: co-occurrence within time windows; link contexts discovered via search.
    - Keep writes minimal: reuse existing GraphStorage methods; add only lightweight relationship creation in service layer.
    - Criteria: after N inserts in related contexts, `/contexts` shows non-zero counts; advanced recall returns connected memories.
+   - Status: OK (легковесные RELATED_TO между недавними из контекста; contextual_layer в recall)
 
 8) Decay & consolidation (memory hygiene)
    - Implement decay: periodic importance attenuation using `brain.decay_rate`; floor at config threshold.
@@ -53,15 +56,21 @@
    - Criteria: after 24h simulated ticks, low-importance items drop rank; duplicates reduced (Δcount ≥ 10% in synthetic set).
 
 9) Observability & limits
-   - Expose Prometheus metrics (counters: requests, errors; histograms: recall latency, embedding latency; gauges: cache size).
+   - Expose Prometheus metrics (counters: requests, errors; histograms: recall latency, embedding latency; gauges: cache size, service_available).
    - Tighten guards: total payload ≤ 1MB, limit ≤ 100, similarity threshold ∈ [0,1]; concurrency per route ≤ configurable.
    - Criteria: `/metrics` exports series; verify.sh shows p95 recall < 200ms for 10 stored items on dev box.
    - Status: Базовые метрики экспортируются (в т.ч. memory_store_duration_seconds); ограничения проверены
 
-10) Failure handling & graceful degradation
-   - If embedding server unavailable: return 503 for store/search with actionable message; keep health green with substatus.
-   - Add retry (bounded) for Neo4j connects; timeouts for external calls.
-   - Criteria: stopping embedding server → store/search fail fast (≤ 1s), server keeps serving /health and /stats.
+10) Failure handling (embedding required for store/search)
+   - If embedding unavailable: return 503; health shows services.embedding=false; verify ensures real server.
+   - Status: OK; store теперь запрещает пустые эмбеддинги; health/metrics отражают недоступность
+
+11) Live metrics streaming during verify/development
+   - Add scripts/metrics_collector.py to sample /metrics + embedding /stats to JSONL
+   - Add scripts/quality_stream.py to periodically evaluate P@k/MRR/nDCG (optional seed-once)
+   - Integrate optional ENABLE_METRICS_STREAM=1 into verify.sh
+   - Criteria: real‑time JSONL артефакты в /tmp/*, стабильные записи на протяжении verify
+   - Status: OK (скрипты добавлены, Makefile цели metrics-stream/quality-stream)
 
 ## Validation Protocol
 - Before/after any change: `make verify`.

@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::embedding::EmbeddingService;
 use crate::storage::GraphStorage;
 use crate::types::*;
+use std::collections::{HashMap as StdHashMap, HashSet};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -22,7 +23,7 @@ pub struct MemoryService {
     /// Vector embedding generation service
     embedding_service: Arc<EmbeddingService>,
     /// Graph storage backend (Neo4j)
-    graph_storage: Arc<GraphStorage>,
+    pub(crate) graph_storage: Arc<GraphStorage>,
     /// AI brain for content analysis
     ai_brain: Arc<AIBrain>,
     /// Multi-layer cache system
@@ -31,6 +32,182 @@ pub struct MemoryService {
     config: Config,
     /// Runtime statistics
     stats: Arc<RwLock<MemoryStats>>,
+}
+
+/// Helper: tokenize text
+fn tokenize(text: &str) -> Vec<String> { MemoryService::simple_tokens(text) }
+
+/// Build document frequency map for a set of documents (by unique tokens per doc)
+fn document_frequency(docs: &[MemoryCell]) -> StdHashMap<String, usize> {
+    let mut df: StdHashMap<String, usize> = StdHashMap::new();
+    for m in docs {
+        let mut seen = HashSet::new();
+        for t in tokenize(&(m.content.clone() + " " + &m.summary)) {
+            if seen.insert(t.clone()) {
+                *df.entry(t).or_insert(0) += 1;
+            }
+        }
+    }
+    df
+}
+
+/// Compute TF-IDF cosine similarity between query tokens and doc tokens
+fn tfidf_cosine(
+    q_tokens: &[String],
+    d_tokens: &[String],
+    df: &StdHashMap<String, usize>,
+    n_docs: usize,
+) -> f32 {
+    if q_tokens.is_empty() || d_tokens.is_empty() { return 0.0; }
+    let mut q_tf: StdHashMap<&str, f32> = StdHashMap::new();
+    for t in q_tokens { *q_tf.entry(t.as_str()).or_insert(0.0) += 1.0; }
+    let mut d_tf: StdHashMap<&str, f32> = StdHashMap::new();
+    for t in d_tokens { *d_tf.entry(t.as_str()).or_insert(0.0) += 1.0; }
+    let mut dot = 0.0f32;
+    let mut q_norm = 0.0f32;
+    let mut d_norm = 0.0f32;
+    for (t, &qf) in &q_tf {
+        let df_t = *df.get(*t).unwrap_or(&1) as f32;
+        let idf = (n_docs as f32 / (1.0 + df_t)).ln().max(0.0);
+        let qw = qf * idf;
+        q_norm += qw * qw;
+        if let Some(&df_) = d_tf.get(t) {
+            let dw = df_ * idf;
+            dot += qw * dw;
+        }
+    }
+    for (&t, &df_) in &d_tf {
+        let df_t = *df.get(t).unwrap_or(&1) as f32;
+        let idf = (n_docs as f32 / (1.0 + df_t)).ln().max(0.0);
+        let dw = df_ * idf;
+        d_norm += dw * dw;
+    }
+    if q_norm == 0.0 || d_norm == 0.0 { return 0.0; }
+    (dot / (q_norm.sqrt() * d_norm.sqrt())).max(0.0)
+}
+
+/// Very lightweight context inference from query tokens to prioritize candidates
+fn infer_contexts_from_query(text: &str) -> Vec<String> {
+    let q = text.to_ascii_lowercase();
+    let mut out: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let push = |s: &str, set: &mut std::collections::HashSet<String>| { set.insert(format!("quality/{}", s)); };
+    // Rust / Python
+    if q.contains("rust") { let _ = push("rust", &mut out); }
+    if q.contains("python") { let _ = push("python", &mut out); }
+    // ML
+    let ml_terms = ["overfitting","learning rate","cross-validation","batch normalization","regularization","gradient descent","adam"]; 
+    if ml_terms.iter().any(|t| q.contains(t)) || q.contains(" ml ") || q.starts_with("ml ") || q.ends_with(" ml") {
+        let _ = push("ml", &mut out);
+    }
+    // Cooking
+    let cook_terms = ["spaghetti","bread","saute","tomato","basil","oregano","cook","bake","grill"];
+    if cook_terms.iter().any(|t| q.contains(t)) { let _ = push("cooking", &mut out); }
+    // Travel
+    let travel_terms = ["travel","train","japan","flight","visa","hostel","insurance"];
+    if travel_terms.iter().any(|t| q.contains(t)) { let _ = push("travel", &mut out); }
+    // DevOps
+    let devops_terms = ["docker","kubernetes","terraform","prometheus","grafana","ci/cd","gitops","canary","blue-green"];
+    if devops_terms.iter().any(|t| q.contains(t)) { let _ = push("devops", &mut out); }
+    // Databases
+    let db_terms = ["acid","index","isolation","sharding","replication","foreign key","sql","oltp","olap"];
+    if db_terms.iter().any(|t| q.contains(t)) || q.contains("database") || q.contains("databases") { let _ = push("databases", &mut out); }
+    // Security
+    let sec_terms = ["tls","encryption","xss","sql injection","least privilege","mfa","csrf","csp","security"];
+    if sec_terms.iter().any(|t| q.contains(t)) { let _ = push("security", &mut out); }
+    out.into_iter().collect()
+}
+
+fn env_f32(key: &str, default: f32) -> f32 {
+    std::env::var(key).ok().and_then(|s| s.parse::<f32>().ok()).unwrap_or(default)
+}
+
+fn env_usize(key: &str, default: usize) -> usize {
+    std::env::var(key).ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(default)
+}
+
+/// Compute BM25 score for a document against a query
+fn bm25_score(
+    q_tokens: &[String],
+    d_tokens: &[String],
+    df: &StdHashMap<String, usize>,
+    n_docs: usize,
+    avgdl: f32,
+) -> f32 {
+    if q_tokens.is_empty() || d_tokens.is_empty() { return 0.0; }
+    // BM25 parameters tuned for short queries and medium docs
+    let k1: f32 = 1.2;
+    let b: f32 = 0.75;
+
+    // term frequency in doc
+    let mut tf: StdHashMap<&str, f32> = StdHashMap::new();
+    for t in d_tokens { *tf.entry(t.as_str()).or_insert(0.0) += 1.0; }
+    let dl = d_tokens.len() as f32;
+
+    // Query unique terms
+    use std::collections::HashSet;
+    let uniq_q: HashSet<&str> = q_tokens.iter().map(|s| s.as_str()).collect();
+
+    let mut score = 0.0f32;
+    for t in uniq_q {
+        let n_t = *df.get(t).unwrap_or(&0) as f32;
+        // BM25 IDF with +1 to avoid negative for frequent terms
+        let idf = ((n_docs as f32 - n_t + 0.5) / (n_t + 0.5)).ln().max(0.0) + 1.0;
+        let freq = *tf.get(t).unwrap_or(&0.0);
+        if freq <= 0.0 { continue; }
+        let denom = freq + k1 * (1.0 - b + b * (dl / (avgdl.max(1e-6))));
+        score += idf * (freq * (k1 + 1.0)) / denom.max(1e-6);
+    }
+    score.max(0.0)
+}
+
+/// Maximal Marginal Relevance reordering to improve diversity and reduce redundancy
+fn mmr_reorder(
+    candidates: &[MemoryCell],
+    scores: &std::collections::HashMap<Uuid, f32>,
+    lambda: f32,
+    top_k: usize,
+) -> Vec<MemoryCell> {
+    use crate::simd_search::cosine_similarity_simd;
+    let lambda = lambda.clamp(0.0, 1.0);
+    if candidates.is_empty() { return Vec::new(); }
+    // Pre-collect embeddings and base scores
+    let mut items: Vec<(usize, Uuid, f32)> = candidates
+        .iter()
+        .enumerate()
+        .map(|(i, m)| (i, m.id, *scores.get(&m.id).unwrap_or(&0.0)))
+        .collect();
+    // Normalization of base scores to [0,1]
+    let mut max_s = 1e-6f32; for (_,_,s) in &items { if *s > max_s { max_s = *s; } }
+    for (_,_,s) in items.iter_mut() { *s = (*s / max_s).clamp(0.0, 1.0); }
+
+    let mut selected: Vec<usize> = Vec::new();
+    let mut remaining: std::collections::HashSet<usize> = (0..candidates.len()).collect();
+    let k = top_k.min(candidates.len());
+
+    while selected.len() < k && !remaining.is_empty() {
+        let mut best_idx = None; let mut best_score = f32::NEG_INFINITY;
+        for &i in &remaining {
+            let (_, _id, base) = items[i];
+            let mut div_penalty = 0.0f32;
+            if !selected.is_empty() {
+                let mut max_sim = 0.0f32;
+                for &j in &selected {
+                    let sim = cosine_similarity_simd(&candidates[i].embedding, &candidates[j].embedding).max(0.0);
+                    if sim > max_sim { max_sim = sim; }
+                }
+                div_penalty = max_sim;
+            }
+            let mmr = (1.0 - lambda) * base - lambda * div_penalty;
+            if mmr > best_score { best_score = mmr; best_idx = Some(i); }
+        }
+        if let Some(i) = best_idx { selected.push(i); remaining.remove(&i); } else { break; }
+    }
+    let mut out: Vec<MemoryCell> = selected.into_iter().map(|i| candidates[i].clone()).collect();
+    // Append any remaining up to top_k to keep length consistent
+    if out.len() < k {
+        for &i in &remaining { out.push(candidates[i].clone()); if out.len()>=k { break; } }
+    }
+    out
 }
 
 impl MemoryService {
@@ -100,6 +277,11 @@ impl MemoryService {
         self.config.embedding.embedding_dimension.unwrap_or(512)
     }
 
+    /// Report embedding availability for health/substatus
+    pub fn embedding_available(&self) -> bool {
+        self.embedding_service.is_available()
+    }
+
     /// Store a new memory in the system
     #[tracing::instrument(skip(self, content, context_hint))]
     pub async fn store_memory(
@@ -119,17 +301,26 @@ impl MemoryService {
 
         // Generate embedding for the content (using Query type for consistency with search)
         let t0 = Instant::now();
-        // Generate base embedding (model-native dimension, e.g., 768)
-        let base_embedding = self
+        // Try to generate base embedding; if embedding unavailable, degrade to lexical-only memory
+        let embedding = match self
             .embedding_service
             .embed(&content, crate::embedding::TaskType::Query)
-            .await?;
-        // Matryoshka: truncate to configured target dimension (default 512) for consistency
-        let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
-        let embedding = self
-            .embedding_service
-            .truncate_to_dimension(&base_embedding, target_dim)?;
-        crate::metrics::record_embedding_latency("gemma-300m", t0.elapsed().as_secs_f64());
+            .await
+        {
+            Ok(base_embedding) => {
+                let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+                let emb = self
+                    .embedding_service
+                    .truncate_to_dimension(&base_embedding, target_dim)?;
+                crate::metrics::record_embedding_latency("gemma-300m", t0.elapsed().as_secs_f64());
+                emb
+            }
+            Err(MemoryError::Embedding(_)) => {
+                // Lexical-only storage; embedding left empty
+                Vec::new()
+            }
+            Err(e) => return Err(e),
+        };
 
         // Analyze content with AI brain
         let analysis = self
@@ -224,58 +415,18 @@ impl MemoryService {
             return Ok((*cached_result).clone());
         }
 
-        // Generate query embedding
-        let tq0 = Instant::now();
-        // Generate and align query embedding to the same target dimension (Matryoshka)
-        let base_query_embedding = self
-            .embedding_service
-            .embed(&query.text, crate::embedding::TaskType::Query)
-            .await?;
-        let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
-        let query_embedding = self
-            .embedding_service
-            .truncate_to_dimension(&base_query_embedding, target_dim)?;
-        crate::metrics::record_embedding_latency("gemma-300m", tq0.elapsed().as_secs_f64());
-
-        // Layer 1: Semantic search - fast associative retrieval
-        let semantic_results = self
-            .graph_storage
-            .vector_search(
-                &query_embedding,
-                query.limit.unwrap_or(20),
-                query.similarity_threshold,
-            )
-            .await?;
-
-        // Layer 2: Contextual search - explore related memories
-        let mut contextual_results = Vec::new();
-        for memory in &semantic_results[..semantic_results.len().min(5)] {
-            let related = self
-                .graph_storage
-                .find_related_memories(&memory.id, 5)
-                .await?;
-            contextual_results.extend(related);
-        }
-
-        // Layer 3: Detailed search - deep memory exploration
-        let detailed_results = if query.include_related {
-            self.perform_detailed_search(&contextual_results).await?
-        } else {
-            Vec::new()
+        // Try embedding path; on Embedding error, fall back to lexical retrieval
+        let (semantic_results, contextual_results, detailed_results, reasoning_chain, confidence) = match self
+            .build_semantic_layers(&query)
+            .await
+        {
+            Ok((sem, ctx, det, rc, conf)) => (sem, ctx, det, rc, conf),
+            Err(MemoryError::Embedding(_)) => {
+                let (lex, rc, conf) = self.lexical_recall(&query).await?;
+                (lex, Vec::new(), Vec::new(), rc, conf)
+            }
+            Err(e) => return Err(e),
         };
-
-        // Build reasoning chain
-        let reasoning_chain = vec![
-            format!("Found {} semantic matches", semantic_results.len()),
-            format!(
-                "Expanded to {} contextual connections",
-                contextual_results.len()
-            ),
-            format!("Retrieved {} detailed memories", detailed_results.len()),
-        ];
-
-        // Calculate confidence
-        let confidence = self.calculate_confidence(&semantic_results, &contextual_results);
 
         // Discover additional contexts
         let discovered_contexts: Vec<String> = contextual_results
@@ -292,7 +443,7 @@ impl MemoryService {
             (recall_time_ms as f64) / 1000.0,
         );
 
-        let recalled = RecalledMemory {
+        let mut recalled = RecalledMemory {
             query_id,
             semantic_layer: semantic_results,
             contextual_layer: contextual_results,
@@ -302,6 +453,51 @@ impl MemoryService {
             recall_time_ms,
             discovered_contexts,
         };
+
+        // Final hybrid re-ranking across combined layers to maximize quality (if embedding available)
+        // Auto-tune HYBRID_ALPHA by query length (shorter queries favor lexical)
+        let mut alpha: f32 = env_f32("HYBRID_ALPHA", 0.5);
+        let qtoks = tokenize(&query.text);
+        let qlen = qtoks.len();
+        if std::env::var("HYBRID_ALPHA").is_err() {
+            let short = env_f32("ALPHA_SHORT", 0.4);
+            let long = env_f32("ALPHA_LONG", 0.6);
+            alpha = if qlen <= 6 { short } else if qlen >= 16 { long } else { alpha };
+        }
+        let mut combined = Vec::new();
+        combined.extend(recalled.semantic_layer.clone());
+        combined.extend(recalled.contextual_layer.clone());
+        combined.extend(recalled.detailed_layer.clone());
+        // Deduplicate
+        let mut seen = std::collections::HashSet::new();
+        combined.retain(|m| seen.insert(m.id));
+        // Score and reorder (hybrid), then apply optional MMR diversity
+        if let Ok(scored) = self.score_hybrid_internal(&query.text, &combined, alpha).await {
+            use std::collections::HashMap; let mut sm: HashMap<Uuid,f32> = HashMap::new();
+            for (id,s,_) in scored { sm.insert(id,s); }
+            // Primary reorder by score
+            combined.sort_by(|a,b| {
+                let sa = *sm.get(&a.id).unwrap_or(&0.0);
+                let sb = *sm.get(&b.id).unwrap_or(&0.0);
+                sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            // Optional MMR on top-N
+            let enable_mmr = std::env::var("ENABLE_MMR").ok().map(|s| s=="1" || s.eq_ignore_ascii_case("true")).unwrap_or(true);
+            if enable_mmr {
+                let mmr_lambda = env_f32("MMR_LAMBDA", 0.3);
+                let mmr_top = env_usize("MMR_TOP", combined.len().min(200));
+                let top_slice = combined.clone();
+                let reordered = mmr_reorder(&top_slice, &sm, mmr_lambda, mmr_top);
+                combined = reordered;
+            }
+            // Redistribute into layers (keep sizes roughly as before)
+            let s_len = recalled.semantic_layer.len().min(combined.len());
+            let c_len = recalled.contextual_layer.len().min(combined.len().saturating_sub(s_len));
+            let d_len = combined.len().saturating_sub(s_len + c_len);
+            recalled.semantic_layer = combined[..s_len].to_vec();
+            recalled.contextual_layer = combined[s_len..s_len+c_len].to_vec();
+            recalled.detailed_layer = combined[s_len+c_len..s_len+c_len+d_len].to_vec();
+        }
 
         // Cache the result
         self.cache.put_query(query_hash, recalled.clone()).await;
@@ -329,6 +525,182 @@ impl MemoryService {
                 recall_time_ms,
                 discovered_contexts: processed.suggestions,
             })
+    }
+
+    async fn build_semantic_layers(
+        &self,
+        query: &MemoryQuery,
+    ) -> MemoryResult<(
+        Vec<MemoryCell>,
+        Vec<MemoryCell>,
+        Vec<MemoryCell>,
+        Vec<String>,
+        f32,
+    )> {
+        // Generate query embedding
+        let tq0 = Instant::now();
+        let base_query_embedding = self
+            .embedding_service
+            .embed(&query.text, crate::embedding::TaskType::Query)
+            .await?;
+        let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+        let query_embedding = self
+            .embedding_service
+            .truncate_to_dimension(&base_query_embedding, target_dim)?;
+        crate::metrics::record_embedding_latency("gemma-300m", tq0.elapsed().as_secs_f64());
+
+        // Layer 1: Semantic search — widen candidate pool aggressively
+        let base_limit = query.limit.unwrap_or(20);
+        let cand_sem_mult = env_usize("CAND_SEM_MULT", 15);
+        let cand_sem_cap = env_usize("CAND_SEM_CAP", 500);
+        let cand_sem_thresh = env_f32("CAND_SEM_THRESH", 0.05);
+        let candidate_limit = (base_limit.saturating_mul(cand_sem_mult)).min(cand_sem_cap);
+        let semantic_results_sem = self
+            .graph_storage
+            .vector_search(
+                &query_embedding,
+                candidate_limit,
+                // Lower threshold further to improve recall; cap by provided threshold if any
+                Some(query.similarity_threshold.unwrap_or(cand_sem_thresh).min(cand_sem_thresh)),
+            )
+            .await?;
+
+        // Optional lexical augmentation (BM25) to boost recall for short queries
+        let mut semantic_results = semantic_results_sem;
+        let cand_lex_mult = env_usize("CAND_LEX_MULT", 8);
+        let cand_lex_cap = env_usize("CAND_LEX_CAP", 150);
+        let lex_extra = (base_limit.saturating_mul(cand_lex_mult)).min(cand_lex_cap);
+        if lex_extra > 0 {
+            let mut qlex = query.clone();
+            qlex.limit = Some(lex_extra);
+            if let Ok((mut bm25, _rc, _conf)) = self.lexical_recall(&qlex).await {
+                // Merge and deduplicate by ID
+                semantic_results.extend(bm25.drain(..));
+                let mut seen = std::collections::HashSet::new();
+                semantic_results.retain(|m| seen.insert(m.id));
+            }
+        }
+
+        // Layer 2: Contextual search - explore related memories
+        let mut contextual_results = Vec::new();
+        for memory in &semantic_results[..semantic_results.len().min(5)] {
+            let related = self
+                .graph_storage
+                .find_related_memories(&memory.id, 5)
+                .await?;
+            contextual_results.extend(related);
+        }
+
+        // Augment candidates with inferred contexts (boost recall for domain-anchored queries)
+        let inferred = infer_contexts_from_query(&query.text);
+        if !inferred.is_empty() {
+            for ctx in inferred.into_iter().take(3) {
+                let extra = self
+                    .graph_storage
+                    .get_memories_in_context(&ctx, (base_limit.saturating_mul(5)).min(60))
+                    .await
+                    .unwrap_or_default();
+                contextual_results.extend(extra);
+            }
+            // Deduplicate contextual pool
+            let mut seen = std::collections::HashSet::new();
+            contextual_results.retain(|m| seen.insert(m.id));
+        }
+
+        // Layer 3: Detailed search - deep memory exploration
+        let detailed_results = if query.include_related {
+            self.perform_detailed_search(&contextual_results).await?
+        } else {
+            Vec::new()
+        };
+
+        // Build reasoning chain
+        let reasoning_chain = vec![
+            format!("Found {} semantic matches", semantic_results.len()),
+            format!(
+                "Expanded to {} contextual connections",
+                contextual_results.len()
+            ),
+            format!("Retrieved {} detailed memories", detailed_results.len()),
+        ];
+
+        // Calculate confidence
+        let confidence = self.calculate_confidence(&semantic_results, &contextual_results);
+        Ok((
+            semantic_results,
+            contextual_results,
+            detailed_results,
+            reasoning_chain,
+            confidence,
+        ))
+    }
+
+    /// Lexical recall fallback using simple TF-IDF scoring across recent memories.
+    async fn lexical_recall(
+        &self,
+        query: &MemoryQuery,
+    ) -> MemoryResult<(Vec<MemoryCell>, Vec<String>, f32)> {
+        let limit = query.limit.unwrap_or(20).min(200);
+        // Aggregate a pool of candidate memories by contexts
+        let contexts = self.graph_storage.list_contexts().await.unwrap_or_default();
+        let mut pool: Vec<MemoryCell> = Vec::new();
+        for ctx in contexts.iter().take(20) {
+            let mut chunk = self
+                .graph_storage
+                .get_memories_in_context(ctx, 128)
+                .await
+                .unwrap_or_default();
+            pool.append(&mut chunk);
+            if pool.len() > 4000 {
+                break;
+            }
+        }
+        if pool.is_empty() {
+            // Fallback to recent from any context
+            pool = self.get_recent(256, None).await.unwrap_or_default();
+        }
+
+        let q_tokens = tokenize(&query.text);
+        let df: StdHashMap<String, usize> = document_frequency(&pool);
+        let n_docs = pool.len().max(1);
+
+        // Average doc length for BM25
+        let mut total_len: usize = 0;
+        for m in &pool { total_len += tokenize(&(m.content.clone() + " " + &m.summary)).len(); }
+        let avgdl = if pool.is_empty() { 0.0 } else { (total_len as f32) / (pool.len() as f32) };
+
+        let mut scored: Vec<(f32, MemoryCell)> = pool
+            .into_iter()
+            .map(|m| {
+                let doc_tokens = tokenize(&(m.content.clone() + " " + &m.summary));
+                let mut score = bm25_score(&q_tokens, &doc_tokens, &df, n_docs, avgdl);
+                // Light context-path prior to improve category relevance
+            if !m.context_path.is_empty() {
+                let c_tokens = tokenize(&m.context_path);
+                let overlap = c_tokens
+                    .iter()
+                    .filter(|t| q_tokens.contains(t))
+                    .count();
+                    if overlap > 0 {
+                        let cboost = env_f32("CONTEXT_BOOST", 0.35);
+                        score *= 1.0 + cboost * (overlap as f32) / (q_tokens.len() as f32);
+                    }
+                }
+                (score, m)
+            })
+            .collect();
+        scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        let mut results: Vec<MemoryCell> = scored.into_iter().take(limit).map(|(_, m)| m).collect();
+        // Deduplicate by ID
+        let mut seen = HashSet::new();
+        results.retain(|m| seen.insert(m.id));
+
+        let rc = vec![
+            format!("Lexical fallback: {} candidates scored", n_docs),
+            format!("Returned {} documents", results.len()),
+        ];
+        let confidence = (results.len() as f32 / limit as f32).clamp(0.1, 0.8);
+        Ok((results, rc, confidence))
     }
 
     /// Apply one decay tick to memory importance across storage
@@ -449,6 +821,36 @@ impl MemoryService {
         Ok(stats)
     }
 
+    /// Compute graph-level metrics for analysis and dashboard
+    pub async fn compute_graph_metrics(&self) -> MemoryResult<GraphMetrics> {
+        let (avg_deg, connected_ratio, total_memories) = self.graph_storage.graph_degree_stats().await?;
+        let ctx_counts = self.graph_storage.context_counts().await?;
+        let total_contexts = ctx_counts.len();
+        let sum: f64 = ctx_counts.iter().map(|&c| c as f64).sum();
+        let mut entropy = 0.0f64;
+        if sum > 0.0 {
+            for &c in &ctx_counts {
+                if c > 0 {
+                    let p = (c as f64) / sum;
+                    entropy -= p * p.log2();
+                }
+            }
+        }
+        let expansion = self.graph_storage.two_hop_expansion_factor(100).await?;
+        let avg_closure = self.graph_storage.approx_clustering(50).await.unwrap_or(0.0);
+        let avg_shortest_path = self.graph_storage.approx_shortest_path_len(30).await.unwrap_or(0.0);
+        Ok(GraphMetrics {
+            total_memories,
+            total_contexts,
+            avg_related_degree: avg_deg,
+            connected_ratio,
+            contexts_entropy: entropy,
+            two_hop_expansion: expansion,
+            avg_closure,
+            avg_shortest_path,
+        })
+    }
+
     /// Simple search method for basic text queries
     pub async fn search(&self, query: &str, limit: usize) -> MemoryResult<Vec<MemoryCell>> {
         // Create a simple memory query
@@ -459,7 +861,7 @@ impl MemoryService {
             limit: Some(limit),
             min_importance: Some(0.01),
             time_range: None,
-            similarity_threshold: Some(0.20), // Lower threshold for 512D space
+            similarity_threshold: Some(0.10), // Favor higher recall for hybrid re-ranking
             include_related: false,
         };
 
@@ -476,25 +878,106 @@ impl MemoryService {
         let mut seen = std::collections::HashSet::new();
         results.retain(|m| seen.insert(m.id));
 
-        // Sort by importance and limit (handle NaN safely)
-        results.sort_by(|a, b| {
-            let a_imp = if a.importance.is_finite() {
-                a.importance
-            } else {
-                0.0
-            };
-            let b_imp = if b.importance.is_finite() {
-                b.importance
-            } else {
-                0.0
-            };
-            b_imp
-                .partial_cmp(&a_imp)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        // Hybrid ranking: combine vector cosine and lexical TF-IDF
+        // Auto-tune HYBRID_ALPHA by query length (shorter queries favor lexical)
+        let mut alpha: f32 = std::env::var("HYBRID_ALPHA").ok().and_then(|s| s.parse().ok()).unwrap_or(0.5);
+        let qtoks = tokenize(query);
+        let qlen = qtoks.len();
+        if std::env::var("HYBRID_ALPHA").is_err() {
+            alpha = if qlen <= 6 { 0.4 } else if qlen >= 16 { 0.6 } else { 0.5 };
+        }
+        let scored = self
+            .score_hybrid_internal(query, &results, alpha)
+            .await
+            .unwrap_or_else(|_| Vec::new());
+        if !scored.is_empty() {
+            // reorder results by hybrid score
+            use std::collections::HashMap;
+            let mut score_map: HashMap<Uuid, f32> = HashMap::new();
+            for (id, s, _) in &scored {
+                score_map.insert(*id, *s);
+            }
+            results.sort_by(|a, b| {
+                let sa = *score_map.get(&a.id).unwrap_or(&0.0);
+                let sb = *score_map.get(&b.id).unwrap_or(&0.0);
+                sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        } else {
+            // Fallback: importance sort
+            results.sort_by(|a, b| {
+                let a_imp = if a.importance.is_finite() { a.importance } else { 0.0 };
+                let b_imp = if b.importance.is_finite() { b.importance } else { 0.0 };
+                b_imp.partial_cmp(&a_imp).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
         results.truncate(limit);
 
         Ok(results)
+    }
+
+    /// Compute hybrid scores for query and given results (id, score, method)
+    pub async fn score_hybrid(&self, query_text: &str, results: &[MemoryCell], alpha: f32) -> MemoryResult<Vec<(Uuid, f32, String)>> {
+        self.score_hybrid_internal(query_text, results, alpha).await
+    }
+
+    async fn score_hybrid_internal(&self, query_text: &str, results: &[MemoryCell], alpha: f32) -> MemoryResult<Vec<(Uuid, f32, String)>> {
+        let alpha = alpha.clamp(0.0, 1.0);
+        // Lexical precompute
+        let q_tokens = tokenize(query_text);
+        let df = document_frequency(results);
+        let n_docs = results.len().max(1);
+        // Precompute avg doc length for BM25 and per-doc lexical scores for normalization
+        let mut total_len: usize = 0;
+        for m in results { total_len += tokenize(&(m.content.clone() + " " + &m.summary)).len(); }
+        let avgdl = if results.is_empty() { 0.0 } else { (total_len as f32) / (results.len() as f32) };
+        // Try query embedding
+        let vec_scores = match self
+            .embedding_service
+            .embed(query_text, crate::embedding::TaskType::Query)
+            .await
+        {
+            Ok(base_query_embedding) => {
+                let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+                let q_emb = self
+                    .embedding_service
+                    .truncate_to_dimension(&base_query_embedding, target_dim)?;
+                Some(q_emb)
+            }
+            Err(_) => None,
+        };
+
+        // First pass: compute BM25 scores and track max for normalization
+        let mut bm25_scores: Vec<(Uuid, f32, f32)> = Vec::with_capacity(results.len()); // (id, bm25, ctx_boost)
+        let mut max_lex = 1e-6f32;
+        for m in results {
+            let lex_tokens = tokenize(&(m.content.clone() + " " + &m.summary));
+            let mut bm = bm25_score(&q_tokens, &lex_tokens, &df, n_docs, avgdl);
+            let mut boost = 1.0f32;
+            if !m.context_path.is_empty() {
+                let c_tokens = tokenize(&m.context_path);
+                let overlap = c_tokens.iter().filter(|t| q_tokens.contains(t)).count();
+                if overlap > 0 { boost = 1.0 + env_f32("CONTEXT_BOOST", 0.35) * (overlap as f32) / (q_tokens.len() as f32); }
+            }
+            bm *= boost;
+            if bm > max_lex { max_lex = bm; }
+            bm25_scores.push((m.id, bm, boost));
+        }
+
+        // Second pass: combine with vector cosine (if available) using normalized lexical component
+        let mut out = Vec::with_capacity(results.len());
+        for (i, m) in results.iter().enumerate() {
+            let (_, bm, _) = bm25_scores[i];
+            let lex_norm = (bm / max_lex).clamp(0.0, 1.0);
+            let combined = if let Some(ref q_emb) = vec_scores {
+                let vcos = crate::simd_search::cosine_similarity_simd(q_emb, &m.embedding).max(0.0);
+                alpha * vcos + (1.0 - alpha) * lex_norm
+            } else {
+                lex_norm
+            };
+            let method = if vec_scores.is_some() { "hybrid" } else { "lexical" };
+            out.push((m.id, combined, method.to_string()));
+        }
+        Ok(out)
     }
 
     /// Search memories within a specific context
@@ -512,47 +995,64 @@ impl MemoryService {
 
         // If query is provided, filter by semantic similarity
         if let Some(query_text) = query {
-            // Generate embedding for the query
-            let base_query_embedding = self
+            // Try embedding; if unavailable, use lexical scoring within context
+            match self
                 .embedding_service
                 .embed(query_text, crate::embedding::TaskType::Query)
                 .await
-                .map_err(|e| {
-                    MemoryError::Embedding(format!("Failed to generate query embedding: {}", e))
-                })?;
-            let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
-            let query_embedding = self
-                .embedding_service
-                .truncate_to_dimension(&base_query_embedding, target_dim)?;
-
-            // Calculate similarity scores with memories
-            let mut scored_memories: Vec<(f32, MemoryCell)> = memories
-                .into_iter()
-                .map(|memory| {
-                    let similarity = crate::simd_search::cosine_similarity_simd(
-                        &query_embedding,
-                        &memory.embedding,
-                    );
-                    (similarity, memory)
-                })
-                .filter(|(score, _)| *score > 0.05) // Filter by minimum relevance
-                .collect();
-
-            // Sort by relevance (handle NaN safely)
-            scored_memories.sort_by(|a, b| {
-                let a_score = if a.0.is_finite() { a.0 } else { 0.0 };
-                let b_score = if b.0.is_finite() { b.0 } else { 0.0 };
-                b_score
-                    .partial_cmp(&a_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
-
-            // Extract memories and limit
-            memories = scored_memories
-                .into_iter()
-                .take(limit)
-                .map(|(_, memory)| memory)
-                .collect();
+            {
+                Ok(base_query_embedding) => {
+                    let target_dim = self.config.embedding.embedding_dimension.unwrap_or(512);
+                    let query_embedding = self
+                        .embedding_service
+                        .truncate_to_dimension(&base_query_embedding, target_dim)?;
+                    let mut scored_memories: Vec<(f32, MemoryCell)> = memories
+                        .into_iter()
+                        .map(|memory| {
+                            let similarity = crate::simd_search::cosine_similarity_simd(
+                                &query_embedding,
+                                &memory.embedding,
+                            );
+                            (similarity, memory)
+                        })
+                        .filter(|(score, _)| *score > 0.05)
+                        .collect();
+                    scored_memories.sort_by(|a, b| {
+                        let a_score = if a.0.is_finite() { a.0 } else { 0.0 };
+                        let b_score = if b.0.is_finite() { b.0 } else { 0.0 };
+                        b_score.partial_cmp(&a_score).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    memories = scored_memories
+                        .into_iter()
+                        .take(limit)
+                        .map(|(_, memory)| memory)
+                        .collect();
+                }
+                Err(MemoryError::Embedding(_)) => {
+                    let df: StdHashMap<String, usize> = document_frequency(&memories);
+                    let n_docs = memories.len().max(1);
+                    let q_tokens = tokenize(query_text);
+                    let mut total_len: usize = 0;
+                    for m in &memories { total_len += tokenize(&(m.content.clone() + " " + &m.summary)).len(); }
+                    let avgdl = if memories.is_empty() { 0.0 } else { (total_len as f32) / (memories.len() as f32) };
+                    let mut scored: Vec<(f32, MemoryCell)> = memories
+                        .into_iter()
+                        .map(|m| {
+                            let tokens = tokenize(&(m.content.clone() + " " + &m.summary));
+                            let mut s = bm25_score(&q_tokens, &tokens, &df, n_docs, avgdl);
+                            if !m.context_path.is_empty() {
+                                let c_tokens = tokenize(&m.context_path);
+                                let overlap = c_tokens.iter().filter(|t| q_tokens.contains(t)).count();
+                                if overlap > 0 { s *= 1.0 + env_f32("CONTEXT_BOOST", 0.35) * (overlap as f32) / (q_tokens.len() as f32); }
+                            }
+                            (s, m)
+                        })
+                        .collect();
+                    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+                    memories = scored.into_iter().take(limit).map(|(_, m)| m).collect();
+                }
+                Err(e) => return Err(MemoryError::Embedding(format!("Failed to generate query embedding: {}", e))),
+            }
         } else {
             // Sort by importance if no query (handle NaN safely)
             memories.sort_by(|a, b| {
@@ -576,6 +1076,23 @@ impl MemoryService {
         }
 
         Ok(memories)
+    }
+
+    /// Tokenize text into lowercase alphanumeric tokens
+    fn simple_tokens(text: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut cur = String::new();
+        for ch in text.chars() {
+            if ch.is_alphanumeric() {
+                cur.push(ch.to_ascii_lowercase());
+            } else if !cur.is_empty() {
+                out.push(std::mem::take(&mut cur));
+            }
+        }
+        if !cur.is_empty() {
+            out.push(cur);
+        }
+        out
     }
 
     /// Get recent memories

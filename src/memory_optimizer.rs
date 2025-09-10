@@ -276,6 +276,10 @@ impl MemoryCompactor {
     }
 }
 
+impl Default for MemoryCompactor {
+    fn default() -> Self { Self::new() }
+}
+
 #[derive(Debug, Clone)]
 pub struct CompactionStats {
     pub compaction_count: u64,

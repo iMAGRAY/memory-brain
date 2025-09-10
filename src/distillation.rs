@@ -426,15 +426,12 @@ impl MemoryDistillationEngine {
         // Запуск комплексной оптимизации через оркестратор (упрощенная версия)
         let optimization_result = self.orchestrator.optimize_memory_storage(&all_memories).await?;
 
-        let mut actions = Vec::new();
-        
-        // Создание заглушек для действий оптимизации
-        actions.push(OptimizationAction {
+        let actions = vec![OptimizationAction {
             action_type: "analyze_patterns".to_string(),
             description: "Analyzed memory patterns for optimization".to_string(),
             affected_memories: all_memories.len(),
             impact_score: optimization_result.compression_ratio, // Эффективность оптимизации
-        });
+        }];
 
         let report = OptimizationReport {
             id: Uuid::new_v4(),

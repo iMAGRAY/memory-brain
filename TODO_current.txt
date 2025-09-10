@@ -3,10 +3,10 @@
 ## Scope & Goals
 - Deliver robust, human-like long‑term memory with inter‑session context.
 - Keep architecture intact; apply surgical, verifiable improvements only.
-- Ensure deterministic build, run, and tests via mock services and scripted checks.
+- Ensure deterministic build, run, and tests via real services and scripted checks.
 
 ## Deterministic Environment
-- Mock Embeddings (512D): `make mock-embed` (port 8090)
+- Embedding Server (real, 512D): run `python embedding_server.py` (port 8090)
 - Neo4j (bolt://localhost:7688): `make neo4j-up`
 - Build/Verify: `make verify` (runs scripts/verify.sh)
 - Stability flags: `ORCHESTRATOR_FORCE_DISABLE=true`, `DISABLE_SCHEDULERS=true`
@@ -55,7 +55,7 @@
 10) Failure handling & graceful degradation
    - If embedding server unavailable: return 503 for store/search with actionable message; keep health green with substatus.
    - Add retry (bounded) for Neo4j connects; timeouts for external calls.
-   - Criteria: killing mock-embed → store/search fail fast (≤ 1s), server keeps serving /health and /stats.
+   - Criteria: stopping embedding server → store/search fail fast (≤ 1s), server keeps serving /health and /stats.
 
 ## Validation Protocol
 - Before/after any change: `make verify`.
@@ -64,4 +64,3 @@
 
 ## Out‑of‑Scope (for now)
 - Cloud infra, CI, GPU acceleration, production orchestrator.
-

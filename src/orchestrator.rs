@@ -414,7 +414,7 @@ impl MemoryOrchestrator {
             return Err(anyhow!("Distillation must contain at least one key point"));
         }
 
-        if confidence_score < 0.0 || confidence_score > 1.0 {
+        if !(0.0..=1.0).contains(&confidence_score) {
             return Err(anyhow!("Confidence score must be between 0.0 and 1.0"));
         }
 
@@ -471,7 +471,7 @@ impl MemoryOrchestrator {
 
         // Создание структурированного анализа
         let mut pattern_analysis = String::new();
-        pattern_analysis.push_str(&format!("ТИПЫ ПАМЯТИ:\n"));
+        pattern_analysis.push_str("ТИПЫ ПАМЯТИ:\n");
         for (mem_type, group) in &type_groups {
             let avg_importance =
                 group.iter().map(|m| m.importance).sum::<f32>() / group.len() as f32;

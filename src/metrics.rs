@@ -79,6 +79,13 @@ lazy_static! {
         "Autodetect outcomes for embedding dimension",
         &["result"]
     ).unwrap();
+
+    /// Service availability gauge (0/1) by service name
+    pub static ref SERVICE_AVAILABLE: GaugeVec = register_gauge_vec!(
+        "service_available",
+        "Service availability (0/1) by service name",
+        &["service"]
+    ).unwrap();
 }
 
 /// Record a memory operation
@@ -148,6 +155,13 @@ pub fn record_autodetect_result(result: &str) {
         .inc();
 }
 
+/// Set service availability gauge
+pub fn set_service_available(service: &str, available: bool) {
+    SERVICE_AVAILABLE
+        .with_label_values(&[service])
+        .set(if available { 1.0 } else { 0.0 });
+}
+
 /// Export metrics in Prometheus format
 pub fn export_metrics() -> String {
     let encoder = TextEncoder::new();
@@ -170,6 +184,7 @@ pub fn init_metrics() {
     let _ = &*EMBEDDING_DIMENSION_GAUGE;
     let _ = &*EMBEDDING_AUTODETECT_COUNTER;
     let _ = &*MEMORY_STORE_DURATION;
+    let _ = &*SERVICE_AVAILABLE;
 }
 
 #[cfg(test)]

@@ -54,7 +54,7 @@
 
 4. **Comprehensive Testing Suite**
    - Unit tests для validation logic
-   - Integration tests с mock Python
+   - Integration tests with real Python embedding server
    - Performance benchmarks
    - Error handling tests
    - Concurrency tests

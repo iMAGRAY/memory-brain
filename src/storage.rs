@@ -119,7 +119,6 @@ impl GraphStorage {
                 "Memory embedding cannot be empty".to_string(),
             ));
         }
-
         let _permit = self
             .connection_semaphore
             .acquire()
@@ -857,9 +856,9 @@ impl GraphStorage {
 
         // Parse memory type from stored string with comprehensive validation
         let memory_type_str = node.get::<String>("memory_type").map_err(|_e| {
-            MemoryError::Storage(format!(
-                "Memory type field missing for memory: database integrity error"
-            ))
+            MemoryError::Storage(
+                "Memory type field missing for memory: database integrity error".to_string(),
+            )
         })?;
 
         // Security: Limit memory type string size to prevent abuse
@@ -1017,45 +1016,37 @@ impl GraphStorage {
         use super::simd_search::cosine_similarity_simd;
 
         let threshold = similarity_threshold.unwrap_or(0.1); // Default to 0.1 if not specified
-        tracing::debug!("Vector search with threshold: {}", threshold);
+        tracing::debug!("Vector search with threshold: {} (limit: {})", threshold, limit);
 
-        // Collect similarities first, then drop the lock
-        let similarities = {
+        // Compute top-K using a small min-heap to avoid full sort
+        let top = {
             let vector_index = self.vector_index.read();
-            let mut similarities = Vec::new();
-
-            // Calculate similarities for all embeddings
+            let mut topk: Vec<(uuid::Uuid, f32)> = Vec::with_capacity(limit + 1);
             for (id, embedding) in &vector_index.embeddings {
-                let similarity = cosine_similarity_simd(embedding, query_embedding);
-                // CRITICAL: Only include results ABOVE threshold
-                if similarity >= threshold {
-                    similarities.push((*id, similarity));
-                    tracing::debug!("Memory {} has similarity: {}", id, similarity);
+                let sim = cosine_similarity_simd(embedding, query_embedding);
+                if sim < threshold { continue; }
+                if topk.len() < limit {
+                    topk.push((*id, sim));
+                } else if limit > 0 {
+                    // find current min
+                    let mut min_idx = 0usize; let mut min_val = topk[0].1;
+                    for (i, &(_, s)) in topk.iter().enumerate().skip(1) {
+                        if s < min_val { min_val = s; min_idx = i; }
+                    }
+                    if sim > min_val { topk[min_idx] = (*id, sim); }
                 }
             }
+            topk.sort_by(|a,b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            topk
+        }; // drop read lock
 
-            tracing::info!(
-                "Found {} memories above threshold {}",
-                similarities.len(),
-                threshold
-            );
-            similarities
-        }; // Lock is dropped here
-
-        // Sort by similarity descending
-        let mut sorted_similarities = similarities;
-        sorted_similarities
-            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Get top results
-        let mut results = Vec::new();
-        for (id, similarity) in sorted_similarities.iter().take(limit) {
-            tracing::debug!("Returning memory {} with similarity {}", id, similarity);
-            if let Ok(memory) = self.get_memory(id).await {
+        let mut results = Vec::with_capacity(top.len());
+        for (id, sim) in top.into_iter() {
+            tracing::trace!("Returning memory {} with similarity {}", id, sim);
+            if let Ok(memory) = self.get_memory(&id).await {
                 results.push(memory);
             }
         }
-
         Ok(results)
     }
 
@@ -1196,7 +1187,7 @@ impl GraphStorage {
         .param("id", id.to_string())
         .param("imp", importance as f64);
 
-        let _ = self
+        self
             .graph
             .run(q)
             .await
@@ -1345,6 +1336,148 @@ impl GraphStorage {
         }
 
         Ok(memories)
+    }
+
+    /// Compute degree and connectivity stats over RELATED_TO edges
+    pub async fn graph_degree_stats(&self) -> MemoryResult<(f64, f64, usize)> {
+        let q = query(
+            r#"
+            MATCH (m:Memory)
+            OPTIONAL MATCH (m)-[:RELATED_TO]-(:Memory)
+            WITH m, count(*) AS deg
+            RETURN avg(toFloat(deg)) AS avg_deg,
+                   avg(CASE WHEN deg > 0 THEN 1.0 ELSE 0.0 END) AS connected_ratio,
+                   count(m) AS total
+            "#
+        );
+        let mut res = self.graph.execute(q).await
+            .map_err(|e| MemoryError::Storage(format!("Failed to compute degree stats: {}", e)))?;
+        if let Ok(Some(row)) = res.next().await {
+            let avg_deg: f64 = row.get::<f64>("avg_deg").unwrap_or(0.0);
+            let connected_ratio: f64 = row.get::<f64>("connected_ratio").unwrap_or(0.0);
+            let total: i64 = row.get::<i64>("total").unwrap_or(0);
+            Ok((avg_deg, connected_ratio, total as usize))
+        } else {
+            Ok((0.0, 0.0, 0))
+        }
+    }
+
+    /// Fetch per-context memory counts
+    pub async fn context_counts(&self) -> MemoryResult<Vec<usize>> {
+        let q = query(
+            r#"
+            MATCH (c:Context)
+            RETURN coalesce(c.memory_count,0) AS cnt
+            "#
+        );
+        let mut res = self.graph.execute(q).await
+            .map_err(|e| MemoryError::Storage(format!("Failed to fetch context counts: {}", e)))?;
+        let mut out = Vec::new();
+        while let Ok(Some(row)) = res.next().await {
+            let cnt: i64 = row.get::<i64>("cnt").unwrap_or(0);
+            out.push(cnt as usize);
+        }
+        Ok(out)
+    }
+
+    /// Map of context path -> memory_count
+    pub async fn context_stats_map(&self) -> MemoryResult<Vec<(String, usize)>> {
+        let q = query(
+            r#"
+            MATCH (c:Context)
+            RETURN c.path AS path, coalesce(c.memory_count,0) AS cnt
+            ORDER BY path
+            "#
+        );
+        let mut res = self.graph.execute(q).await
+            .map_err(|e| MemoryError::Storage(format!("Failed to fetch context stats: {}", e)))?;
+        let mut out: Vec<(String, usize)> = Vec::new();
+        while let Ok(Some(row)) = res.next().await {
+            let path = row.get::<String>("path").unwrap_or_default();
+            let cnt: i64 = row.get::<i64>("cnt").unwrap_or(0);
+            out.push((path, cnt as usize));
+        }
+        Ok(out)
+    }
+
+    /// Approximate two-hop expansion factor across a sample of memories
+    pub async fn two_hop_expansion_factor(&self, sample: usize) -> MemoryResult<f64> {
+        let sample = sample.max(1).min(500);
+        let q = query(
+            r#"
+            MATCH (m:Memory)
+            WITH m LIMIT $sample
+            OPTIONAL MATCH (m)-[:RELATED_TO]-(n)
+            WITH m, collect(DISTINCT n) AS one
+            OPTIONAL MATCH (m)-[:RELATED_TO]-()-[:RELATED_TO]-(p:Memory)
+            WITH one, collect(DISTINCT p) AS two
+            WITH size(one) AS one_hop,
+                 [x IN two WHERE NOT x IN one] AS addTwo
+            RETURN avg( CASE WHEN one_hop>0 THEN toFloat(size(addTwo))/toFloat(one_hop) ELSE 0.0 END ) AS avg_expansion
+            "#
+        ).param("sample", sample as i64);
+        let mut res = self.graph.execute(q).await
+            .map_err(|e| MemoryError::Storage(format!("Failed to compute two-hop expansion: {}", e)))?;
+        if let Ok(Some(row)) = res.next().await {
+            let v: f64 = row.get::<f64>("avg_expansion").unwrap_or(0.0);
+            Ok(v)
+        } else {
+            Ok(0.0)
+        }
+    }
+
+    /// Approximate average clustering (triad closure) over a sample of nodes
+    pub async fn approx_clustering(&self, sample: usize) -> MemoryResult<f64> {
+        let sample = sample.max(1).min(200);
+        let q = query(
+            r#"
+            MATCH (a:Memory)
+            WITH a LIMIT $sample
+            MATCH (a)-[:RELATED_TO]-(b)
+            WITH a, collect(DISTINCT b) AS nbrs
+            WITH a, nbrs, size(nbrs) AS d WHERE d >= 2
+            UNWIND nbrs AS b
+            UNWIND nbrs AS c
+            WITH a, b, c, d WHERE id(b) < id(c)
+            MATCH (b)-[:RELATED_TO]-(c)
+            WITH a, d, count(*) AS closed
+            RETURN avg( CASE WHEN d*(d-1)/2 > 0 THEN toFloat(closed)/toFloat(d*(d-1)/2) ELSE 0.0 END ) AS avg_closure
+            "#
+        ).param("sample", sample as i64);
+        let mut res = self.graph.execute(q).await
+            .map_err(|e| MemoryError::Storage(format!("Failed to compute clustering: {}", e)))?;
+        if let Ok(Some(row)) = res.next().await {
+            let v: f64 = row.get::<f64>("avg_closure").unwrap_or(0.0);
+            Ok(v)
+        } else {
+            Ok(0.0)
+        }
+    }
+
+    /// Approximate average shortest path length within up to 5 hops over a small sample
+    pub async fn approx_shortest_path_len(&self, sample: usize) -> MemoryResult<f64> {
+        let sample = sample.max(1).min(50);
+        let q = query(
+            r#"
+            MATCH (a:Memory)
+            WITH a LIMIT $sample
+            MATCH (b:Memory)
+            WHERE id(b) > id(a)
+            WITH a, collect(b)[..5] AS targets
+            UNWIND targets AS b
+            OPTIONAL MATCH p = shortestPath( (a)-[:RELATED_TO*..5]-(b) )
+            WITH CASE WHEN p IS NULL THEN 0.0 ELSE toFloat(length(p)) END AS l
+            RETURN avg(l) AS avg_len
+            "#
+        ).param("sample", sample as i64);
+        let mut res = self.graph.execute(q).await
+            .map_err(|e| MemoryError::Storage(format!("Failed to compute shortest path len: {}", e)))?;
+        if let Ok(Some(row)) = res.next().await {
+            let v: f64 = row.get::<f64>("avg_len").unwrap_or(0.0);
+            Ok(v)
+        } else {
+            Ok(0.0)
+        }
     }
 
     /// Parse memory from Neo4j query row

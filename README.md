@@ -8,13 +8,13 @@ Advanced intelligent memory system for AI agents with cognitive science-inspired
 - **Cognitive Memory Types**: Semantic, Episodic, Procedural, Working, Code, Documentation, and Conversation memory
 - **Multi-layer Recall System**: Three-layer progressive retrieval (Semantic → Contextual → Detailed)
 - **GPT-5-nano Orchestrator**: Intelligent memory management with 400K token context
-- **EmbeddingGemma-300M**: State-of-the-art multilingual embeddings (768-dimensional)
+- **EmbeddingGemma-300M**: State-of-the-art multilingual embeddings (Matryoshka: 768 native, truncated to 512 by default)
 
 ### Performance & Integration
 - **SIMD-optimized Vector Search**: Hardware-accelerated similarity calculations
 - **Multi-level Caching**: L1 (DashMap), L2 (Moka with TTL), L3 (compressed)
 - **MCP Server**: Native Claude Code integration via Model Context Protocol
-- **REST API**: Comprehensive HTTP endpoints for all operations
+- **REST API**: Comprehensive HTTP endpoints for all operations; runtime embedding dimension autodetect from `/stats`
 - **Session Isolation**: Cross-session knowledge extraction with privacy
 
 ### Storage & Scalability
@@ -65,11 +65,11 @@ pip install -r requirements.txt
 # Start Neo4j database (optional, if using graph storage)
 docker-compose up -d neo4j
 
-# Start embedding service
-python embedding_service.py
+# Start embedding service (real, 512D by default)
+python embedding_server.py
 
 # Start the main memory service
-cargo run --release --bin memory-server
+cargo run --release
 ```
 
 ### 4. Verify Installation
@@ -115,6 +115,16 @@ curl -X POST http://localhost:8080/api/v1/memory \
 └────────────────────┴────────────────┴─────────────────────┘
 ```
 
+### Runtime Embedding Dimension & Degraded Mode
+
+- On startup the service autodetects embedding dimension via `EMBEDDING_SERVER_URL/stats` and exposes it in:
+  - `/health` as `embedding_dimension`
+  - `/stats` (plus Prometheus `embedding_dimension{source="autodetect|config"}`)
+- If the embedding server is unavailable, the service enters a degraded mode:
+  - `/health.services.embedding` = false; Prometheus `service_available{service="embedding"} 0`
+  - Embed-dependent operations return HTTP 503 with details
+  - The server remains responsive for status and other non-embedding routes
+
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -135,7 +145,8 @@ SESSION_TIMEOUT=3600
 
 # Embedding Service
 EMBEDDING_MODEL=onnx-community/embeddinggemma-300m-ONNX
-EMBEDDING_DIMENSIONS=768
+# Matryoshka target dimension used by the service (supported: 128, 256, 512, 768)
+EMBEDDING_DIMENSION=512
 MAX_SEQUENCE_LENGTH=2048
 
 # Storage

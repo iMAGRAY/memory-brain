@@ -142,8 +142,7 @@ impl CacheSystem {
         }
     }
 
-    /// Create new hierarchical cache system with defaults
-
+    /// Create new hierarchical cache system with defaults.
     /// Get memory from cache hierarchy
     pub async fn get_memory(&self, id: &Uuid) -> Option<Arc<MemoryCell>> {
         // Try L1 first (hottest)

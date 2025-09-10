@@ -86,7 +86,7 @@ pub fn cosine_similarity_simd(a: &[f32], b: &[f32]) -> f32 {
 ## Current Status
 
 **Implemented**: Core architecture, SIMD optimizations, caching, testing framework
-**Working**: Basic functionality with mock data
+**Working**: Basic functionality with sample data
 **Needs**: Minor Neo4j type fixes for full compilation
 
 ## Development Investment

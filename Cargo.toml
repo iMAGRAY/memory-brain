@@ -17,7 +17,7 @@ thiserror = "1.0"
 # Web framework
 axum = { version = "0.7", features = ["json", "ws", "macros"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip", "limit"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip", "limit", "fs"] }
 
 # Async utilities
 futures = "0.3"

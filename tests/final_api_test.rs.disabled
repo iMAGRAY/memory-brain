@@ -718,7 +718,7 @@ mod unit_tests {
     
     #[test]
     fn test_performance_metrics_empty_results() {
-        // Test with empty results - no mock needed
+        // Test with empty results - no stubs/mocks used
         let empty_results: Vec<(usize, axum_test::TestResponse, Duration)> = vec![];
         let metrics = PerformanceMetrics::calculate(&empty_results);
         

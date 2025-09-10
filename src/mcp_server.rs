@@ -154,7 +154,7 @@ impl McpServer {
     ) -> Result<Self> {
         let orchestrator = if config.use_orchestrator {
             orchestrator_config
-                .map(|cfg| MemoryOrchestrator::new(cfg))
+                .map(MemoryOrchestrator::new)
                 .transpose()?
                 .map(Arc::new)
         } else {

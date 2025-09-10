@@ -21,7 +21,7 @@ assert_timeout() {
   fi
 }
 
-echo "[1/6] Starting REAL embedding server on :8090"
+echo "[1/6] Starting REAL embedding server on :8091 (forced)"
 assert_timeout
 # Detect model path
 EMBED_MODEL_DIR="${EMBEDDING_MODEL_PATH:-./models/embeddinggemma-300m}"
@@ -31,20 +31,44 @@ if [ ! -d "$EMBED_MODEL_DIR" ]; then
   exit 2
 fi
 
-# Try to start real embedding server if not running
-if ! ss -ltn '( sport = :8090 )' | grep -q 8090; then
-  if [ ! -d .venv ]; then python3 -m venv .venv >/dev/null 2>&1 || true; fi
+pkill -f "embedding_server.py" >/dev/null 2>&1 || true
+if ss -ltn '( sport = :8091 )' | grep -q 8091; then
+  fuser -k 8091/tcp >/dev/null 2>&1 || true
+fi
+# Prefer venv, but fallback to system python if imports fail
+PYTHON_BIN="./.venv/bin/python"
+if [ ! -x "$PYTHON_BIN" ]; then
+  python3 -m venv .venv >/dev/null 2>&1 || true
+fi
+if [ -x "$PYTHON_BIN" ]; then
   . .venv/bin/activate
-  # Ensure minimal deps (full stack may already be satisfied on the host)
-  pip install -q aiohttp aiohttp_cors numpy sentence_transformers >/dev/null 2>&1 || true
-  # torch installation may be environment-specific; assume preinstalled, otherwise user installs manually
-  EMBEDDING_MODEL_PATH="$EMBED_MODEL_DIR" EMBEDDING_SERVER_PORT=8090 python embedding_server.py >/tmp/real_embed.log 2>&1 &
-  sleep 2
+  python -m pip install -q --upgrade pip >/dev/null 2>&1 || true
+  # Try to install dependencies quietly (network might be restricted)
+  python -m pip install -q aiohttp aiohttp_cors numpy sentence_transformers torch >/dev/null 2>&1 || true
+  if ! $PYTHON_BIN - <<'PY' >/dev/null 2>&1; then
+import aiohttp, aiohttp_cors, numpy, sentence_transformers, torch
+PY
+    echo "Venv missing deps, will fallback to system python if available"
+    PYTHON_BIN="python3"
+  fi
+else
+  PYTHON_BIN="python3"
+fi
+CUDA_VISIBLE_DEVICES="" EMBEDDING_MODEL_PATH="$EMBED_MODEL_DIR" EMBEDDING_SERVER_PORT=8091 "$PYTHON_BIN" embedding_server.py >/tmp/real_embed.log 2>&1 &
+# Wait for health up to 90s (model warmup may take a few seconds)
+READY_EMB=0
+for i in $(seq 1 90); do
+  assert_timeout
+  if timeout 2s curl -sS http://127.0.0.1:8091/health >/dev/null; then READY_EMB=1; break; fi
+  sleep 1
+done
+if [ "$READY_EMB" != "1" ]; then
+  echo "Embedding server failed to start on :8091. Last 100 lines of log:" >&2
+  tail -n 100 /tmp/real_embed.log || true
+  exit 2
 fi
 assert_timeout
-( set +o pipefail; timeout 8s curl -sS http://127.0.0.1:8090/health | sed -n '1,200p' ) || true || {
-  echo "ERROR: Real embedding server not responding on :8090" >&2; exit 2;
-}
+timeout 8s curl -sS http://127.0.0.1:8091/health | sed -n '1,200p'
 
 echo "[2/6] Ensuring neo4j-test container"
 if ! docker ps --format '{{.Names}}' | grep -q '^neo4j-test$'; then
@@ -62,7 +86,7 @@ set +e
 pkill -f target/release/memory-server >/dev/null 2>&1
 set -e
 
-RUST_LOG=info EMBEDDING_SERVER_URL=http://127.0.0.1:8090 \
+RUST_LOG=info EMBEDDING_SERVER_URL=http://127.0.0.1:8091 \
 NEO4J_URI=bolt://localhost:7688 NEO4J_USER=neo4j NEO4J_PASSWORD=testpass \
 ORCHESTRATOR_FORCE_DISABLE=true DISABLE_SCHEDULERS=true \
 SERVICE_HOST=0.0.0.0 SERVICE_PORT=8080 \
@@ -84,13 +108,24 @@ if [ "$READY" != "1" ]; then
   exit 2
 fi
 
+# Optional: start live metrics stream in background
+if [ "${ENABLE_METRICS_STREAM:-0}" = "1" ]; then
+  echo "[5.1/6] Starting live metrics collector (interval=${METRICS_INTERVAL_SEC:-2}s)"
+  ( set +e; python3 scripts/metrics_collector.py \
+      --api http://127.0.0.1:8080 \
+      --emb http://127.0.0.1:8091 \
+      --interval "${METRICS_INTERVAL_SEC:-2}" \
+      --out /tmp/metrics_timeseries.jsonl \
+      >/tmp/metrics_collector.log 2>&1 & echo $! > /tmp/metrics_collector.pid ) || true
+fi
+
 echo "[6/6] Running API checks"
 assert_timeout
 echo "HEALTH:"; ( set +o pipefail; timeout 8s curl -sS http://127.0.0.1:8080/health | sed -n '1,200p' ) || true
 
 # Cross-check embedding dimensions between embedding server and API store response
 assert_timeout
-EMBED_DIM=$(timeout 8s curl -sS http://127.0.0.1:8090/stats | python3 -c 'import sys,json; d=json.load(sys.stdin); print(int(d.get("default_dimension") or 512))')
+EMBED_DIM=$(timeout 8s curl -sS http://127.0.0.1:8091/stats | python3 -c 'import sys,json; d=json.load(sys.stdin); print(int(d.get("default_dimension") or 512))')
 
 assert_timeout
 echo "STORE:"; ( set +o pipefail; timeout 8s curl -sS -X POST http://127.0.0.1:8080/memory -H 'Content-Type: application/json' \
@@ -120,6 +155,19 @@ echo "SEARCH (primary):"; ( set +o pipefail; timeout 8s curl -sS -X POST http://
 assert_timeout
 echo "SEARCH (compat):"; ( set +o pipefail; timeout 8s curl -sS -X POST http://127.0.0.1:8080/memories/search -H 'Content-Type: application/json' \
   -d '{"query":"Deterministic test memory FINAL","limit":5}' | sed -n '1,200p') || true
+
+# Test aliases under /api/*
+assert_timeout
+echo "STORE (alias /api/memory):"; ( set +o pipefail; timeout 8s curl -sS -X POST http://127.0.0.1:8080/api/memory -H 'Content-Type: application/json' \
+  -d '{"content":"Alias store memory","context_hint":"tests/alias","memory_type":"semantic"}' | sed -n '1,200p') || true
+
+assert_timeout
+echo "SEARCH (alias /api/memory/search):"; ( set +o pipefail; timeout 8s curl -sS -X POST http://127.0.0.1:8080/api/memory/search -H 'Content-Type: application/json' \
+  -d '{"query":"Alias store memory","limit":3}' | sed -n '1,200p') || true
+
+assert_timeout
+echo "MAINTENANCE (alias /api/v1/maintenance/decay):"; ( set +o pipefail; timeout 8s curl -sS -X POST http://127.0.0.1:8080/api/v1/maintenance/decay -H 'Content-Type: application/json' \
+  -d '{"dry_run":false}' | sed -n '1,200p') || true
 
 assert_timeout
 echo "RECENT:"; ( set +o pipefail; timeout 8s curl -sS 'http://127.0.0.1:8080/memories/recent?limit=5' | sed -n '1,200p' ) || true
@@ -183,7 +231,39 @@ if [ "$OK_COUNT" -lt 10 ]; then
   exit 3
 fi
 
+# Optional: quality evaluation (synthetic dataset); does not fail verify
+if [ "${RUN_QUALITY_EVAL:-1}" = "1" ]; then
+  assert_timeout
+  echo "[7.1/6] Quality evaluation (synthetic)"
+  MIN_P5=${MIN_P5:-0.95}
+  MIN_MRR=${MIN_MRR:-0.95}
+  MIN_NDCG=${MIN_NDCG:-0.95}
+  if ! python3 scripts/quality_eval.py --host 127.0.0.1 --port 8080 --k 5 \
+      --dataset datasets/quality/dataset.json --relevance content \
+      --out /tmp/quality_report.json --min-p5 "$MIN_P5" --min-mrr "$MIN_MRR" --min-ndcg "$MIN_NDCG" \
+      | sed -n '1,200p'; then
+    echo "ERROR: Quality gates failed (min_p5=$MIN_P5, min_mrr=$MIN_MRR, min_ndcg=$MIN_NDCG)" >&2
+    kill $PID >/dev/null 2>&1 || true
+    exit 4
+  fi
+  # quick live stream (5 iters) and extended metrics append
+  echo "[7.2/6] Quality stream (5 iters)"
+  python3 scripts/quality_stream.py --host 127.0.0.1 --port 8080 --k 5 --interval 1 --max-iterations 5 --out /tmp/quality_stream.jsonl --seed-if-missing | sed -n '1,5p' || true
+  echo "[7.3/6] Extended metrics (RETENTION_TICKS=${RETENTION_TICKS:-10})"
+  RETENTION_TICKS=${RETENTION_TICKS:-10} python3 scripts/quality_extended.py --host 127.0.0.1 --port 8080 --k 5 --out /tmp/quality_stream.jsonl || true
+fi
+
 echo "Stopping server"
 kill $PID >/dev/null 2>&1 || true
 sleep 0.5
+if [ -f /tmp/metrics_collector.pid ]; then
+  COL_PID=$(cat /tmp/metrics_collector.pid || true)
+  if [ -n "$COL_PID" ]; then kill "$COL_PID" >/dev/null 2>&1 || true; fi
+  echo "Metrics timeseries captured at /tmp/metrics_timeseries.jsonl"
+fi
+# Persist reports to ./reports for dashboard
+mkdir -p reports
+if [ -f /tmp/quality_report.json ]; then cp /tmp/quality_report.json ./reports/quality_report.json || true; fi
+if [ -f /tmp/metrics_timeseries.jsonl ]; then cp /tmp/metrics_timeseries.jsonl ./reports/metrics_timeseries.jsonl || true; fi
+if [ -f /tmp/quality_stream.jsonl ]; then cp /tmp/quality_stream.jsonl ./reports/quality_stream.jsonl || true; fi
 echo "== Verification completed =="

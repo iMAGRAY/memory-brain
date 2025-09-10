@@ -423,7 +423,7 @@ impl SecureOrchestrationLayer {
             results.iter().map(|m| m.importance).sum::<f32>() / results.len() as f32;
 
         // Normalize to 0-1 range
-        (avg_importance * 2.0).min(1.0).max(0.0)
+        (avg_importance * 2.0).clamp(0.0, 1.0)
     }
 
     /// Truncate content to specified length

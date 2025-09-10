@@ -25,7 +25,9 @@ use tower_http::{
     cors::{Any, CorsLayer},
     limit::RequestBodyLimitLayer,
     trace::TraceLayer,
+    services::ServeDir,
 };
+use axum::response::Html;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -94,6 +96,8 @@ pub struct SearchRequest {
     pub include_related: Option<bool>,
     pub min_importance: Option<f32>,
     pub similarity_threshold: Option<f32>,
+    pub return_scores: Option<bool>,
+    pub hybrid_alpha: Option<f32>,
 }
 
 use serde::Deserializer;
@@ -142,7 +146,7 @@ where
     if value.is_nan() || value.is_infinite() {
         return Err(E::custom(format!("{} must be a finite number", field_name)));
     }
-    if value < MIN_THRESHOLD || value > MAX_THRESHOLD {
+    if !(MIN_THRESHOLD..=MAX_THRESHOLD).contains(&value) {
         return Err(E::custom(format!(
             "{} must be between {} and {}",
             field_name, MIN_THRESHOLD, MAX_THRESHOLD
@@ -202,6 +206,10 @@ pub struct SearchQueryParams {
     /// Порог схожести для vector search (0.0-1.0)
     #[serde(deserialize_with = "deserialize_similarity", default)]
     pub similarity_threshold: Option<f32>,
+    #[serde(default)]
+    pub return_scores: Option<bool>,
+    #[serde(default)]
+    pub hybrid_alpha: Option<f32>,
 }
 
 /// Ответ поиска
@@ -214,6 +222,15 @@ pub struct SearchResponse {
     pub confidence: f32,
     pub recall_time_ms: u64,
     pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scores: Option<Vec<ScoredItem>>, // optional diagnostic
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScoredItem {
+    pub id: Uuid,
+    pub score: f32,
+    pub method: String,
 }
 
 /// Совместимый ответ для alias‑маршрутов поиска
@@ -365,11 +382,20 @@ impl IntoResponse for ApiError {
                 "Rate limit exceeded".to_string(),
                 Some("Please retry after some time".to_string()),
             ),
-            ApiError::MemoryError(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Memory service error".to_string(),
-                Some(e.to_string()),
-            ),
+            ApiError::MemoryError(e) => {
+                match e {
+                    MemoryError::Embedding(msg) => (
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "Embedding service unavailable".to_string(),
+                        Some(msg),
+                    ),
+                    other => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Memory service error".to_string(),
+                        Some(other.to_string()),
+                    ),
+                }
+            },
         };
 
         let body = Json(ErrorResponse {
@@ -412,6 +438,17 @@ pub fn create_router(
         .route("/health", get(health_check))
         .route("/metrics", get(metrics_endpoint))
         .route("/stats", get(get_statistics))
+        .route("/analytics/graph", get(analytics_graph))
+        .route("/analytics/contexts", get(analytics_contexts))
+        // Встроенная страница дашборда (работает даже без статических файлов)
+        .route("/dashboard", get(dashboard_page))
+        // Прямой маршрут на файл дашборда на случай, если статические отчёты не смонтированы
+        .route("/reports/dashboard.html", get(dashboard_page))
+        // Статические отчёты и дашборды (если доступны на ФС)
+        .nest_service(
+            "/reports",
+            ServeDir::new(std::env::var("REPORTS_DIR").unwrap_or_else(|_| "reports".to_string())),
+        )
         // Операции с памятью
         .route("/memory", post(store_memory))
         .route("/memory/:id", get(get_memory))
@@ -501,8 +538,8 @@ async fn health_check(State(state): State<ApiState>) -> impl IntoResponse {
         "service": "ai-memory-service",
         "version": env!("CARGO_PKG_VERSION"),
         "services": {
-            "embedding": true,
-            "storage": true,
+            "embedding": state.memory_service.embedding_available(),
+            "storage": stats.is_some(),
             "cache": true
         },
         "orchestrator": {
@@ -525,6 +562,45 @@ async fn get_statistics(State(state): State<ApiState>) -> Result<impl IntoRespon
         "embedding_dimension": state.embedding_dimension,
         "success": true,
     })))
+}
+
+/// Встроенная страница дашборда (embed HTML)
+async fn dashboard_page() -> impl IntoResponse {
+    // HTML встроен в бинарь, чтобы страница была доступна даже без статических файлов
+    let html: &str = include_str!("../reports/dashboard.html");
+    Html(html.to_string())
+}
+
+/// Графовые метрики (связность, расширение, энтропия контекстов)
+async fn analytics_graph(State(state): State<ApiState>) -> Result<impl IntoResponse, ApiError> {
+    let gm = state.memory_service.compute_graph_metrics().await?;
+    Ok(Json(serde_json::json!({
+        "graph": {
+            "total_memories": gm.total_memories,
+            "total_contexts": gm.total_contexts,
+            "avg_related_degree": gm.avg_related_degree,
+            "connected_ratio": gm.connected_ratio,
+            "contexts_entropy": gm.contexts_entropy,
+            "two_hop_expansion": gm.two_hop_expansion,
+            "avg_closure": gm.avg_closure,
+            "avg_shortest_path": gm.avg_shortest_path,
+        },
+        "success": true
+    })))
+}
+
+/// Контекстные статистики: список {path, count}
+async fn analytics_contexts(State(state): State<ApiState>) -> Result<impl IntoResponse, ApiError> {
+    let stats = state
+        .memory_service
+        .graph_storage
+        .context_stats_map()
+        .await?;
+    let data: Vec<serde_json::Value> = stats
+        .into_iter()
+        .map(|(path, cnt)| serde_json::json!({"path": path, "count": cnt}))
+        .collect();
+    Ok(Json(serde_json::json!({"contexts": data, "success": true})))
 }
 
 /// Экспорт Prometheus-метрик
@@ -724,6 +800,25 @@ async fn search_memories(
 
     let total = results.len();
 
+    // Optional scoring
+    let scores = if req.return_scores.unwrap_or(false) {
+        let alpha = req.hybrid_alpha.unwrap_or(0.7);
+        let scored = state
+            .memory_service
+            .score_hybrid(&req.query, &results, alpha)
+            .await
+            .ok()
+            .unwrap_or_default();
+        Some(
+            scored
+                .into_iter()
+                .map(|(id, score, method)| ScoredItem { id, score, method })
+                .collect(),
+        )
+    } else {
+        None
+    };
+
     Ok(Json(SearchResponse {
         results,
         total,
@@ -732,6 +827,7 @@ async fn search_memories(
         confidence: 0.8,
         recall_time_ms: 100,
         success: true,
+        scores,
     }))
 }
 
@@ -767,6 +863,17 @@ async fn search_memories_get(
         recall_time_ms
     );
 
+    let scores = if params.return_scores.unwrap_or(false) {
+        let alpha = params.hybrid_alpha.unwrap_or(0.7);
+        let scored = state
+            .memory_service
+            .score_hybrid(&params.query, &results, alpha)
+            .await
+            .ok()
+            .unwrap_or_default();
+        Some(scored.into_iter().map(|(id, score, method)| ScoredItem { id, score, method }).collect())
+    } else { None };
+
     Ok(Json(SearchResponse {
         results,
         total,
@@ -779,6 +886,7 @@ async fn search_memories_get(
         confidence: 0.8,
         recall_time_ms,
         success: true,
+        scores,
     }))
 }
 
@@ -805,17 +913,41 @@ async fn search_memories_compat(
 /// Поиск по контексту
 async fn search_by_context(
     State(state): State<ApiState>,
-    Json(req): Json<SearchRequest>,
+    body: Bytes,
 ) -> Result<impl IntoResponse, ApiError> {
-    let context = req
-        .context
-        .ok_or_else(|| ApiError::BadRequest("Context is required".to_string()))?;
+    // Tolerant parsing: accept missing `query` and default to empty string
+    let mut context: Option<String> = None;
+    let mut limit: Option<usize> = None;
+    let mut query_text: String = String::new();
 
-    let limit = req.limit.unwrap_or(10).min(100);
+    // Try strict struct first
+    let parsed: Result<SearchRequest, _> = serde_json::from_slice(&body);
+    match parsed {
+        Ok(req) => {
+            context = req.context;
+            limit = req.limit;
+            query_text = req.query;
+        }
+        Err(_) => {
+            // Fallback: partial JSON
+            let v: serde_json::Value = serde_json::from_slice(&body)
+                .map_err(|_| ApiError::BadRequest("Invalid JSON".to_string()))?;
+            context = v.get("context").and_then(|c| c.as_str()).map(|s| s.to_string());
+            limit = v.get("limit").and_then(|l| l.as_u64()).map(|u| u as usize);
+            query_text = v
+                .get("query")
+                .and_then(|q| q.as_str())
+                .unwrap_or("")
+                .to_string();
+        }
+    }
+
+    let context = context.ok_or_else(|| ApiError::BadRequest("Context is required".to_string()))?;
+    let limit = limit.unwrap_or(10).min(100);
 
     let results = state
         .memory_service
-        .search_by_context(&context, Some(&req.query), limit)
+        .search_by_context(&context, Some(&query_text), limit)
         .await?;
 
     Ok(Json(SearchResponse {
@@ -824,11 +956,12 @@ async fn search_by_context(
         query_id: Uuid::new_v4(),
         reasoning_chain: vec![
             format!("Context: {}", context),
-            format!("Query: {:?}", req.query),
+            format!("Query: {:?}", query_text),
         ],
         confidence: 0.85,
         recall_time_ms: 150,
         success: true,
+        scores: None,
     }))
 }
 
@@ -872,6 +1005,7 @@ async fn advanced_recall(
         confidence: recalled.confidence,
         recall_time_ms: recalled.recall_time_ms,
         success: true,
+        scores: None,
     }))
 }
 
@@ -1083,7 +1217,7 @@ async fn optimize_memory(
     let memories = if let Some(context) = &req.context {
         state
             .memory_service
-            .search_by_context(&context, None, 5000)
+            .search_by_context(context, None, 5000)
             .await?
     } else {
         state.memory_service.get_recent(5000, None).await?

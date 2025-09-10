@@ -259,6 +259,10 @@ impl ShutdownCoordinator {
     }
 }
 
+impl Default for ShutdownCoordinator {
+    fn default() -> Self { Self::new() }
+}
+
 /// Shutdown statistics
 #[derive(Debug, Clone)]
 pub struct ShutdownStats {

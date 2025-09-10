@@ -16,7 +16,7 @@ use crate::embedding_config::EmbeddingConfig;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use tokio::sync::Semaphore;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, info, warn};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
@@ -102,6 +102,7 @@ pub struct EmbeddingService {
     server_url: String,
     model_name: String,
     config: EmbeddingConfig,
+    #[allow(clippy::type_complexity)]
     embedding_cache: Arc<dashmap::DashMap<String, (Arc<Vec<f32>>, u64)>>, // (embedding, timestamp)
     use_instructions: bool,
     matryoshka_dims: Vec<usize>, // Supported dimensions: [768, 512, 256, 128]
@@ -116,6 +117,8 @@ pub struct EmbeddingService {
     max_concurrent_operations: usize,
     // Actual embedding dimension detected from server or fallback to config
     actual_dimension: usize,
+    // Service availability flag (graceful degradation) with interior mutability for late startup
+    available: std::sync::atomic::AtomicBool,
 }
 
 /// Model information for compatibility
@@ -139,10 +142,8 @@ impl EmbeddingService {
         let config = EmbeddingConfig::load()?;
         
         // Calculate optimal max concurrent operations
-        let max_concurrent_operations = std::cmp::max(
-            1, // Ensure at least 1 concurrent operation
-            std::cmp::min(config.performance.max_batch_size / 2, DEFAULT_MAX_CONCURRENT_OPS)
-        );
+        let max_concurrent_operations = (config.performance.max_batch_size / 2)
+            .clamp(1, DEFAULT_MAX_CONCURRENT_OPS);
         
         info!("Initializing HTTP-based EmbeddingService");
         info!("Configured max concurrent operations: {} (based on batch_size={}, default_max={})", 
@@ -160,20 +161,19 @@ impl EmbeddingService {
         
         info!("Using embedding server at: {}", server_url);
         
-        // Test connection to embedding server
+        // Test connection to embedding server (graceful degradation)
         let health_url = format!("{}/health", server_url);
+        let mut available = false;
         match client.get(&health_url).send().await {
             Ok(response) if response.status().is_success() => {
                 info!("Successfully connected to embedding server");
+                available = true;
             }
             Ok(response) => {
-                warn!("Embedding server returned status: {}", response.status());
+                warn!("Embedding server returned status: {} — degraded mode (503 for embed ops)", response.status());
             }
             Err(e) => {
-                error!("Failed to connect to embedding server: {}", e);
-                return Err(MemoryError::Embedding(
-                    format!("Embedding server not available at {}: {}", server_url, e)
-                ));
+                warn!("Embedding server not available at {}: {} — degraded mode (503 for embed ops)", server_url, e);
             }
         }
 
@@ -213,8 +213,8 @@ impl EmbeddingService {
             }
         }
 
-        // If /stats didn't yield a dimension, probe with a single /embed call
-        if detected_from != "stats" {
+        // If /stats didn't yield a dimension, probe with a single /embed call (only if available)
+        if detected_from != "stats" && available {
             let probe_url = format!("{}/embed", server_url);
             let probe_req = EmbedRequest { text: "dimension probe".to_string() };
             match client.post(&probe_url).json(&probe_req).send().await {
@@ -249,7 +249,7 @@ impl EmbeddingService {
             }
         }
 
-        info!("Embedding dimension ready: {} (source: {})", actual_dimension, detected_from);
+        info!("Embedding dimension ready: {} (source: {}, available: {})", actual_dimension, detected_from, available);
         
         Ok(Self {
             client,
@@ -265,11 +265,24 @@ impl EmbeddingService {
             concurrency_semaphore: Arc::new(Semaphore::new(max_concurrent_operations)),
             max_concurrent_operations,
             actual_dimension,
+            available: std::sync::atomic::AtomicBool::new(available),
         })
     }
     
     /// Generate embedding for a single text with task type
     pub async fn embed(&self, text: &str, task: TaskType) -> MemoryResult<Vec<f32>> {
+        if !self.available.load(std::sync::atomic::Ordering::Relaxed) {
+            // Attempt late health check (embedding server might have started after us)
+            let health_url = format!("{}/health", self.server_url);
+            match self.client.get(&health_url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    self.available.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+                _ => {
+                    return Err(MemoryError::Embedding("Embedding server unavailable".to_string()));
+                }
+            }
+        }
         // Format text with task-specific prompt
         let formatted_text = self.format_with_task(text, task);
         
@@ -324,6 +337,18 @@ impl EmbeddingService {
     
     /// Generate embeddings for a batch of texts with task type
     pub async fn embed_batch(&self, texts: &[String], task: TaskType) -> MemoryResult<Vec<Vec<f32>>> {
+        if !self.available.load(std::sync::atomic::Ordering::Relaxed) {
+            // Attempt late health check
+            let health_url = format!("{}/health", self.server_url);
+            match self.client.get(&health_url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    self.available.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+                _ => {
+                    return Err(MemoryError::Embedding("Embedding server unavailable".to_string()));
+                }
+            }
+        }
         if texts.is_empty() {
             return Ok(Vec::new());
         }
@@ -503,6 +528,9 @@ impl EmbeddingService {
             max_sequence_length: self.config.embedding.max_sequence_length,
         }
     }
+
+    /// Embedding server availability
+    pub fn is_available(&self) -> bool { self.available.load(std::sync::atomic::Ordering::Relaxed) }
     
     /// Clear embedding cache
     pub fn clear_cache(&self) {

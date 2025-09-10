@@ -58,7 +58,7 @@ impl CpuFeatures {
     
     /// Get cached CPU features (thread-safe)
     pub fn get() -> &'static CpuFeatures {
-        CPU_FEATURES.get_or_init(|| Self::detect())
+        CPU_FEATURES.get_or_init(Self::detect)
     }
     
     /// Get the best available SIMD level
@@ -151,7 +151,7 @@ pub fn align_vector(v: &mut Vec<f32>, alignment: usize) {
         return;
     }
     let current_len = v.len();
-    let aligned_len = (current_len + alignment - 1) / alignment * alignment;
+    let aligned_len = current_len.div_ceil(alignment) * alignment;
     v.resize(aligned_len, 0.0);
 }
 
@@ -199,6 +199,10 @@ impl SimdBenchmark {
         println!("{}: {:.3} μs per iteration", name, avg_time * 1_000_000.0);
         avg_time
     }
+}
+
+impl Default for SimdBenchmark {
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]
