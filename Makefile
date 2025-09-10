@@ -70,7 +70,7 @@ else
 endif
 
 # Bring up the full stack (embedding, neo4j, memory-server, streams)
-stack-up: build embedding-up neo4j-up memory-up metrics-up quality-up extended-up
+stack-up: build embedding-up neo4j-up memory-up-tuned metrics-up quality-up extended-up
 	@echo "Stack is up. Dashboard (backend API): http://$(SERVICE_HOST):$(SERVICE_PORT)/dashboard"
 	@echo "Static dashboard (optional): make dashboard"
 

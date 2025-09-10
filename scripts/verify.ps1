@@ -161,9 +161,9 @@ if ($after -lt $before) {
 }
 
 try {
-  $MIN_P5 = if ($env:MIN_P5) { [double]$env:MIN_P5 } else { 0.70 }
-  $MIN_MRR = if ($env:MIN_MRR) { [double]$env:MIN_MRR } else { 0.85 }
-  $MIN_NDCG = if ($env:MIN_NDCG) { [double]$env:MIN_NDCG } else { 0.70 }
+  $MIN_P5 = if ($env:MIN_P5) { [double]$env:MIN_P5 } else { 0.80 }
+  $MIN_MRR = if ($env:MIN_MRR) { [double]$env:MIN_MRR } else { 0.90 }
+  $MIN_NDCG = if ($env:MIN_NDCG) { [double]$env:MIN_NDCG } else { 0.80 }
   Write-Host "[7.1/6] Quality evaluation with strict gates (P5=$MIN_P5, MRR=$MIN_MRR, nDCG=$MIN_NDCG)" -ForegroundColor Yellow
   $args = @(
     'scripts/quality_eval.py', '--host','127.0.0.1','--port','8080','--k','5',
