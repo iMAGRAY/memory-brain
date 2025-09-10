@@ -35,6 +35,21 @@ run: build
 	SERVICE_HOST=$(SERVICE_HOST) SERVICE_PORT=$(SERVICE_PORT) \
 	./target/release/memory-server
 
+.PHONY: memory-up-tuned
+memory-up-tuned: build
+	@bash -lc 'if ! curl -sf --max-time 2 http://$(SERVICE_HOST):$(SERVICE_PORT)/health >/dev/null; then \
+	  nohup env RUST_LOG=info EMBEDDING_SERVER_URL=http://127.0.0.1:8091 \
+	  NEO4J_URI=$(NEO4J_URI) NEO4J_USER=$(NEO4J_USER) NEO4J_PASSWORD=$(NEO4J_PASSWORD) \
+	  ORCHESTRATOR_FORCE_DISABLE=true DISABLE_SCHEDULERS=true \
+	  SERVICE_HOST=$(SERVICE_HOST) SERVICE_PORT=$(SERVICE_PORT) \
+	  CAND_SEM_MULT=10 CAND_SEM_CAP=300 CAND_SEM_THRESH=0.08 \
+	  CAND_LEX_MULT=5 CAND_LEX_CAP=100 \
+	  CONTEXT_BOOST=0.35 ENABLE_MMR=1 MMR_LAMBDA=0.3 MMR_TOP=150 \
+	  HYBRID_ALPHA=0.5 ALPHA_SHORT=0.4 ALPHA_LONG=0.6 \
+	  ./target/release/memory-server >/tmp/memory_server_tuned.log 2>&1 & echo $$! > /tmp/memory_server_tuned.pid; \
+	fi'
+	@echo "Memory API (tuned): http://$(SERVICE_HOST):$(SERVICE_PORT)/health"
+
 
 # Start everything needed for the live dashboard and print the URL
 # Serve only the dashboard HTML (static) on :8099. Backend сервисы запускайте отдельными командами.

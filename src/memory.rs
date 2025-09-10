@@ -551,9 +551,10 @@ impl MemoryService {
 
         // Layer 1: Semantic search — widen candidate pool aggressively
         let base_limit = query.limit.unwrap_or(20);
-        let cand_sem_mult = env_usize("CAND_SEM_MULT", 15);
-        let cand_sem_cap = env_usize("CAND_SEM_CAP", 500);
-        let cand_sem_thresh = env_f32("CAND_SEM_THRESH", 0.05);
+        // Tuned defaults; overridable via env
+        let cand_sem_mult = env_usize("CAND_SEM_MULT", 10);
+        let cand_sem_cap = env_usize("CAND_SEM_CAP", 300);
+        let cand_sem_thresh = env_f32("CAND_SEM_THRESH", 0.08);
         let candidate_limit = (base_limit.saturating_mul(cand_sem_mult)).min(cand_sem_cap);
         let semantic_results_sem = self
             .graph_storage
@@ -567,8 +568,8 @@ impl MemoryService {
 
         // Optional lexical augmentation (BM25) to boost recall for short queries
         let mut semantic_results = semantic_results_sem;
-        let cand_lex_mult = env_usize("CAND_LEX_MULT", 8);
-        let cand_lex_cap = env_usize("CAND_LEX_CAP", 150);
+        let cand_lex_mult = env_usize("CAND_LEX_MULT", 5);
+        let cand_lex_cap = env_usize("CAND_LEX_CAP", 100);
         let lex_extra = (base_limit.saturating_mul(cand_lex_mult)).min(cand_lex_cap);
         if lex_extra > 0 {
             let mut qlex = query.clone();
