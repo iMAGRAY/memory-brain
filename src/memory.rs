@@ -457,7 +457,7 @@ impl MemoryService {
         // Final hybrid re-ranking across combined layers to maximize quality (if embedding available)
         // Auto-tune HYBRID_ALPHA by query length (shorter queries favor lexical)
         let mut alpha: f32 = env_f32("HYBRID_ALPHA", 0.5);
-        let qtoks = tokenize(&query.text);
+        let qtoks = filter_stopwords(&tokenize(&query.text));
         let qlen = qtoks.len();
         if std::env::var("HYBRID_ALPHA").is_err() {
             let short = env_f32("ALPHA_SHORT", 0.4);
@@ -661,7 +661,7 @@ impl MemoryService {
             pool = self.get_recent(256, None).await.unwrap_or_default();
         }
 
-        let q_tokens = tokenize(&query.text);
+        let q_tokens = filter_stopwords(&tokenize(&query.text));
         let df: StdHashMap<String, usize> = document_frequency(&pool);
         let n_docs = pool.len().max(1);
 
@@ -924,7 +924,7 @@ impl MemoryService {
     async fn score_hybrid_internal(&self, query_text: &str, results: &[MemoryCell], alpha: f32) -> MemoryResult<Vec<(Uuid, f32, String)>> {
         let alpha = alpha.clamp(0.0, 1.0);
         // Lexical precompute
-        let q_tokens = tokenize(query_text);
+        let q_tokens = filter_stopwords(&tokenize(query_text));
         let df = document_frequency(results);
         let n_docs = results.len().max(1);
         // Precompute avg doc length for BM25 and per-doc lexical scores for normalization
@@ -1300,4 +1300,13 @@ mod tests {
         // This would require mocking the dependencies
         // Full implementation would include proper test setup
     }
+}
+/// Remove common English stop-words from token list (for query-only BM25 improvements)
+fn filter_stopwords(tokens: &[String]) -> Vec<String> {
+    // Minimal list; deterministic and static
+    const STOP: &[&str] = &[
+        "the","a","an","is","are","was","were","to","of","in","on","for","and","or","as","by","at","be","with","from","that","this","it","into","over","under","how","what","which","why","who","when","where","do","does","did","can","could","would","should","you","your"
+    ];
+    let stop: std::collections::HashSet<&str> = STOP.iter().copied().collect();
+    tokens.iter().filter(|t| !stop.contains(t.as_str()) && t.len() > 1).cloned().collect()
 }
