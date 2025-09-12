@@ -1,0 +1,25 @@
+{
+  "can": "RECOMPUTE",
+  "symbols": [],
+  "system": {
+    "components": [],
+    "functions": [],
+    "dataFlows": [],
+    "profiles": {
+      "typeMap": {
+        "rust": "Rust"
+      },
+      "errorMap": {},
+      "naming": {
+        "language": "rust"
+      }
+    },
+    "globalConstraints": {}
+  },
+  "metadata": {
+    "generated_by": "assistant/automation",
+    "generated_at": "2025-09-12T01:13:44+03:00",
+    "notes": "Skeleton AXPL-2 generated from plan.md. Review required; compute canonical 'can' after validation."
+  }
+}
+
