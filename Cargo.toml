@@ -16,7 +16,7 @@ thiserror = "1.0"
 
 # Web framework
 axum = { version = "0.7", features = ["json", "ws", "macros"] }
-tower = "0.4"
+tower = { version = "0.4", features = ["limit"] }
 tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip", "limit", "fs"] }
 
 # Async utilities
@@ -75,6 +75,7 @@ winapi = { version = "0.3", features = ["psapi", "processthreadsapi", "winnt"] }
 [features]
 default = []
 gpu = []
+ann_hnsw = []
 
 # Production optimization profile
 [profile.release]

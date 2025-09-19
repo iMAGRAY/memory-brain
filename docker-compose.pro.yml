@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  memory:
+    build: .
+    image: ai-memory-service/memory:dev
+    env_file: .env.example
+    environment:
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      - neo4j
+      - vector-index
+      - embedding
+      - minio
+
+  embedding:
+    image: python:3.11-slim
+    command: ["python", "-u", "embedding_server.py"]
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      EMBEDDING_MODEL_PATH: /app/models/embeddinggemma-300m
+      EMBEDDING_SERVER_PORT: "8091"
+    ports:
+      - "8091:8091"
+
+  vector-index:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      NEO4J_AUTH: "neo4j/testpass"
+    ports:
+      - "7687:7687"
+      - "7474:7474"
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: memory
+      MINIO_ROOT_PASSWORD: memorypass
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  agent-simulator:
+    image: python:3.11-slim
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./:/app
+

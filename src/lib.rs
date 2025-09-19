@@ -1,0 +1,28 @@
+pub mod api;
+pub mod brain;
+pub mod cache;
+pub mod config;
+pub mod distillation;
+pub mod embedding;
+pub mod embedding_config;
+pub mod mcp_server;
+pub mod memory;
+pub mod memory_optimizer;
+pub mod metrics;
+pub mod monitoring;
+pub mod orchestrator;
+pub mod orchestrator_pipeline;
+pub mod secure_orchestration;
+pub mod shutdown;
+pub mod simd_search;
+pub mod simd_utils;
+pub mod storage;
+pub mod types;
+
+pub use config::Config as MemoryConfig;
+pub use mcp_server::{McpResource, McpServer, McpServerConfig, McpTool};
+pub use memory::MemoryService;
+pub use orchestrator::{MemoryOrchestrator, OrchestratorConfig};
+pub use shutdown::ShutdownManager;
+pub use simd_search::{cosine_similarity_simd, parallel_vector_search};
+pub use types::*;

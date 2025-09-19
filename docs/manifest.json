@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "endpoints": {
+    "store_memory": "http://localhost:8080/mcp/memory",
+    "query_memory": "http://localhost:8080/mcp/query",
+    "timeline": "http://localhost:8080/mcp/timeline",
+    "session": "http://localhost:8080/mcp/session",
+    "similarity": "http://localhost:8080/mcp/similarity",
+    "plan": "http://localhost:8080/mcp/plan",
+    "feedback": "http://localhost:8080/mcp/feedback",
+    "summary": "http://localhost:8080/mcp/summary",
+    "analytics": "http://localhost:8080/mcp/timeline/analytics"
+  },
+  "features": {
+    "ENABLE_GPT5": {"enabled": false, "default": false, "description": "External LLM enrichment"},
+    "ENABLE_TLDR": {"enabled": false, "default": false, "description": "Summaries/details"},
+    "ENABLE_VECTOR_INDEX": {"enabled": false, "default": true, "description": "Vector similarity"},
+    "ENABLE_GRAPH_RELATIONS": {"enabled": false, "default": true, "description": "Graph edges"},
+    "ENABLE_MAINTENANCE": {"enabled": false, "default": true, "description": "Compaction"}
+  },
+  "contracts": [
+    "http://localhost:8080/mcp/contracts/v1"
+  ]
+}

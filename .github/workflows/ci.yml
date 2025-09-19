@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  agent-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Config check
+        run: python scripts/config_check.py
+      - name: Docs check
+        run: python scripts/docs_check.py
+      - name: Agent baseline tests (stub)
+        run: |
+          python simulator/run.py baseline
+          python simulator/run.py continuity
+          python simulator/run.py session
+          python simulator/run.py errors
+      - name: Quality report (stub)
+        run: python scripts/quality_report.py
+      - name: Status export (stub)
+        run: python scripts/status_export.py
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: artifacts

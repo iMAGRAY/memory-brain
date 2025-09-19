@@ -1,219 +1,196 @@
-# Project TODO (Deterministic Roadmap)
+# TODO — AI Memory Service MCP (когнитивно-оптимизированный план, 2025-09-19)
 
-## Scope & Goals
-- Deliver robust, human-like long‑term memory with inter‑session context.
-- Keep architecture intact; apply surgical, verifiable improvements only.
-- Ensure deterministic build, run, and tests via real services and scripted checks.
+## 0. Инварианты и когнитивные принципы
+- **UTC + ISO‑8601**: все временные метки формата `2025-09-19T12:34:56Z`.
+- **UUIDv7**: `req_id`, `Idempotency-Key`, `assembled_context_id`.
+- **EmbeddingGemma**: dtype ∈ {bf16, fp32}; `truncate_dim` ∈ {128,256,512,768}; `normalize_embeddings=true`; промпты строго из спецификации.
+- **GPT-5.0-nano**: Responses API; `max_output_tokens` обязателен; `reasoning.effort` ∈ {minimal,low,medium,high}; никаких `temperature/top_p`.
+- **Evidence-First**: без `sha256_source` — отказ (422 MEM_NO_EVIDENCE).
+- **SchemaGate**: jsonschema, `additionalProperties=false` для всех запросов/ответов.
+- **DeterminismGate**: повторный запрос → идентичный ответ и `assembled_context.hash`.
+- **Cognitive Ease**: единый набор терминов, предсказуемый формат сообщений, обязательные примеры в документации и автоинспекция схем.
 
-## Deterministic Environment
-- Embedding Server (real, 512D): run `python embedding_server.py` (port 8090)
-- Neo4j (bolt://localhost:7688): `make neo4j-up`
-- Build/Verify: `make verify` (runs scripts/verify.sh)
-- Stability flags: `ORCHESTRATOR_FORCE_DISABLE=true`, `DISABLE_SCHEDULERS=true`
+## 1. Приоритеты и дедлайны
+| Приоритет | Задачи | Старт | Дедлайн | Фокус |
+|-----------|--------|-------|---------|-------|
+| P0        | 20     | немедленно | 2025-10-03 | Контракты, детерминизм, когнитивная база |
+| P1        | 24     | после P0   | 2025-10-17 | Качество ранжирования, UX агента |
+| P2        | 16     | после P1   | 2025-10-31 | Расширения и масштабирование |
 
-## Update 2025-09-11 (Windows CI run)
-- [x] Verify pipeline executed end-to-end on Windows (PowerShell)
-- [x] Embedding server healthy on :8090 (real model present)
-- [x] Neo4j started via Docker on :7688 (fresh container each run)
-- [x] API built in release, server healthy, core routes 200
-- [x] Synthetic consolidate+tick decreased active_memories (OK)
-- [ ] Quality gates: below target on some hosts (content-based relevance): P@5=0.729 (<0.80), MRR=0.937 (>=0.90), nDCG=0.764 (<0.80)
-  - Action: thresholds unchanged; enable auto‑tuned HYBRID_ALPHA (no forced override in verify), ensure post‑seed backfill and zero missing embeddings before eval.
-- [x] Fix Makefile dataset seed/purge to use loopback (127.0.0.1) on Windows
-- [x] Force fresh `neo4j-test` container per verify run to avoid stale data
-- [x] `scripts/run_tests.ps1` integration path: starts cargo tests without spinning API → API tests fail with 503
-  - Action: implemented ephemeral `memory-server` startup in integration flow (wait `/health`, auto-stop); no `#[ignore]` needed.
-  - Implemented: start Python `embedding_server.py` automatically with `EMBEDDING_DEFAULT_DIMENSION=768`; ensure ONNX model download
-  - Fixed: summary could show PASSED on failure — strict boolean handling added in `Generate-Report` and exit evaluation
+## 2. P0 — фундамент (выполнять последовательно)
 
-## 2025-09-11 (quality ranker improvements)
-- [x] Query synonyms expansion for BM25 (deterministic map)
-- [x] Tag-based boost and configurable bigram bonus (EXACT_BIGRAM_BOOST)
-- [x] Hybrid scorer uses synonyms + tag boost; added tests (41/41 PASS)
-- [x] Switch to BM25F across fields (content/summary/tags/context) with tunables (W_*, B_*, BM25F_K1)
-- [ ] Run `scripts/verify.ps1` end-to-end and capture new P@5/MRR/nDCG
-  - Action: execute on host with Docker; expect ↑P@5/nDCG
+### A. Контракт EmbeddingGemma и сервис
+1. **[P0-EMB-01] Промпты и dtype**
+   - В `embedding_server.py` задавать `task: search result | query: ...` и `title: ...| text: ...`.
+   - Инициализация `SentenceTransformer(..., device=..., model_kwargs={"torch_dtype": ...})`.
+   - Диагностика float16 → аварийное завершение с кодом EMBD_001.
+   - `/embed` возвращает `dimension`, `dtype`, `norm_deviation`; |norm-1|>1e-6 ⇒ 422.
+   - Тесты: `pytest tests/test_embedding_prompts_diagnosis.py`, `tests/test_embedding_norm.py`.
 
-## 2025-09-11 (verify hardening)
-- [x] verify.ps1: remove forced HYBRID_ALPHA; allow auto‑tuning by query length
-- [x] verify.ps1: after dataset purge+seed, add missing_embeddings_count check and backfill loop (max 3 passes)
-- [x] verify.sh: do not force HYBRID_ALPHA; pre‑seed dataset, then check/backfill missing embeddings before quality_eval
-- [x] Quality eval stays content‑based; gates: P@5≥0.80, MRR≥0.90, nDCG≥0.80
+2. **[P0-EMB-02] Матрешка и самопроверка**
+   - Проверка `truncate_dim` ∈ {128,256,512,768}; `normalize_embeddings`=true.
+   - Возврат поля `self_check: {prompt_policy:true, matryoshka:true}`.
+   - CLI `scripts/emb_health.py` для агента (одна команда, JSON).
 
+### B. MCP-cлой и когнитивный интерфейс
+3. **[P0-MCP-03] MCP Envelope + SchemaGate**
+   - `McpEnvelope {action,input,idempotency_key,dry_run,meta}`.
+   - jsonschema для каждого инструмента + автоинспекция `/mcp/schema/<tool>`.
+   - Dry-run (валидация) / commit (исполнение). UUIDv7 проверка.
+   - Тест: `tests/mcp_envelope_test.rs`.
 
-## Milestones (with Acceptance Criteria)
-1) Stabilize API server lifecycle
-   - Add/keep graceful shutdown; no spontaneous exits for ≥ 60s idle.
-   - Criteria: make verify passes twice in a row; port 8080 stays open ≥ 60s.
-   - Status: OK (verify.ps1 green; сервер стабилен)
+4. **[P0-MCP-04] Интерактивная справка**
+   - Эндпоинт `/mcp/help` → описание инструмента, пример запроса/ответа.
+   - CLI `scripts/mcp_help.py <tool>` — выводит schema + sample.
+   - Документация `docs/mcp_cheatsheet.md` (таблица инструментов, шаги).
 
-2) API compatibility & UX
-   - Keep existing routes; support aliases: /memories, /memories/search, /api/memory/*.
-   - Compat search returns {"memories":[], "count":N, "success":true}.
-   - Criteria: curl suite in verify shows 200s and expected shapes.
-   - Status: OK (совместимые маршруты /memories, /recall, ответы health/metrics)
+### C. Детерминизм и контекст
+5. **[P0-DET-05] DeterminismGate**
+   - `assembled_context.hash = sha256("{id}|{type}|{score:.6f}|{text_norm}\n")`.
+   - Логи содержат `{req_id, assembled_context_hash}`.
+   - `scripts/verify.*` выполняют поиск 10×; расхождение ⇒ FAIL.
+   - Артефакт `artifacts/determinism_report.json`.
 
-3) Embedding: real-only, no mocks (512D Matryoshka)
-   - Default 512D; autodetect from embedding server (/stats) on dedicated port.
-   - Criteria: verify spins real embedding_server.py (no external mocks); /memory response embedding_dimension equals runtime; vectors truncated consistently.
-   - Add normalization after client-side truncation (Matryoshka best practice) when `NORMALIZE_EMBEDDINGS=true`.
-   - Status: OK (verify.sh форсирует поднятие real embedding на :8091; API health отдаёт embedding_dimension, совпадающий с сервером; нормализация включена)
+6. **[P0-DET-06] Cognitive summary**
+   - Каждое ответное сообщение содержит `summary` ≤ 240 символов + `details[]` с ссылками.
+   - ИИ агент получает «TL;DR» без дополнительной обработки.
 
-12) Orchestrator (GPT‑5‑nano)
-   - Align Chat Completions params with docs: use `max_tokens`, no unsupported params; keep `reasoning_effort`.
-   - Add live e2e test under `#[ignore]` requiring `OPENAI_API_KEY` and running server on :8080.
-   - Provide smoke script `scripts/orchestrator_smoke.ps1`.
-   - Status: OK (params fixed; test added; script added; ready to enable with OPENAI_API_KEY)
+### D. GPT‑5.0-nano — «мозг» оркестратора
+7. **[P0-GPT-07] Responses API миграция**
+   - Модуль `secure_orchestration::call_responses_api` с `max_output_tokens`, `reasoning.effort`.
+   - Удалить `temperature/top_p`; retries (>=3, exponential backoff + jitter).
+   - Логи `{model, latency_ms, prompt_tokens, output_tokens, cost_usd}`.
+   - Тест: `scripts/orchestrator_smoke.ps1` (авто вызывает help + sample).
 
-4) Inter‑session context quality
-   - Confirm context path saving and retrieval; enrich relationships when available.
-   - Criteria: After storing memories in different contexts, /contexts and /context/:path reflect counts; /search respects context filters.
-   - Status: OK (list_contexts/get_context_info; link RELATED_TO on store; contextual expansion in recall)
+8. **[P0-GPT-08] Контуры когнитивной простоты**
+   - Единый формат промптов: system=«You are deterministic MCP brain», user=json.
+   - Конвертор `/orchestrator/hints` → возвращает подходящий запрос (templates для агента).
+   - Добавить `docs/gpt5_playbook.md` с 3 примерами (importance, enrich, summarize).
 
-5) Observability & limits
-   - Trace critical steps (init, index rebuild, requests). Validate request size/limit guards.
-   - Criteria: No panics in logs; 4xx on invalid inputs; no hangs under rapid 5 QPS for 30s.
-   - Status: OK (trace spans; guards in API; verify stability loop 10/10)
+### E. Evidence, граф и память
+9. **[P0-EVP-09] Evidence-first enforcement**
+   - `MemoryService::store_memory` проверяет `sha256_source`. Нет → 422 MEM_NO_EVIDENCE.
+   - Тест: `tests/evidence_gate.rs`.
+   - Документ `docs/evidence_flow.md` (схема: input → sha256 → S3 → memory).
 
-6) Deterministic tests hardening (real embeddings)
-   - verify.sh forced to run local embedding_server.py on :8091; retries/waits added.
-   - Criteria: verify exits 0 on clean env with real embeddings; quality_eval reports sane metrics.
-   - Status: OK (quality_eval интегрирован с гейтами; health/waits добавлены; авто‑освежение датасета; unit‑тесты на BM25/priors/bigram — добавлены)
+10. **[P0-GPH-10] Надёжные операции графа**
+    - Параметризованные Cypher + транзакции `write_transaction`.
+    - Перед вставкой RELATED_TO проверять существование; удвоение запрещено.
+    - Метрика `graph_duplicates_blocked_total`.
+    - Тест: `tests/graph_dedupe_test.rs`.
 
-7) Context graph enrichment (human-like linking)
-   - Add higher-level relationships: co-occurrence within time windows; link contexts discovered via search.
-   - Keep writes minimal: reuse existing GraphStorage methods; add only lightweight relationship creation in service layer.
-   - Criteria: after N inserts in related contexts, `/contexts` shows non-zero counts; advanced recall returns connected memories.
-   - Status: OK (легковесные RELATED_TO между недавними из контекста; contextual_layer в recall)
+11. **[P0-MEM-11] Duplicate guard**
+    - Проверка `sha256(text_norm)`; дубликат → 409.
+    - Метрика `memory_duplicates_total`.
 
-8) Decay & consolidation (memory hygiene)
-   - Implement decay: periodic importance attenuation using `brain.decay_rate`; floor at config threshold.
-   - Consolidate: deduplicate near-duplicates; compress summaries into distilled nodes (via existing distillation engine when enabled).
-   - API status: endpoints implemented — `POST /maintenance/decay`, `POST /maintenance/consolidate`, `POST /maintenance/tick` (+ aliases under `/api/v1/*` and `/api/memory/consolidate`).
-   - Criteria: after 24h simulated ticks, low-importance items drop rank; duplicates reduced (Δcount ≥ 10% in synthetic set).
+### F. Наблюдаемость, безопасность, когнитивные подсказки
+12. **[P0-OBS-12] Структурные логи**
+    - JSON-логи `{ts,level,op,req_id,context_hash,summary}`.
+    - req_id прокидывать в embedding/GPT/Neo4j.
+    - OTEL spans `openai.call`, `neo4j.write`, `embedding.encode`.
 
-9) Observability & limits
-   - Expose Prometheus metrics (counters: requests, errors; histograms: recall latency, embedding latency; gauges: cache size, service_available).
-   - Tighten guards: total payload ≤ 1MB, limit ≤ 100, similarity threshold ∈ [0,1]; concurrency per route ≤ configurable.
-   - Criteria: `/metrics` exports series; verify.sh shows p95 recall < 200ms for 10 stored items on dev box.
-   - Status: Базовые метрики экспортируются (в т.ч. memory_store_duration_seconds); ограничения проверены
+13. **[P0-OBS-13] Чёткие метрики**
+    - Prometheus: `embedding_requests_total{dtype}`, `prompt_policy_violation_total`, `gpt5_cost_usd_total`, `determinism_failures_total`, `cognitive_hint_served_total`.
+    - Документ `docs/observability.md` с примерами dashboard.
 
-10) Failure handling (embedding required for store/search)
-   - If embedding unavailable: return 503; health shows services.embedding=false; verify ensures real server.
-   - Status: OK; store теперь запрещает пустые эмбеддинги; health/metrics отражают недоступность
+14. **[P0-SEC-14] Secrets & egress**
+    - Секреты только через env/vault; `.env` → пример без значений.
+    - `ENDPOINTS_ALLOWLIST` (OpenAI, Neo4j, MinIO). Нарушение → 403 + лог `security_violation`.
 
-11) Live metrics streaming during verify/development
-   - Add scripts/metrics_collector.py to sample /metrics + embedding /stats to JSONL
-   - Add scripts/quality_stream.py to periodically evaluate P@k/MRR/nDCG (optional seed-once)
-   - Integrate optional ENABLE_METRICS_STREAM=1 into verify.sh
-   - Criteria: real‑time JSONL артефакты в /tmp/*, стабильные записи на протяжении verify
-- Status: OK (скрипты добавлены, Makefile цели metrics-stream/quality-stream)
+15. **[P0-QA-15] Verify pipeline v2**
+    - Обновить `scripts/verify.ps1/.sh`: запускает real embedding + Neo4j, determinism, evidence, quality.
+    - Артефакты: `determinism_report.json`, `evidence_report.json`, `quality_snapshot.json`, `cognitive_summary.txt`.
 
-12) Backfill & Maintenance API
-   - Добавить endpoint /maintenance/backfill_embeddings (limit)
-   - Протянуть в MemoryService backfill_embeddings(); в GraphStorage list/update embedding.
-   - Criteria: POST /maintenance/backfill_embeddings возвращает fixed>0 при наличии пустых эмбеддингов.
-   - Status: OK
+16. **[P0-REL-16] Retry & circuit breaker**
+    - Обобщённый клиент (OpenAI/Neo4j/Embedding) с retries>=3, exponential backoff, circuit breaker.
+    - Логи `{service, state=open|half|closed}`.
 
-12) Embedding pipeline alignment (Matryoshka 512D, task prompts)
-   - Align client/server: include task_type in /embed and /embed_batch; server enforces default_dimension=512 via Matryoshka; /stats returns dimension.
-   - Store uses Document embeddings; Query uses Query embeddings. Skip empty embeddings in vector index.
-   - Criteria: /health reports embedding_dimension=512; /embed returns dimension=512 for any task; zeros in quality report eliminated after dataset refresh.
-   - Status: DONE (client+server обновлены; verify.ps1 освежает датасет; индекс пропускает пустые вектора)
+17. **[P0-REL-17] Idempotency**
+    - Все мутации требуют `Idempotency-Key` и dry-run→commit сценарий.
+    - Повтор → тот же assembled hash + HTTP 200 (идемпотент).
 
-13) Windows verify stability
-   - Ensure Python invocations use 'python' on Windows; start embedding_server в фоне с логами; Docker existence check.
-   - Criteria: verify.ps1 не блокирует оболочку; фоновые процессы завершаются; логи в reports/.
-   - Status: DONE (Makefile и verify.ps1 обновлены)
+18. **[P0-SEC-18] Input sanitization**
+    - NFKC нормализация; >2048 токенов → 413 Payload Too Large.
+    - Метрика `security_violations_total`.
 
-## Validation Protocol
-- Before/after any change: `make verify`.
-- If flakiness occurs, capture /tmp/* logs, fix root cause, re‑verify.
-- Weekly: run a 30s smoke (5 QPS search) to check for stability (no panics, steady latency).
+19. **[P0-DOC-19] Документация когнитивных практик**
+    - `docs/cognitive_guide.md`: принципы «TL;DR + Details», формат ответов, примеры.
+    - Обновить `README.md`/`plan.md` (highlights: deterministic brain, cognitive hints).
 
-## Out‑of‑Scope (for now)
-- Cloud infra, CI, GPU acceleration, production orchestrator.
+20. **[P0-UX-20] Cognitive onboarding**
+    - CLI `scripts/getting_started.py` → за 1 команду показывает: список инструментов, примеры, проверка подключений.
+    - Видео/анимация не требуется, только текстовые сценарии.
 
-## Documentation & Notebooks
-- Goal: ускорить онбординг и обзор системы без полного чтения кода.
-- Deliverables:
-  - [x] Аналитический ноутбук контекста проекта: `notebooks/01_project_context.ipynb`
-  - [x] Экспорт краткой сводки в `reports/project-context-summary.json`
-  - [x] Инструкции по запуску verify/tests в ноутбуке (через флаги)
-  - [x] Актуализация TODO.md/plan.md после добавления ноутбука
+## 3. P1 — усиление качества и UX
 
-Status: OK (ноутбук создан; опциональные тяжёлые проверки отключены флагами по умолчанию)
+### EmbeddingGemma & векторный слой
+- **[P1-EMB-21] Авто-настройка batch_size**: адаптация к GPU/CPU; мониторинг latency; тесты 5×.
+- **[P1-EMB-22] Prompt audit**: `scripts/check_prompts.py` → `artifacts/prompt_audit.json`.
+- **[P1-EMB-23] Кэш-метрики**: hit/miss/evict, Prometheus + визуализация.
+- **[P1-EMB-24] Vector rerank**: dot-product rerank после BM25F.
 
-## API Compatibility (Orchestrator Aliases)
-- Goal: обеспечить стабильность и совместимость клиентов, ожидающих `/api/v1/orchestrator/*` и `/api/orchestrator/*`.
-- Deliverables:
-  - [x] Роуты-алиасы для: `insights`, `distill`, `optimize`, `analyze`, `status`
-  - [x] Без изменения обработчиков и контрактов ответа
-  - [x] Компиляционная проверка `cargo check`
-  - [x] Интеграционные тесты алиасов: `tests/orchestrator_aliases_test.rs`
+### Graph Intelligence
+- **[P1-GPH-25] Rehydrate job**: массовый пересчёт связей, отчёт в S3.
+- **[P1-GPH-26] Метрики графа**: avg_degree, clustering, expansion.
+- **[P1-GPH-27] Weight aging**: экспоненциальное затухание, конфигурируемое.
 
-Status: OK (алиасы добавлены в `src/api.rs`; `cargo check` успешен)
+### Orchestrator & GPT-5 когнитивные функции
+- **[P1-ORC-28] Deterministic mode**: `deterministic=true` → reasoning=minimal, кеш по `inputs_hash`.
+- **[P1-ORC-29] PII masker**: маскировка email/phone в логах/ответах.
+- **[P1-ORC-30] Summaries with citations**: `summary`, `citations[]`, schema контрагента.
+- **[P1-ORC-31] Cost manager**: динамическое понижение модели (nano→mini) при близости к бюджету, лог `downgrade_reason`.
 
-## Limits & Observability (Incremental)
-- Goal: контролировать нагрузку и улучшить видимость реального времени.
-- Deliverables:
-  - [x] Глобальный лимит конкурентности: `ConcurrencyLimitLayer` (default 256; env `API_MAX_CONCURRENCY`)
-  - [x] Метрики поиска/recall: `memory_recall_duration_seconds`, `memory_operations_total`
-  - [x] health: `service_available{service="orchestrator|embedding"}`
-  - [x] Пер‑роут лимит для оркестратора: `ORCHESTRATOR_MAX_CONCURRENCY` (default 16)
+### Quality & Monitoring
+- **[P1-QLT-32] Quality monitor**: еженедельный отчёт P@5/MRR/nDCG (скрипт + артефакт).
+- **[P1-QLT-33] Adaptive ranking weights**: offline tuning pipeline (vector/graph/importance) → сохранять профили.
+- **[P1-QLT-34] Context clustering**: matryoshka-aware dedupe групп.
 
-## Aliases & Compatibility Tests
-- Goal: зафиксировать стабильность алиасов и заголовков.
-- Deliverables:
-  - [x] `/api/v1/memory` (store): `tests/versioned_aliases_test.rs`
-  - [x] `/api/memory/consolidate`: `tests/maintenance_alias_test.rs`
-  - [x] `/metrics` Content-Type: `tests/metrics_headers_test.rs`
-  - [x] `/api/search`, `/api/memories/search`: `tests/search_aliases_test.rs`
-  - [x] `/api/v1/maintenance/*`: `tests/v1_maintenance_test.rs`
+### Reliability & Safety
+- **[P1-REL-35] Chaos test**: имитация отказа embedding/Neo4j; отчёт `artifacts/chaos.json`.
+- **[P1-REL-36] Rate limiting**: глобальный и per-tool лимит из конфига.
+- **[P1-REL-37] Health degrade**: fallback cache при частичных ошибках.
+- **[P1-SEC-38] Audit trail**: сохранять `assembled_context.hash` + snapshot provenances.
+- **[P1-SEC-39] GPT moderation**: фильтр OpenAI moderation + доменные правила.
 
-Status: OK (компиляция тестов — успешна)
+### DX & Документация
+- **[P1-DX-40] EmbeddingGemma handbook**: docs/embeddinggemma.md (best practices).
+- **[P1-DX-41] Onboarding guide**: docs/getting_started.md (10-минутный сценарий).
+- **[P1-DX-42] CLI цели**: `make determinism`, `make observability`, `make chaos`, `make cognitive-demo`.
+- **[P1-DX-43] Cognitive demos**: скрипты примеров (`scripts/cognitive_demo_importance.py`, `...summarize.py`).
 
-## Performance & Quality Assessment (Current)
-- Goal: объективные текущие метрики latency/throughput и IR‑качества (P@k/MRR/nDCG).
-- Deliverables:
-  - [x] Сводка из `reports/quality_fast.json` и `quality_report.json`
-  - [x] Сводка из `reports/fast_mem_*out.log` и `metrics_timeseries.jsonl`
-  - [x] Документация наблюдаемости: `docs/observability.md`
-  - [x] Смоук‑скрипт: `scripts/quick_smoke.ps1`
+## 4. P2 — стратегические инициативы
+- [P2-EMB-50] QAT (Q4_0/Q8_0) + автоматический бенчмаркинг.
+- [P2-EMB-51] Edge профиль (CPU-only оптимизации).
+- [P2-GPH-52] Advanced analytics (community detection, centrality) для рекомендаций.
+- [P2-ORC-53] Async orchestration queue (idempotent tasks).
+- [P2-QLT-54] Multi-vector adapters (FAISS, Chroma) — единый интерфейс.
+- [P2-OBS-55] Grafana dashboards (JSON + инструкции).
+- [P2-REL-56] Active/Active persistence (multi-region).
+- [P2-DX-57] Автогенерация quality/cost отчётов (cron, Slack/email вывод).
+- [P2-DX-58] Notebook smoke tests в CI.
+- [P2-SEC-59] DLP сканирование на ingest (PII/secrets, redact).
+- [P2-SEC-60] Подпись артефактов (cosign).
+- [P2-OTH-61] Fine-tuning pipeline (MatryoshkaLoss) + eval.
+- [P2-REL-62] Capacity planner (Neo4j, embedding) + алерты.
+- [P2-REL-63] SLA dashboards (availability, latency, cost, evidence).
+- [P2-UX-64] Cognitive coach: интерактивный туториал (CLI wizard) для новых агентов.
 
-Status: OK (данные собраны, отчёт предоставляется в ответе)
+## 5. Definition of Done (каждая задача)
+- `make verify` (включая determinism, evidence, quality) дважды подряд зелёный.
+- Артефакты в `artifacts/` (determinism, evidence, quality, chaos, prompt audit, cognitive summary).
+- Документация и README обновлены.
+- Метрики и логи проверены (dashboards/alerts в рабочем состоянии).
+- Нет новых предупреждений Clippy, Ruff, pytest.
 
-Status: OK (интегрировано в `src/api.rs`; тесты зелёные)
+## 6. Управление рисками
+- **OpenAI стоимость**: монитор `gpt5_cost_usd_total`; alert ≥80% бюджета.
+- **Neo4j рост**: регулярные rehydrate и aging (P1 задачи).
+- **EmbeddingGemma обновления**: smoke-test новой версии до релиза.
+- **Retried storms**: circuit breaker (P0-REL-16) с уведомлением в ops.
 
-### Repo scan — 2025-09-12T01:13:44+03:00 (automated)
-- [x] Скан репозитория — выполнено (2025-09-12T01:13:44+03:00)
-- Ключевые факты:
-  - AGENTS.md — присутствует.
-  - plan.md — присутствует (markdown).
-  - AXPL-2.json / plan.json — отсутствуют (JSON‑представление AXPL-2 отсутствует).
-  - Файл 
-ul в корне репозитория — присутствует (риск на Windows: зарезервированное имя).
-  - Есть незакоммиченные/изменённые файлы (см. git status).
-  - Rust сервис: src/ + Cargo.toml присутствуют; есть unit/integration тесты в 	ests/.
-  - Embedding server: mbedding_server.py присутствует.
-  - Verify скрипты: scripts/verify.ps1 и scripts/verify.sh присутствуют.
-- Риски и рекомендации:
-  1. Удалить или переименовать файл 
-ul (Windows reserved; может приводить к ошибкам при сборке/скриптах).
-  2. Добавить/сгенерировать AXPL-2 JSON (если требуется автоматическая валидация AXPL-2); пока есть только plan.md.
-  3. Очистить __pycache__ и большие eports/ из репозитория или добавить в .gitignore.
-  4. Закоммитить/привести в порядок незакоммиченные изменения перед CI запуском.
-- Следующие шаги (приоритет):
-  1. Валидация AXPL-2 (преобразование plan.md → AXPL-2 JSON / схема). 
-  2. Запустить make verify в Windows PowerShell и проанализировать результаты (после очистки 'nul' и незакоммиченных изменений).
-  3. Если нужно — сгенерировать минимальный AXPL-2 JSON и пометить gaps (Fail‑Early report).
+## 7. Ритуалы и прозрачность
+- Ежедневный sync 09:00 UTC: статус P0/P1, блокеры, когнитивные метрики.
+- Публичный `STATUS.md` (обновляется автоматически после verify) — TL;DR + детали.
+- Блокировка >24h → эскалация Principal Engineer.
+- Изменение приоритетов только после апдейта AGENTS.md и согласования с владельцем.
 
-Выполнено автоматически: 2025-09-12T01:13:44+03:00
-- Добавлен `AXPL-2.json` (skeleton, `can` = "RECOMPUTE"). Требуется ручная ревизия и пересчёт canonical hash (`can`).
-
-Выполнено автоматически: 2025-09-12T01:55:00+03:00
-- Удалён (untracked) зарезервированный файл `nul` и создан новый коммит на ветке `master` (commit: `c89a5d0ed4f8155369f8e3e61a38908a4ce45d1b`).
-  - Операция: создан коммит с деревом, исключающим путь `nul`, и обновлён `refs/heads/master`.
-  - Индекс репозитория приведён в соответствие с новым HEAD (`git reset --mixed HEAD`) — рабочая копия не изменена.
-  - Проверки: `git ls-tree -r HEAD` не содержит `nul`; `git ls-files -s` не содержит `nul`; `git status` показывает `?? nul`.
-  - Рекомендуемая ручная проверка: просмотреть `git log -1 --oneline` и `git status`, затем при необходимости удалить файл `nul` из рабочей копии или добавить в .gitignore/удалить.

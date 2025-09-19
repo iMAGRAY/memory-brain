@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-memory-service.local/manifest.schema.json",
+  "title": "MCP Manifest",
+  "type": "object",
+  "required": ["schema_version", "endpoints", "features"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 0},
+    "endpoints": {
+      "type": "object",
+      "required": ["store_memory", "query_memory"],
+      "properties": {
+        "store_memory": {"type": "string", "format": "uri"},
+        "query_memory": {"type": "string", "format": "uri"},
+        "timeline": {"type": "string", "format": "uri"},
+        "session": {"type": "string", "format": "uri"},
+        "similarity": {"type": "string", "format": "uri"},
+        "plan": {"type": "string", "format": "uri"},
+        "feedback": {"type": "string", "format": "uri"},
+        "summary": {"type": "string", "format": "uri"},
+        "analytics": {"type": "string", "format": "uri"}
+      },
+      "additionalProperties": false
+    },
+    "features": {
+      "type": "object",
+      "patternProperties": {
+        ".+": {
+          "type": "object",
+          "required": ["enabled", "default", "description"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "default": {"type": "boolean"},
+            "description": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "contracts": {
+      "type": "array",
+      "items": {"type": "string", "format": "uri"}
+    }
+  },
+  "additionalProperties": false
+}

@@ -294,12 +294,15 @@ fn configure_pyo3() {
     println!("cargo:rerun-if-env-changed=PYO3_PYTHON");
     println!("cargo:rerun-if-env-changed=PYTHONHOME");
     
-    let _python_home = env::var("PYTHONHOME")
+    // Resolve Python home. Use explicit name `python_home` (not underscored)
+    // so it is visible below where we construct search paths and link args.
+    let python_home = env::var("PYTHONHOME")
         .unwrap_or_else(|_| "C:\\Users\\1\\AppData\\Local\\Programs\\Python\\Python313".to_string());
     
     // Configure Windows Python linking
     #[cfg(target_os = "windows")]
     {
+        // On Windows, PyO3 expects Python import libs under `<PYTHONHOME>\\libs`.
         let python_libs = format!("{}\\libs", python_home);
         let python_libs_path = Path::new(&python_libs);
         

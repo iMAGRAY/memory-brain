@@ -1,0 +1,1 @@
+"""Agent simulator package (placeholder)."""

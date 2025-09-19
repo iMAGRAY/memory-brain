@@ -1,1 +1,0 @@
-# EmbeddingGemma-300M Performance Tests

@@ -1154,7 +1154,30 @@ class EmbeddingServer:
         
         for route in list(self.app.router.routes()):
             cors.add(route)
-    
+
+    def _as_vector(self, embeddings) -> List[float]:
+        """Normalize possible embedding return types to a single 1D Python list[float]."""
+        # numpy ndarray
+        if isinstance(embeddings, np.ndarray):
+            if embeddings.ndim == 1:
+                return embeddings.astype(float).tolist()
+            # assume first row
+            return embeddings[0].astype(float).tolist()
+        # list
+        if isinstance(embeddings, list):
+            if not embeddings:
+                raise ValueError("Empty embeddings returned")
+            # list-of-list
+            if isinstance(embeddings[0], (list, tuple, np.ndarray)):
+                return list(map(float, embeddings[0]))
+            # already 1D list[float]
+            return list(map(float, embeddings))
+        # fallback: single scalar or unknown → wrap
+        try:
+            return [float(embeddings)]
+        except Exception:
+            raise ValueError("Unsupported embedding type")
+
     def _process_embeddings(self, embeddings) -> List[float]:
         """Обработка результатов embeddings в единообразный формат"""
         if isinstance(embeddings, np.ndarray):
@@ -1189,26 +1212,29 @@ class EmbeddingServer:
             # Кодируем текст в зависимости от task_type
             try:
                 if task_type == 'query':
-                    # Для поисковых запросов используем encode_query асинхронно
-                    embeddings = await asyncio.to_thread(self.service.encode_query, text)
-                    embeddings = self._process_embeddings(embeddings)
+                    # Для поисковых запросов применяем Matryoshka truncation до default_dimension
+                    enc = await asyncio.to_thread(self.service.encode_query, text, self.service.default_dimension)
+                    vec = self._as_vector(enc)
                 elif task_type == 'document':
-                    # Для документов используем encode_document асинхронно
-                    embeddings = await asyncio.to_thread(self.service.encode_document, text)
-                    embeddings = self._process_embeddings(embeddings)
+                    # Для документов применяем Matryoshka truncation до default_dimension
+                    enc = await asyncio.to_thread(self.service.encode_document, text, None, self.service.default_dimension)
+                    vec = self._as_vector(enc)
                 else:
-                    # Для общих случаев используем encode_async
-                    embeddings = await self.service.encode_async([text])
+                    # Общий случай: принудительно применяем Matryoshka для обеспечения корректной размерности
+                    enc_list = await asyncio.to_thread(
+                        self.service.encode_with_matryoshka, [text], self.service.default_dimension, task_type
+                    )
+                    vec = self._as_vector(enc_list)
             except Exception as e:
                 logger.error(f"Error encoding text with task_type '{task_type}': {e}")
                 return web.json_response(
                     {'error': f'Encoding failed: {str(e)}'},
                     status=500
                 )
-            
+
             return web.json_response({
-                'embedding': embeddings[0],
-                'dimension': len(embeddings[0])
+                'embedding': vec,
+                'dimension': len(vec)
             })
             
         except Exception as e:
@@ -1223,6 +1249,7 @@ class EmbeddingServer:
         try:
             data = await request.json()
             texts = data.get('texts', [])
+            task_type = data.get('task_type', 'general')
             
             # Минимальная валидация для локального сервера
             if not texts:
@@ -1231,13 +1258,18 @@ class EmbeddingServer:
                     status=400
                 )
             
-            # Кодируем тексты
-            embeddings = await self.service.encode_async(texts)
-            
+            # Кодируем тексты с правильным типом задачи и Matryoshka truncation до default_dimension
+            if task_type == 'query':
+                embeddings = await asyncio.to_thread(self.service.encode_query, texts, self.service.default_dimension)
+            elif task_type == 'document':
+                embeddings = await asyncio.to_thread(self.service.encode_document, texts, None, self.service.default_dimension)
+            else:
+                embeddings = await asyncio.to_thread(self.service.encode_with_matryoshka, texts, self.service.default_dimension, task_type)
+
             return web.json_response({
-                'embeddings': embeddings,
-                'count': len(embeddings),
-                'dimension': len(embeddings[0]) if embeddings and len(embeddings) > 0 else 0
+                'embeddings': [self._as_vector(e) for e in (embeddings if isinstance(embeddings, list) else [embeddings])],
+                'count': len(embeddings if isinstance(embeddings, list) else [embeddings]),
+                'dimension': (len(self._as_vector(embeddings[0])) if isinstance(embeddings, list) and len(embeddings) > 0 else (len(self._as_vector(embeddings))))
             })
             
         except Exception as e:
@@ -1258,6 +1290,8 @@ class EmbeddingServer:
     async def handle_stats(self, request: web.Request) -> web.Response:
         """Получение статистики"""
         stats = self.service.get_stats()
+        # Добавляем поле dimension для упрощения авто‑детекта на стороне Rust клиента
+        stats['dimension'] = self.service.default_dimension
         return web.json_response(stats)
     
     def run(self):
@@ -1272,6 +1306,12 @@ def main():
                            r'C:\Models\ai-memory-service\models\embeddinggemma-300m')
     port = int(os.getenv('EMBEDDING_SERVER_PORT', '8090'))
     max_workers = int(os.getenv('EMBEDDING_MAX_WORKERS', '8'))  # Увеличено для предотвращения deadlock
+    # Позволяем задавать целевую размерность Matryoshka через ENV (по умолчанию 512)
+    default_dim_env = os.getenv('EMBEDDING_DEFAULT_DIMENSION', '512')
+    try:
+        default_dimension = int(default_dim_env)
+    except ValueError:
+        default_dimension = 512
     
     # Проверяем существование модели
     if not os.path.exists(model_path):
@@ -1279,7 +1319,7 @@ def main():
         sys.exit(1)
     
     # Создаём сервисы
-    embedding_service = EmbeddingService(model_path, max_workers)
+    embedding_service = EmbeddingService(model_path, max_workers, default_dimension)
     server = EmbeddingServer(embedding_service, port)
     
     # Запускаем сервер

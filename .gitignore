@@ -1,3 +1,10 @@
 /target
 /models/embeddinggemma-300m
 /.venv
+/.env
+/artifacts/
+/STATUS.md
+models/embeddinggemma-300m-ONNX/gemma-300m.onnx
+models/embeddinggemma-300m-ONNX/gemma-300m.onnx_data
+models/embeddinggemma-300m-ONNX/model.onnx
+models/embeddinggemma-300m-ONNX/model.onnx_data
